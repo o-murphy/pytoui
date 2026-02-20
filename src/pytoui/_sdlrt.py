@@ -129,13 +129,13 @@ def _route_event(sdl2, event) -> None:
 
     elif t == sdl2.SDL_WINDOWEVENT:
         wid = event.window.windowID
-        # Add special check for window closing
         if event.window.event == sdl2.SDL_WINDOWEVENT_CLOSE:
             _send(wid, ("window_close",))
+        elif event.window.event == sdl2.SDL_WINDOWEVENT_SIZE_CHANGED:
+            _send(wid, ("window_resize", event.window.data1, event.window.data2))
         else:
             _send(wid, ("windowevent", event.window.event))
-
-    if t == sdl2.SDL_MOUSEBUTTONDOWN:
+    elif t == sdl2.SDL_MOUSEBUTTONDOWN:
         wid = event.button.windowID
         _send(wid, ("mousedown", event.button.button, event.button.x, event.button.y))
     elif t == sdl2.SDL_MOUSEBUTTONUP:
@@ -147,9 +147,6 @@ def _route_event(sdl2, event) -> None:
     elif t == sdl2.SDL_KEYDOWN:
         wid = event.key.windowID
         _send(wid, ("keydown", event.key.keysym.sym))
-    elif t == sdl2.SDL_WINDOWEVENT:
-        wid = event.window.windowID
-        _send(wid, ("windowevent", event.window.event))
 
 
 def _send(wid: int, msg: tuple) -> None:
@@ -197,13 +194,16 @@ class SDLRuntime:
                     raise RuntimeError(sdl2.SDL_GetError().decode())
             SDLRuntime._sdl_ref_count += 1
 
+        self._current_w = width
+        self._current_h = height
+
         self.window = sdl2.SDL_CreateWindow(
             root_view.name.encode(),
             sdl2.SDL_WINDOWPOS_CENTERED,
             sdl2.SDL_WINDOWPOS_CENTERED,
             width,
             height,
-            sdl2.SDL_WINDOW_SHOWN,
+            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_RESIZABLE,
         )
         self.window_id = sdl2.SDL_GetWindowID(self.window)
         self.renderer = sdl2.SDL_CreateRenderer(
@@ -217,7 +217,9 @@ class SDLRuntime:
             height,
         )
         sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
-        self.pixel_data = (ctypes.c_ubyte * (width * height * 4))()
+        # Pre-allocate for 4K to avoid reallocation on resize
+        _max_pixels = 3840 * 2160
+        self.pixel_data = (ctypes.c_ubyte * (_max_pixels * 4))()
 
         _register_runtime(self)
 
@@ -297,6 +299,8 @@ class SDLRuntime:
             elif kind == "keydown":
                 if msg[1] == sdl2.SDLK_ESCAPE:
                     self.running = False
+            elif kind == "window_resize":
+                self._current_w, self._current_h = msg[1], msg[2]
             elif kind == "windowevent":
                 if msg[1] == sdl2.SDL_WINDOWEVENT_LEAVE:
                     self._mouse_cancel()
@@ -332,9 +336,9 @@ class SDLRuntime:
         _fps_frame_count = 0
         _fps_last_t = time.time()
 
-        with self._FrameBuffer(self.pixel_data, self.width, self.height) as fb:
-            fb.antialias = GLOBAL_UI_ANTIALIAS
-
+        fb = FrameBuffer(self.pixel_data, self.width, self.height)
+        fb.antialias = GLOBAL_UI_ANTIALIAS
+        try:
             while self.running and self.root._presented:
                 now = time.time()
 
@@ -351,6 +355,25 @@ class SDLRuntime:
                 _tick(now)
                 _tick_delays(now)
 
+                w, h = self._current_w, self._current_h
+                if fb._width != w or fb._height != h:
+                    FrameBuffer._lib.DestroyFrameBuffer(fb._handle)
+                    fb._handle = 0
+                    fb = FrameBuffer(self.pixel_data, w, h)
+                    fb.antialias = GLOBAL_UI_ANTIALIAS
+                    sdl2.SDL_DestroyTexture(self.texture)
+                    self.texture = sdl2.SDL_CreateTexture(
+                        self.renderer,
+                        sdl2.SDL_PIXELFORMAT_ABGR8888,
+                        sdl2.SDL_TEXTUREACCESS_STREAMING,
+                        w,
+                        h,
+                    )
+                    sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
+                    self.width, self.height = w, h
+                    rf = self.root._frame
+                    self.root.frame = (rf.x, rf.y, float(w), float(h))
+
                 needs_redraw = _any_dirty(self.root)
 
                 if needs_redraw:
@@ -365,7 +388,7 @@ class SDLRuntime:
                         ctypes.byref(pixels_ptr),
                         ctypes.byref(pitch),
                     )
-                    ctypes.memmove(pixels_ptr, self.pixel_data, len(self.pixel_data))
+                    ctypes.memmove(pixels_ptr, self.pixel_data, w * h * 4)
                     sdl2.SDL_UnlockTexture(self.texture)
 
                     sdl2.SDL_RenderClear(self.renderer)
@@ -377,6 +400,10 @@ class SDLRuntime:
                 else:
                     # if nothing changes — sleep longer
                     sdl2.SDL_Delay(GLOBAL_UI_RT_SDL_MAX_DELAY)
+        finally:
+            if fb._handle > 0:
+                FrameBuffer._lib.DestroyFrameBuffer(fb._handle)
+                fb._handle = 0
 
         self._cleanup()
         self.root.close()

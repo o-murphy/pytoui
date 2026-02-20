@@ -164,6 +164,9 @@ class WinitRuntime:
             self._fb = FrameBuffer(self.pixel_data, w, h)
             self._fb.antialias = GLOBAL_UI_ANTIALIAS
             fb = self._fb
+            # Keep root view frame in sync so its background fills the full fb
+            rf = self.root._frame
+            self.root.frame = (rf.x, rf.y, float(w), float(h))
 
         # Signal Rust to close the window if view.close() was called
         if not self.root._presented:

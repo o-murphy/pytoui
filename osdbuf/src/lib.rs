@@ -8,9 +8,12 @@ use std::slice;
 use std::sync::Arc;
 
 use tiny_skia::{
-    BlendMode, Color, FillRule, LineCap, LineJoin, Mask, Paint, Path, PathBuilder, PixmapMut,
-    Rect, Stroke, StrokeDash, Transform,
+    BlendMode, Color, FillRule, Mask, Paint, Path, PathBuilder, PixmapMut, Rect,
+    Stroke, StrokeDash, Transform,
 };
+
+mod helpers;
+use helpers::{hex_to_rgba, map_blend_mode, map_cap, map_join, parse_c_str};
 
 // --- Structures ---
 
@@ -101,16 +104,6 @@ pub unsafe extern "C" fn GetFontIDs(buf: *mut c_int, max_count: c_int) -> i32 {
 
 // --- Helpers ---
 
-#[inline]
-fn hex_to_rgba(c: u32) -> (u8, u8, u8, u8) {
-    (
-        ((c >> 24) & 0xFF) as u8,
-        ((c >> 16) & 0xFF) as u8,
-        ((c >> 8) & 0xFF) as u8,
-        (c & 0xFF) as u8,
-    )
-}
-
 /// Create a tiny-skia Paint with the given color and blend mode.
 #[inline]
 fn make_paint(r: u8, g: u8, b: u8, a: u8, blend: BlendMode, aa: bool) -> Paint<'static> {
@@ -119,42 +112,6 @@ fn make_paint(r: u8, g: u8, b: u8, a: u8, blend: BlendMode, aa: bool) -> Paint<'
     paint.blend_mode = blend;
     paint.anti_alias = aa;
     paint
-}
-
-/// Map u8 blend mode value to tiny-skia BlendMode.
-/// Values match the Python BlendMode enum (0-27).
-fn map_blend_mode(mode: u8) -> BlendMode {
-    match mode {
-        0 => BlendMode::SourceOver,   // NORMAL
-        1 => BlendMode::Multiply,
-        2 => BlendMode::Screen,
-        3 => BlendMode::Overlay,
-        4 => BlendMode::Darken,
-        5 => BlendMode::Lighten,
-        6 => BlendMode::ColorDodge,
-        7 => BlendMode::ColorBurn,
-        8 => BlendMode::SoftLight,
-        9 => BlendMode::HardLight,
-        10 => BlendMode::Difference,
-        11 => BlendMode::Exclusion,
-        12 => BlendMode::Hue,
-        13 => BlendMode::Saturation,
-        14 => BlendMode::Color,
-        15 => BlendMode::Luminosity,
-        16 => BlendMode::Clear,
-        17 => BlendMode::Source,      // COPY
-        18 => BlendMode::SourceIn,
-        19 => BlendMode::SourceOut,
-        20 => BlendMode::SourceAtop,
-        21 => BlendMode::DestinationOver,
-        22 => BlendMode::DestinationIn,
-        23 => BlendMode::DestinationOut,
-        24 => BlendMode::DestinationAtop,
-        25 => BlendMode::Xor,
-        26 => BlendMode::Modulate,    // PLUS_DARKER approximation
-        27 => BlendMode::Plus,        // PLUS_LIGHTER
-        _ => BlendMode::SourceOver,
-    }
 }
 
 /// Build a rounded rect path using cubic bezier curves.
@@ -253,36 +210,44 @@ fn decode_path(data: &[u8]) -> Option<Path> {
         i += 1;
         match op {
             0x00 => {
-                if i + 8 > data.len() { break; }
+                if i + 8 > data.len() {
+                    break;
+                }
                 let x = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
                 let y = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
                 pb.move_to(x, y);
                 i += 8;
             }
             0x01 => {
-                if i + 8 > data.len() { break; }
+                if i + 8 > data.len() {
+                    break;
+                }
                 let x = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
                 let y = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
                 pb.line_to(x, y);
                 i += 8;
             }
             0x02 => {
-                if i + 24 > data.len() { break; }
+                if i + 24 > data.len() {
+                    break;
+                }
                 let cp1x = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
                 let cp1y = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
                 let cp2x = f32::from_le_bytes(data[i + 8..i + 12].try_into().ok()?);
                 let cp2y = f32::from_le_bytes(data[i + 12..i + 16].try_into().ok()?);
-                let x    = f32::from_le_bytes(data[i + 16..i + 20].try_into().ok()?);
-                let y    = f32::from_le_bytes(data[i + 20..i + 24].try_into().ok()?);
+                let x = f32::from_le_bytes(data[i + 16..i + 20].try_into().ok()?);
+                let y = f32::from_le_bytes(data[i + 20..i + 24].try_into().ok()?);
                 pb.cubic_to(cp1x, cp1y, cp2x, cp2y, x, y);
                 i += 24;
             }
             0x03 => {
-                if i + 16 > data.len() { break; }
+                if i + 16 > data.len() {
+                    break;
+                }
                 let cpx = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
                 let cpy = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
-                let x   = f32::from_le_bytes(data[i + 8..i + 12].try_into().ok()?);
-                let y   = f32::from_le_bytes(data[i + 12..i + 16].try_into().ok()?);
+                let x = f32::from_le_bytes(data[i + 8..i + 12].try_into().ok()?);
+                let y = f32::from_le_bytes(data[i + 12..i + 16].try_into().ok()?);
                 pb.quad_to(cpx, cpy, x, y);
                 i += 16;
             }
@@ -303,7 +268,14 @@ enum PathCmd {
     LineTo(f32, f32),
     CubicTo(f32, f32, f32, f32, f32, f32),
     QuadTo(f32, f32, f32, f32),
-    Arc { cx: f32, cy: f32, r: f32, start: f32, end: f32, clockwise: bool },
+    Arc {
+        cx: f32,
+        cy: f32,
+        r: f32,
+        start: f32,
+        end: f32,
+        clockwise: bool,
+    },
     Close,
 }
 
@@ -345,13 +317,28 @@ static TRANSFORM_MAP: Lazy<RwLock<HashMap<i32, (f32, f32, f32, f32, f32, f32)>>>
 static mut NEXT_TRANSFORM_ID: i32 = 1;
 
 /// Sample points along an arc (clockwise = positive sweep).
-fn arc_points_f32(cx: f32, cy: f32, r: f32, start: f32, end: f32, clockwise: bool) -> Vec<(f32, f32)> {
+fn arc_points_f32(
+    cx: f32,
+    cy: f32,
+    r: f32,
+    start: f32,
+    end: f32,
+    clockwise: bool,
+) -> Vec<(f32, f32)> {
     let sweep = if clockwise {
         let s = end - start;
-        if s < 0.0 { s + 2.0 * std::f32::consts::PI } else { s }
+        if s < 0.0 {
+            s + 2.0 * std::f32::consts::PI
+        } else {
+            s
+        }
     } else {
         let s = end - start;
-        if s > 0.0 { s - 2.0 * std::f32::consts::PI } else { s }
+        if s > 0.0 {
+            s - 2.0 * std::f32::consts::PI
+        } else {
+            s
+        }
     };
     let steps = ((sweep.abs() * r.max(1.0) / 2.0) as usize).max(4);
     (0..=steps)
@@ -372,7 +359,14 @@ fn build_path_from_cmds(cmds: &[PathCmd]) -> Option<Path> {
                 pb.cubic_to(*cp1x, *cp1y, *cp2x, *cp2y, *x, *y)
             }
             PathCmd::QuadTo(cpx, cpy, x, y) => pb.quad_to(*cpx, *cpy, *x, *y),
-            PathCmd::Arc { cx, cy, r, start, end, clockwise } => {
+            PathCmd::Arc {
+                cx,
+                cy,
+                r,
+                start,
+                end,
+                clockwise,
+            } => {
                 let pts = arc_points_f32(*cx, *cy, *r, *start, *end, *clockwise);
                 if let Some(&(fx, fy)) = pts.first() {
                     pb.move_to(fx, fy);
@@ -547,17 +541,7 @@ impl FrameBuffer {
         }
     }
 
-    fn draw_hline(
-        &mut self,
-        x: i32,
-        y: i32,
-        w: i32,
-        r: u8,
-        g: u8,
-        b: u8,
-        a: u8,
-        blend: BlendMode,
-    ) {
+    fn draw_hline(&mut self, x: i32, y: i32, w: i32, r: u8, g: u8, b: u8, a: u8, blend: BlendMode) {
         if let Some(rect) = Rect::from_xywh(x as f32, y as f32, w as f32, 1.0) {
             if let Some(mut pm) = self.pixmap_mut() {
                 let paint = make_paint(r, g, b, a, blend, false);
@@ -566,17 +550,7 @@ impl FrameBuffer {
         }
     }
 
-    fn draw_vline(
-        &mut self,
-        x: i32,
-        y: i32,
-        h: i32,
-        r: u8,
-        g: u8,
-        b: u8,
-        a: u8,
-        blend: BlendMode,
-    ) {
+    fn draw_vline(&mut self, x: i32, y: i32, h: i32, r: u8, g: u8, b: u8, a: u8, blend: BlendMode) {
         if let Some(rect) = Rect::from_xywh(x as f32, y as f32, 1.0, h as f32) {
             if let Some(mut pm) = self.pixmap_mut() {
                 let paint = make_paint(r, g, b, a, blend, false);
@@ -653,13 +627,7 @@ impl FrameBuffer {
             let ctm = self.ctm;
             if let Some(mut pm) = self.pixmap_mut() {
                 let paint = make_paint(rv, g, b, a, blend, aa);
-                pm.fill_path(
-                    &path,
-                    &paint,
-                    FillRule::Winding,
-                    ctm,
-                    None,
-                );
+                pm.fill_path(&path, &paint, FillRule::Winding, ctm, None);
             }
         }
     }
@@ -714,13 +682,7 @@ impl FrameBuffer {
                 let ctm = self.ctm;
                 if let Some(mut pm) = self.pixmap_mut() {
                     let paint = make_paint(rv, g, b, a, blend, aa);
-                    pm.fill_path(
-                        &path,
-                        &paint,
-                        FillRule::Winding,
-                        ctm,
-                        None,
-                    );
+                    pm.fill_path(&path, &paint, FillRule::Winding, ctm, None);
                 }
             }
         }
@@ -1152,15 +1114,11 @@ impl FrameBuffer {
         assert_eq!(self.pixels.len(), w * h * 4);
 
         // reinterpret as u32 slice
-        let pixels: &mut [u32] = unsafe {
-            std::slice::from_raw_parts_mut(
-                self.pixels.as_mut_ptr() as *mut u32,
-                w * h,
-            )
-        };
+        let pixels: &mut [u32] =
+            unsafe { std::slice::from_raw_parts_mut(self.pixels.as_mut_ptr() as *mut u32, w * h) };
 
         let light: u32 = 0xFFCCCCCC; // RGBA little endian
-        let dark:  u32 = 0xFF999999;
+        let dark: u32 = 0xFF999999;
 
         for y in 0..h {
             for x in 0..w {
@@ -1217,16 +1175,16 @@ where
     }
 }
 
-fn with_fb_centered<F, R>(handle: i32, f: F) -> R
-where
-    F: FnOnce(&mut FrameBuffer, i32, i32) -> R,
-    R: Default,
-{
-    with_fb(handle, |fb| {
-        let (cx, cy) = (fb.cx, fb.cy);
-        f(fb, cx, cy)
-    })
-}
+// fn with_fb_centered<F, R>(handle: i32, f: F) -> R
+// where
+//     F: FnOnce(&mut FrameBuffer, i32, i32) -> R,
+//     R: Default,
+// {
+//     with_fb(handle, |fb| {
+//         let (cx, cy) = (fb.cx, fb.cy);
+//         f(fb, cx, cy)
+//     })
+// }
 
 // --- Drawing exports ---
 
@@ -1262,19 +1220,6 @@ pub extern "C" fn SetPixel(handle: i32, x: i32, y: i32, color: u32) {
 #[no_mangle]
 pub extern "C" fn GetPixel(handle: i32, x: i32, y: i32) -> u32 {
     with_fb(handle, |fb| fb.get_pixel_raw(x, y))
-}
-
-#[no_mangle]
-pub extern "C" fn CSetPixel(handle: i32, x: i32, y: i32, color: u32) {
-    let (r, g, b, a) = hex_to_rgba(color);
-    with_fb_centered(handle, |fb, cx, cy| {
-        fb.set_pixel(cx + x, cy + y, r, g, b, a)
-    });
-}
-
-#[no_mangle]
-pub extern "C" fn CGetPixel(handle: i32, x: i32, y: i32) -> u32 {
-    with_fb_centered(handle, |fb, cx, cy| fb.get_pixel_raw(cx + x, cy + y))
 }
 
 #[no_mangle]
@@ -1400,16 +1345,6 @@ pub extern "C" fn FillRect(handle: i32, x: f32, y: f32, w: f32, h: f32, color: u
 }
 
 #[no_mangle]
-pub extern "C" fn FillRectOver(handle: i32, x: f32, y: f32, w: f32, h: f32, color: u32, blend: u8) {
-    let (r, g, b, a) = hex_to_rgba(color);
-    // FillRectOver defaults to SourceOver when blend=0 (NORMAL)
-    let bm = map_blend_mode(blend);
-    with_fb(handle, |fb| {
-        fb.fill_rect(x, y, w, h, r, g, b, a, bm);
-    });
-}
-
-#[no_mangle]
 pub extern "C" fn RoundedRect(
     handle: i32,
     x: i32,
@@ -1429,24 +1364,6 @@ pub extern "C" fn RoundedRect(
 
 #[no_mangle]
 pub extern "C" fn FillRoundedRect(
-    handle: i32,
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-    radius: f32,
-    color: u32,
-    blend: u8,
-) {
-    let (r, g, b, a) = hex_to_rgba(color);
-    let bm = map_blend_mode(blend);
-    with_fb(handle, |fb| {
-        fb.fill_rounded_rect(x, y, w, h, radius, r, g, b, a, bm)
-    });
-}
-
-#[no_mangle]
-pub extern "C" fn FillRoundedRectOver(
     handle: i32,
     x: f32,
     y: f32,
@@ -1519,13 +1436,7 @@ pub extern "C" fn EllipseArc(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn FillPath(
-    handle: i32,
-    data: *const u8,
-    len: i32,
-    color: u32,
-    blend: u8,
-) {
+pub unsafe extern "C" fn FillPath(handle: i32, data: *const u8, len: i32, color: u32, blend: u8) {
     if data.is_null() || len <= 0 {
         return;
     }
@@ -1552,7 +1463,9 @@ pub unsafe extern "C" fn StrokePath(
     let data_slice = slice::from_raw_parts(data, len as usize);
     let (r, g, b, a) = hex_to_rgba(color);
     let bm = map_blend_mode(blend);
-    with_fb(handle, |fb| fb.stroke_path_data(data_slice, width, cap, join, r, g, b, a, bm));
+    with_fb(handle, |fb| {
+        fb.stroke_path_data(data_slice, width, cap, join, r, g, b, a, bm)
+    });
 }
 
 #[no_mangle]
@@ -1624,22 +1537,6 @@ impl TextAnchor {
     }
 }
 
-fn map_cap(cap: u8) -> LineCap {
-    match cap {
-        1 => LineCap::Round,
-        2 => LineCap::Square,
-        _ => LineCap::Butt,
-    }
-}
-
-fn map_join(join: u8) -> LineJoin {
-    match join {
-        1 => LineJoin::Round,
-        2 => LineJoin::Bevel,
-        _ => LineJoin::Miter,
-    }
-}
-
 fn with_font<F, R>(handle: i32, f: F) -> R
 where
     F: FnOnce(&fontdue::Font) -> R,
@@ -1702,13 +1599,6 @@ fn get_text_layout(font: &fontdue::Font, text: &str, size: f32, spacing: f32) ->
     (width, height, ascent)
 }
 
-unsafe fn parse_c_str<'a>(ptr: *const c_char) -> Option<&'a str> {
-    if ptr.is_null() {
-        return None;
-    }
-    CStr::from_ptr(ptr).to_str().ok()
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn DrawText(
     handle: i32,
@@ -1731,9 +1621,7 @@ pub unsafe extern "C" fn DrawText(
     }
     with_font(font_handle, |font| {
         with_fb(handle, |fb| {
-            fb.draw_text_anchored(
-                font, input_text, size, x, y, anchor, rgba, spacing,
-            );
+            fb.draw_text_anchored(font, input_text, size, x, y, anchor, rgba, spacing);
             0
         })
     })
@@ -1797,7 +1685,10 @@ pub extern "C" fn GetTextHeight(font_handle: i32, size: f32) -> i32 {
 pub extern "C" fn GStatePush(handle: i32) {
     with_fb(handle, |fb| {
         let clip_data = fb.clip_mask.as_ref().map(|m| m.data().to_vec());
-        fb.gstate_stack.push(FrameState { ctm: fb.ctm, clip_data });
+        fb.gstate_stack.push(FrameState {
+            ctm: fb.ctm,
+            clip_data,
+        });
     });
 }
 
@@ -1820,9 +1711,7 @@ pub extern "C" fn GStatePop(handle: i32) {
 // --- Transform exports ---
 
 #[no_mangle]
-pub unsafe extern "C" fn CreateTransform(
-    a: f32, b: f32, c: f32, d: f32, tx: f32, ty: f32,
-) -> i32 {
+pub unsafe extern "C" fn CreateTransform(a: f32, b: f32, c: f32, d: f32, tx: f32, ty: f32) -> i32 {
     let mut map = TRANSFORM_MAP.write();
     let id = NEXT_TRANSFORM_ID;
     NEXT_TRANSFORM_ID += 1;
@@ -1865,10 +1754,10 @@ pub unsafe extern "C" fn TransformConcat(handle_a: i32, handle_b: i32) -> i32 {
     };
     drop(map);
     // Standard 2D affine concat: result = self * other
-    let a  = a1 * a2 + c1 * b2;
-    let b  = b1 * a2 + d1 * b2;
-    let c  = a1 * c2 + c1 * d2;
-    let d  = b1 * c2 + d1 * d2;
+    let a = a1 * a2 + c1 * b2;
+    let b = b1 * a2 + d1 * b2;
+    let c = a1 * c2 + c1 * d2;
+    let d = b1 * c2 + d1 * d2;
     let tx = a1 * tx2 + c1 * ty2 + tx1;
     let ty = b1 * tx2 + d1 * ty2 + ty1;
     CreateTransform(a, b, c, d, tx, ty)
@@ -1886,7 +1775,10 @@ pub unsafe extern "C" fn TransformInvert(handle: i32) -> i32 {
     }
     let inv = 1.0 / det;
     CreateTransform(
-        d * inv, -b * inv, -c * inv, a * inv,
+        d * inv,
+        -b * inv,
+        -c * inv,
+        a * inv,
         (c * ty - d * tx) * inv,
         (b * tx - a * ty) * inv,
     )
@@ -1896,15 +1788,32 @@ pub unsafe extern "C" fn TransformInvert(handle: i32) -> i32 {
 #[no_mangle]
 pub unsafe extern "C" fn TransformGet(
     handle: i32,
-    a: *mut f32, b: *mut f32, c: *mut f32, d: *mut f32, tx: *mut f32, ty: *mut f32,
+    a: *mut f32,
+    b: *mut f32,
+    c: *mut f32,
+    d: *mut f32,
+    tx: *mut f32,
+    ty: *mut f32,
 ) -> i32 {
     if let Some(&(va, vb, vc, vd, vtx, vty)) = TRANSFORM_MAP.read().get(&handle) {
-        if !a.is_null()  { *a  = va;  }
-        if !b.is_null()  { *b  = vb;  }
-        if !c.is_null()  { *c  = vc;  }
-        if !d.is_null()  { *d  = vd;  }
-        if !tx.is_null() { *tx = vtx; }
-        if !ty.is_null() { *ty = vty; }
+        if !a.is_null() {
+            *a = va;
+        }
+        if !b.is_null() {
+            *b = vb;
+        }
+        if !c.is_null() {
+            *c = vc;
+        }
+        if !d.is_null() {
+            *d = vd;
+        }
+        if !tx.is_null() {
+            *tx = vtx;
+        }
+        if !ty.is_null() {
+            *ty = vty;
+        }
         0
     } else {
         -1
@@ -1939,7 +1848,13 @@ pub extern "C" fn PathLineTo(handle: i32, x: f32, y: f32) {
 
 #[no_mangle]
 pub extern "C" fn PathAddCurve(
-    handle: i32, cp1x: f32, cp1y: f32, cp2x: f32, cp2y: f32, x: f32, y: f32,
+    handle: i32,
+    cp1x: f32,
+    cp1y: f32,
+    cp2x: f32,
+    cp2y: f32,
+    x: f32,
+    y: f32,
 ) {
     with_path(handle, |p| {
         p.cmds.push(PathCmd::CubicTo(cp1x, cp1y, cp2x, cp2y, x, y))
@@ -1953,10 +1868,23 @@ pub extern "C" fn PathAddQuadCurve(handle: i32, cpx: f32, cpy: f32, x: f32, y: f
 
 #[no_mangle]
 pub extern "C" fn PathAddArc(
-    handle: i32, cx: f32, cy: f32, r: f32, start: f32, end: f32, clockwise: i32,
+    handle: i32,
+    cx: f32,
+    cy: f32,
+    r: f32,
+    start: f32,
+    end: f32,
+    clockwise: i32,
 ) {
     with_path(handle, |p| {
-        p.cmds.push(PathCmd::Arc { cx, cy, r, start, end, clockwise: clockwise != 0 })
+        p.cmds.push(PathCmd::Arc {
+            cx,
+            cy,
+            r,
+            start,
+            end,
+            clockwise: clockwise != 0,
+        })
     });
 }
 
@@ -1999,10 +1927,38 @@ pub unsafe extern "C" fn PathOval(x: f32, y: f32, w: f32, h: f32) -> i32 {
         let (rx, ry) = (w / 2.0, h / 2.0);
         let (kx, ky) = (K * rx, K * ry);
         p.cmds.push(PathCmd::MoveTo(cx, cy - ry));
-        p.cmds.push(PathCmd::CubicTo(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy));
-        p.cmds.push(PathCmd::CubicTo(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry));
-        p.cmds.push(PathCmd::CubicTo(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy));
-        p.cmds.push(PathCmd::CubicTo(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry));
+        p.cmds.push(PathCmd::CubicTo(
+            cx + kx,
+            cy - ry,
+            cx + rx,
+            cy - ky,
+            cx + rx,
+            cy,
+        ));
+        p.cmds.push(PathCmd::CubicTo(
+            cx + rx,
+            cy + ky,
+            cx + kx,
+            cy + ry,
+            cx,
+            cy + ry,
+        ));
+        p.cmds.push(PathCmd::CubicTo(
+            cx - kx,
+            cy + ry,
+            cx - rx,
+            cy + ky,
+            cx - rx,
+            cy,
+        ));
+        p.cmds.push(PathCmd::CubicTo(
+            cx - rx,
+            cy - ky,
+            cx - kx,
+            cy - ry,
+            cx,
+            cy - ry,
+        ));
         p.cmds.push(PathCmd::Close);
     });
     id
@@ -2017,13 +1973,35 @@ pub unsafe extern "C" fn PathRoundedRect(x: f32, y: f32, w: f32, h: f32, r: f32)
         let kr = K * r;
         p.cmds.push(PathCmd::MoveTo(x + r, y));
         p.cmds.push(PathCmd::LineTo(x + w - r, y));
-        p.cmds.push(PathCmd::CubicTo(x + w - r + kr, y, x + w, y + r - kr, x + w, y + r));
+        p.cmds.push(PathCmd::CubicTo(
+            x + w - r + kr,
+            y,
+            x + w,
+            y + r - kr,
+            x + w,
+            y + r,
+        ));
         p.cmds.push(PathCmd::LineTo(x + w, y + h - r));
-        p.cmds.push(PathCmd::CubicTo(x + w, y + h - r + kr, x + w - r + kr, y + h, x + w - r, y + h));
+        p.cmds.push(PathCmd::CubicTo(
+            x + w,
+            y + h - r + kr,
+            x + w - r + kr,
+            y + h,
+            x + w - r,
+            y + h,
+        ));
         p.cmds.push(PathCmd::LineTo(x + r, y + h));
-        p.cmds.push(PathCmd::CubicTo(x + r - kr, y + h, x, y + h - r + kr, x, y + h - r));
+        p.cmds.push(PathCmd::CubicTo(
+            x + r - kr,
+            y + h,
+            x,
+            y + h - r + kr,
+            x,
+            y + h - r,
+        ));
         p.cmds.push(PathCmd::LineTo(x, y + r));
-        p.cmds.push(PathCmd::CubicTo(x, y + r - kr, x + r - kr, y, x + r, y));
+        p.cmds
+            .push(PathCmd::CubicTo(x, y + r - kr, x + r - kr, y, x + r, y));
         p.cmds.push(PathCmd::Close);
     });
     id
@@ -2079,10 +2057,17 @@ pub extern "C" fn PathFill(fb_handle: i32, path_handle: i32, color: u32, blend: 
             None => return,
         }
     };
-    let fill_rule = if eo_fill { FillRule::EvenOdd } else { FillRule::Winding };
+    let fill_rule = if eo_fill {
+        FillRule::EvenOdd
+    } else {
+        FillRule::Winding
+    };
     with_fb(fb_handle, |fb| {
         // clone clip data before mutable borrow of fb
-        let clip_bytes = fb.clip_mask.as_ref().map(|m| (m.data().to_vec(), fb.w as u32, fb.h as u32));
+        let clip_bytes = fb
+            .clip_mask
+            .as_ref()
+            .map(|m| (m.data().to_vec(), fb.w as u32, fb.h as u32));
         if let Some(path) = build_path_from_cmds(&cmds) {
             let ctm = fb.ctm;
             let aa = fb.antialias;
@@ -2105,9 +2090,7 @@ pub extern "C" fn PathSetEoFillRule(handle: i32, value: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn PathStroke(
-    fb_handle: i32, path_handle: i32, color: u32, blend: u8,
-) {
+pub extern "C" fn PathStroke(fb_handle: i32, path_handle: i32, color: u32, blend: u8) {
     let (r, g, b, a) = hex_to_rgba(color);
     let bm = map_blend_mode(blend);
     let (cmds, lw, lcap, ljoin, dash_iv, dash_ph) = {
@@ -2115,15 +2098,24 @@ pub extern "C" fn PathStroke(
         match map.get(&path_handle) {
             Some(lock) => {
                 let p = lock.lock();
-                (p.cmds.clone(), p.line_width, p.line_cap, p.line_join,
-                 p.dash_intervals.clone(), p.dash_phase)
+                (
+                    p.cmds.clone(),
+                    p.line_width,
+                    p.line_cap,
+                    p.line_join,
+                    p.dash_intervals.clone(),
+                    p.dash_phase,
+                )
             }
             None => return,
         }
     };
     with_fb(fb_handle, |fb| {
         // clone clip data before mutable borrow of fb
-        let clip_bytes = fb.clip_mask.as_ref().map(|m| (m.data().to_vec(), fb.w as u32, fb.h as u32));
+        let clip_bytes = fb
+            .clip_mask
+            .as_ref()
+            .map(|m| (m.data().to_vec(), fb.w as u32, fb.h as u32));
         if let Some(path) = build_path_from_cmds(&cmds) {
             let ctm = fb.ctm;
             let aa = fb.antialias;
@@ -2159,7 +2151,11 @@ pub extern "C" fn PathHitTest(path_handle: i32, x: f32, y: f32) -> i32 {
             None => return 0,
         }
     };
-    let fill_rule = if eo_fill { FillRule::EvenOdd } else { FillRule::Winding };
+    let fill_rule = if eo_fill {
+        FillRule::EvenOdd
+    } else {
+        FillRule::Winding
+    };
     if let Some(path) = build_path_from_cmds(&cmds) {
         let mut data = [0u8; 4];
         if let Some(mut pm) = PixmapMut::from_bytes(&mut data, 1, 1) {
@@ -2179,7 +2175,10 @@ pub extern "C" fn PathHitTest(path_handle: i32, x: f32, y: f32) -> i32 {
 #[no_mangle]
 pub unsafe extern "C" fn PathGetBounds(
     path_handle: i32,
-    x_out: *mut f32, y_out: *mut f32, w_out: *mut f32, h_out: *mut f32,
+    x_out: *mut f32,
+    y_out: *mut f32,
+    w_out: *mut f32,
+    h_out: *mut f32,
 ) -> i32 {
     let cmds: Vec<PathCmd> = {
         let map = PATH_MAP.read();
@@ -2224,9 +2223,7 @@ pub extern "C" fn PathAddClip(fb_handle: i32, path_handle: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn DrawCheckerBoard(
-    fb_handle: i32, size: i32
-) {
+pub extern "C" fn DrawCheckerBoard(fb_handle: i32, size: i32) {
     with_fb(fb_handle, |fb| {
         fb.draw_checkerboard(size);
     });

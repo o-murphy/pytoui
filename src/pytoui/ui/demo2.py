@@ -11,7 +11,7 @@ Press ESC or close any window to close it.
 """
 
 import threading
-import ui
+from pytoui import ui
 
 
 class SecondView(ui.View):

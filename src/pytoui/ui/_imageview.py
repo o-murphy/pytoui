@@ -3,43 +3,25 @@ from __future__ import annotations
 import ctypes
 from typing import TYPE_CHECKING
 
-try:
-    from ui import (
-        CONTENT_BOTTOM,
-        CONTENT_BOTTOM_LEFT,
-        CONTENT_BOTTOM_RIGHT,
-        CONTENT_CENTER,
-        CONTENT_LEFT,
-        CONTENT_RIGHT,
-        CONTENT_SCALE_ASPECT_FILL,
-        CONTENT_SCALE_ASPECT_FIT,
-        CONTENT_SCALE_TO_FILL,
-        CONTENT_TOP,
-        CONTENT_TOP_LEFT,
-        CONTENT_TOP_RIGHT,
-        RENDERING_MODE_TEMPLATE,
-        View,
-    )
-except ImportError:
-    from ui._constants import (
-        CONTENT_BOTTOM,
-        CONTENT_BOTTOM_LEFT,
-        CONTENT_BOTTOM_RIGHT,
-        CONTENT_CENTER,
-        CONTENT_LEFT,
-        CONTENT_RIGHT,
-        CONTENT_SCALE_ASPECT_FILL,
-        CONTENT_SCALE_ASPECT_FIT,
-        CONTENT_SCALE_TO_FILL,
-        CONTENT_TOP,
-        CONTENT_TOP_LEFT,
-        CONTENT_TOP_RIGHT,
-        RENDERING_MODE_TEMPLATE,
-    )
-    from ui._view import View
+from pytoui.ui._constants import (
+    CONTENT_BOTTOM,
+    CONTENT_BOTTOM_LEFT,
+    CONTENT_BOTTOM_RIGHT,
+    CONTENT_CENTER,
+    CONTENT_LEFT,
+    CONTENT_RIGHT,
+    CONTENT_SCALE_ASPECT_FILL,
+    CONTENT_SCALE_ASPECT_FIT,
+    CONTENT_SCALE_TO_FILL,
+    CONTENT_TOP,
+    CONTENT_TOP_LEFT,
+    CONTENT_TOP_RIGHT,
+    RENDERING_MODE_TEMPLATE,
+)
+from pytoui.ui._view import View
 
 if TYPE_CHECKING:
-    from ui._image import Image
+    from pytoui.ui._image import Image
 
 __all__ = ("ImageView",)
 
@@ -76,7 +58,7 @@ class ImageView(View):
         def _fetch():
             try:
                 from urllib.request import urlopen
-                from ui._image import Image
+                from pytoui.ui._image import Image
 
                 data = urlopen(url).read()
                 self.image = Image.from_data(data)
@@ -90,7 +72,7 @@ class ImageView(View):
         if img is None or img._data is None:
             return
 
-        from ui._draw import _get_draw_ctx
+        from pytoui.ui._draw import _get_draw_ctx
 
         ctx = _get_draw_ctx()
         fb = ctx.backend

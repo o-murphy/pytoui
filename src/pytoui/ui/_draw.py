@@ -21,7 +21,7 @@ Usage:
 View tree renderer — walks the hierarchy and paints into an osdbuf FrameBuffer.
 
 Usage:
-    from ui._render import render_view_tree
+    from pytoui.ui._render import render_view_tree
     render_view_tree(root_view, fb)
 
 NOTE: If needed we should delegate some operations to rust (osdbuf/src/lib.rs)
@@ -37,73 +37,41 @@ from threading import local
 import time
 from typing import Any, Callable, cast, TYPE_CHECKING
 
-from ui._types import Size
-
-try:
-    from ui import (
-        ALIGN_CENTER,
-        ALIGN_LEFT,
-        ALIGN_NATURAL,
-        ALIGN_RIGHT,
-        BLEND_NORMAL,
-        CONTENT_BOTTOM,
-        CONTENT_BOTTOM_LEFT,
-        CONTENT_BOTTOM_RIGHT,
-        CONTENT_CENTER,
-        CONTENT_LEFT,
-        CONTENT_RIGHT,
-        CONTENT_SCALE_ASPECT_FILL,
-        CONTENT_SCALE_ASPECT_FIT,
-        CONTENT_SCALE_TO_FILL,
-        CONTENT_TOP,
-        CONTENT_TOP_LEFT,
-        CONTENT_TOP_RIGHT,
-        LB_CHAR_WRAP,
-        LB_CLIP,
-        LB_TRUNCATE_HEAD,
-        LB_TRUNCATE_MIDDLE,
-        LB_TRUNCATE_TAIL,
-        LB_WORD_WRAP,
-        LINE_CAP_BUTT,
-        LINE_JOIN_MITER,
-        Point,
-        Rect,
-    )
-except ImportError:
-    from ui._constants import (
-        ALIGN_CENTER,
-        ALIGN_LEFT,
-        ALIGN_NATURAL,
-        ALIGN_RIGHT,
-        BLEND_NORMAL,
-        CONTENT_BOTTOM,
-        CONTENT_BOTTOM_LEFT,
-        CONTENT_BOTTOM_RIGHT,
-        CONTENT_CENTER,
-        CONTENT_LEFT,
-        CONTENT_RIGHT,
-        CONTENT_SCALE_ASPECT_FILL,
-        CONTENT_SCALE_ASPECT_FIT,
-        CONTENT_SCALE_TO_FILL,
-        CONTENT_TOP,
-        CONTENT_TOP_LEFT,
-        CONTENT_TOP_RIGHT,
-        LB_CHAR_WRAP,
-        LB_CLIP,
-        LB_TRUNCATE_HEAD,
-        LB_TRUNCATE_MIDDLE,
-        LB_TRUNCATE_TAIL,
-        LB_WORD_WRAP,
-        LINE_CAP_BUTT,
-        LINE_JOIN_MITER,
-    )
-    from ui._types import (
-        Point,
-        Rect,
-    )
+from pytoui.ui._constants import (
+    ALIGN_CENTER,
+    ALIGN_LEFT,
+    ALIGN_NATURAL,
+    ALIGN_RIGHT,
+    BLEND_NORMAL,
+    CONTENT_BOTTOM,
+    CONTENT_BOTTOM_LEFT,
+    CONTENT_BOTTOM_RIGHT,
+    CONTENT_CENTER,
+    CONTENT_LEFT,
+    CONTENT_RIGHT,
+    CONTENT_SCALE_ASPECT_FILL,
+    CONTENT_SCALE_ASPECT_FIT,
+    CONTENT_SCALE_TO_FILL,
+    CONTENT_TOP,
+    CONTENT_TOP_LEFT,
+    CONTENT_TOP_RIGHT,
+    LB_CHAR_WRAP,
+    LB_CLIP,
+    LB_TRUNCATE_HEAD,
+    LB_TRUNCATE_MIDDLE,
+    LB_TRUNCATE_TAIL,
+    LB_WORD_WRAP,
+    LINE_CAP_BUTT,
+    LINE_JOIN_MITER,
+)
+from pytoui.ui._types import (
+    Point,
+    Rect,
+    Size,
+)
 
 if TYPE_CHECKING:
-    from ui._types import _RGBA, _RectLike, _ColorLike
+    from pytoui.ui._types import _RGBA, _RectLike, _ColorLike
 
 
 __all__ = (
@@ -167,7 +135,7 @@ class ImageContext:
         ph = int(self.height * self.scale)
 
         try:
-            from osdbuf import FrameBuffer
+            from pytoui._osdbuf import FrameBuffer
 
             self._buf = (ctypes.c_ubyte * (pw * ph * 4))()
             self._fb = FrameBuffer(self._buf, pw, ph)
@@ -196,7 +164,7 @@ class ImageContext:
 
     def get_image(self):
         """Create an Image from the current drawing."""
-        from ui._image import Image
+        from pytoui.ui._image import Image
 
         if self._buf is None:
             return Image()
@@ -213,7 +181,7 @@ class ImageContext:
 def _get_rust_lib():
     """Return the loaded osdbuf Rust library, or None if not yet available."""
     try:
-        from osdbuf import FrameBuffer
+        from pytoui._osdbuf import FrameBuffer
 
         return FrameBuffer._lib
     except (ImportError, AttributeError):
@@ -1252,12 +1220,12 @@ class Path:
     def bounds(self):
         """(readonly) The path's bounding rectangle as a Rect(x, y, w, h)."""
         if self._handle <= 0:
-            from ui._types import Rect
+            from pytoui.ui._types import Rect
 
             return Rect(0.0, 0.0, 0.0, 0.0)
         lib = _get_rust_lib()
         if not lib:
-            from ui._types import Rect
+            from pytoui.ui._types import Rect
 
             return Rect(0.0, 0.0, 0.0, 0.0)
         import ctypes
@@ -1273,10 +1241,10 @@ class Path:
             ctypes.byref(w),
             ctypes.byref(h),
         ):
-            from ui._types import Rect
+            from pytoui.ui._types import Rect
 
             return Rect(x.value, y.value, w.value, h.value)
-        from ui._types import Rect
+        from pytoui.ui._types import Rect
 
         return Rect(0.0, 0.0, 0.0, 0.0)
 
@@ -1570,19 +1538,19 @@ def in_background(fn: Callable) -> Callable:
 
 
 def get_screen_size() -> tuple[int, int]:
-    from ui._runtime import get_screen_size as _gss
+    from pytoui.ui._runtime import get_screen_size as _gss
 
     return _gss()
 
 
 def get_window_size() -> tuple[int, int]:
-    from ui._runtime import get_window_size as _gws
+    from pytoui.ui._runtime import get_window_size as _gws
 
     return _gws()
 
 
 def get_ui_style() -> str:
-    from ui._runtime import get_ui_style as _gus
+    from pytoui.ui._runtime import get_ui_style as _gus
 
     return _gus()
 

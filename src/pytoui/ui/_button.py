@@ -4,30 +4,18 @@ from typing import TYPE_CHECKING
 
 import time
 
-try:
-    from ui import (
-        View,
-        Label,
-        Rect,
-        Touch,
-        ALIGN_CENTER,
-        LB_TRUNCATE_TAIL,
-        draw_string,
-        Image,
-    )
-except ImportError:
-    from ui._view import View
-    from ui._types import (
-        Rect,
-        Touch,
-    )
-    from ui._label import Label
-    from ui._image import Image
-    from ui._draw import draw_string
-    from ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
+from pytoui.ui._view import View
+from pytoui.ui._types import (
+    Rect,
+    Touch,
+)
+from pytoui.ui._label import Label
+from pytoui.ui._image import Image
+from pytoui.ui._draw import draw_string
+from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 
 if TYPE_CHECKING:
-    from ui._types import _Action, _RGBA
+    from pytoui.ui._types import _Action, _RGBA
 
 __all__ = ("Button",)
 

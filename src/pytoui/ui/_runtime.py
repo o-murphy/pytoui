@@ -17,16 +17,25 @@ per-window queues via _window_map. Each SDLRuntime drains its own queue.
 from __future__ import annotations
 
 import ctypes
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from osdbuf import FrameBuffer
-from ui._constants import (
+from pytoui._osdbuf import FrameBuffer
+
+from pytoui.ui._constants import (
     GLOBAL_UI_ANTIALIAS,
     GLOBAL_UI_RT,
 )
 
 if TYPE_CHECKING:
-    from ui._view import View
+    from pytoui.ui._view import View
+
+
+# --- LOAD DEFAULT FONTS ---
+_DEFAULT_FONTS_PATH = Path(__file__).parent.parent
+FrameBuffer.load_font(str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans.ttf"))
+FrameBuffer.load_font(str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans-Bold.ttf"))
+
 
 # ---------------------------------------------------------------------------
 # RawFrameBufferRuntime (headless / testing)
@@ -46,7 +55,6 @@ class RawFrameBufferRuntime:
         pixel_data = (ctypes.c_ubyte * (self.width * self.height * 4))()
         with FrameBuffer(pixel_data, self.width, self.height) as fb:
             fb.antialias = GLOBAL_UI_ANTIALIAS
-            fb.load_font("./src/osdbuf/DejaVuSans.ttf")
             self.render_fn(fb)
         self.root.close()
 
@@ -105,10 +113,10 @@ def launch_runtime(root_view: View, render_fn) -> None:
         case "fb":
             RawFrameBufferRuntime(root_view, w, h, render_fn).run()
         case "winit":
-            from winitrt import WinitRuntime
+            from pytoui._winitrt import WinitRuntime
 
             WinitRuntime(root_view, w, h, render_fn).run()
         case _:
-            from sdlrt import SDLRuntime
+            from pytoui._sdlrt import SDLRuntime
 
             SDLRuntime(root_view, w, h, render_fn).run()

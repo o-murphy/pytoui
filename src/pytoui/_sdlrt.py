@@ -23,23 +23,24 @@ import time
 import threading
 from typing import TYPE_CHECKING
 
-from osdbuf import FrameBuffer
-from ui._constants import (
+from pytoui._osdbuf import FrameBuffer
+
+from pytoui.ui._constants import (
     GLOBAL_UI_ANTIALIAS,
     GLOBAL_UI_RT_FPS,
     GLOBAL_UI_RT_SDL_DELAY,
     GLOBAL_UI_RT_SDL_MAX_DELAY,
 )
-from ui._draw import (
+from pytoui.ui._draw import (
     _tick,
     _screen_origin,
     _tick_delays,
     convert_point,
 )
-from ui._types import Touch
+from pytoui.ui._types import Touch
 
 if TYPE_CHECKING:
-    from ui._view import View
+    from pytoui.ui._view import View
 
 
 __all__ = ("SDLRuntime",)
@@ -333,8 +334,6 @@ class SDLRuntime:
 
         with self._FrameBuffer(self.pixel_data, self.width, self.height) as fb:
             fb.antialias = GLOBAL_UI_ANTIALIAS
-            fb.load_font("./src/osdbuf/DejaVuSans.ttf")
-            fb.load_font("./src/osdbuf/DejaVuSans-Bold.ttf")
 
             while self.running and self.root._presented:
                 now = time.time()

@@ -15,7 +15,7 @@ Usage:
 
 from __future__ import annotations
 
-from ui._types import (
+from pytoui.ui._types import (
     Vector2,
     Rect,
     Point,
@@ -23,16 +23,16 @@ from ui._types import (
     Touch,
     autoreleasepool,
 )
-from ui._view import View
-from ui._label import Label
-from ui._button import Button
-from ui._switch import Switch
-from ui._segmented_control import SegmentedControl
-from ui._activity_indicator import ActivityIndicator
-from ui._slider import Slider
-from ui._image import Image
-from ui._imageview import ImageView
-from ui._draw import (
+from pytoui.ui._view import View
+from pytoui.ui._label import Label
+from pytoui.ui._button import Button
+from pytoui.ui._switch import Switch
+from pytoui.ui._segmented_control import SegmentedControl
+from pytoui.ui._activity_indicator import ActivityIndicator
+from pytoui.ui._slider import Slider
+from pytoui.ui._image import Image
+from pytoui.ui._imageview import ImageView
+from pytoui.ui._draw import (
     GState,
     ImageContext,
     parse_color,
@@ -57,7 +57,7 @@ from ui._draw import (
     Transform,
 )
 
-from ui._constants import (
+from pytoui.ui._constants import (
     # --- Regular Expressions ---
     COLOR_REGEX,
     RECT_REGEX,

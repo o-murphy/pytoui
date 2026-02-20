@@ -20,10 +20,10 @@ dev = ["pytest"]
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "src/ui/_version.py"
+version-file = "src/pytoui/_version.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ui"]
+packages = ["src/pytoui"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

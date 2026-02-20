@@ -4,8 +4,7 @@ Demo app: python -m ui
 Press ESC or close the window to exit.
 """
 
-import ui
-from ui._constants import ALIGN_CENTER
+from pytoui import ui
 
 
 WIDTH = 720
@@ -129,7 +128,7 @@ class MainView(ui.View):
 
         self.slider_label = ui.Label()
         self.slider_label.text_color = "white"
-        self.slider_label.alignment = ALIGN_CENTER
+        self.slider_label.alignment = ui.ALIGN_CENTER
         self.slider_label.text = str(self.slider.value)
         self.add_subview(self.slider_label)
 

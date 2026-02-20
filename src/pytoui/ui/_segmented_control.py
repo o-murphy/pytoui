@@ -4,16 +4,13 @@ import os
 import time
 from typing import Sequence, TYPE_CHECKING
 
-try:
-    from ui import ALIGN_CENTER, View, Touch, Rect, set_color, draw_string, Path
-except ImportError:
-    from ui._constants import ALIGN_CENTER
-    from ui._view import View
-    from ui._types import Touch, Rect
-    from ui._draw import Path, set_color, draw_string
+from pytoui.ui._constants import ALIGN_CENTER
+from pytoui.ui._view import View
+from pytoui.ui._types import Touch, Rect
+from pytoui.ui._draw import Path, set_color, draw_string
 
 if TYPE_CHECKING:
-    from ui._types import _Action
+    from pytoui.ui._types import _Action
 
 
 __all__ = ("SegmentedControl",)

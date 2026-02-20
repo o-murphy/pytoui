@@ -104,14 +104,6 @@ void Rect(int32_t handle,
 
 void FillRect(int32_t handle, float x, float y, float w, float h, uint32_t color, uint8_t blend);
 
-void FillRectOver(int32_t handle,
-                  float x,
-                  float y,
-                  float w,
-                  float h,
-                  uint32_t color,
-                  uint8_t blend);
-
 void RoundedRect(int32_t handle,
                  int32_t x,
                  int32_t y,
@@ -129,15 +121,6 @@ void FillRoundedRect(int32_t handle,
                      float radius,
                      uint32_t color,
                      uint8_t blend);
-
-void FillRoundedRectOver(int32_t handle,
-                         float x,
-                         float y,
-                         float w,
-                         float h,
-                         float radius,
-                         uint32_t color,
-                         uint8_t blend);
 
 void Circle(int32_t handle, int32_t cx, int32_t cy, int32_t r, uint32_t color, uint8_t blend);
 

@@ -4,15 +4,12 @@ import os
 import time
 from typing import TYPE_CHECKING
 
-try:
-    from ui import View, Touch, Rect, set_color, Path
-except ImportError:
-    from ui._view import View
-    from ui._types import Touch, Rect
-    from ui._draw import set_color, Path
+from pytoui.ui._view import View
+from pytoui.ui._types import Touch, Rect
+from pytoui.ui._draw import set_color, Path
 
 if TYPE_CHECKING:
-    from ui._types import _Action
+    from pytoui.ui._types import _Action
 
 __all__ = ("Switch",)
 

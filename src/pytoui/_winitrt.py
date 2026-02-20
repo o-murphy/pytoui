@@ -2,23 +2,26 @@ from __future__ import annotations
 import ctypes
 import time
 from pathlib import Path
-from osdbuf import FrameBuffer
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from ui._view import View
+from pytoui._osdbuf import FrameBuffer
 
-from ui._constants import (
+from pytoui.ui._constants import (
     GLOBAL_UI_ANTIALIAS,
     GLOBAL_UI_RT_FPS,
 )
-from ui._draw import (
+from pytoui.ui._draw import (
     _tick,
     _tick_delays,
     _screen_origin,
     convert_point,
 )
-from ui._types import Touch
+from pytoui.ui._types import Touch
+
+
+if TYPE_CHECKING:
+    from pytoui.ui._view import View
+
 
 __all__ = ("WinitRuntime",)
 
@@ -250,8 +253,6 @@ class WinitRuntime:
             self.pixel_data, self._width_c.value, self._height_c.value
         )
         self._fb.antialias = GLOBAL_UI_ANTIALIAS
-        FrameBuffer.load_font("./src/osdbuf/DejaVuSans.ttf")
-        FrameBuffer.load_font("./src/osdbuf/DejaVuSans-Bold.ttf")
 
         try:
             self._lib.winit_run(

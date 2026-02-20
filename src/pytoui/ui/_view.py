@@ -6,12 +6,12 @@ import time
 from uuid import uuid4
 from threading import Event
 
-from ui._constants import (
+from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
 )
-from ui._types import _PresentOrientation, Rect, Point, Touch
-from ui._draw import (
+from pytoui.ui._types import _PresentOrientation, Rect, Point, Touch
+from pytoui.ui._draw import (
     GState,
     Path,
     Transform,
@@ -27,7 +27,7 @@ from ui._draw import (
 )
 
 if TYPE_CHECKING:
-    from ui._types import (
+    from pytoui.ui._types import (
         _ViewFlex,
         _RectLike,
         _RGBA,
@@ -494,7 +494,7 @@ class View:
         self._close_event.clear()
         self._needs_display = True
 
-        from ui._runtime import launch_runtime
+        from pytoui.ui._runtime import launch_runtime
 
         if animated and not _UI_DISABLE_ANIMATIONS:
             self._alpha = 0.0

@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-try:
-    from ui import RENDERING_MODE_AUTOMATIC, Size
-except ImportError:
-    from ui._constants import RENDERING_MODE_AUTOMATIC
-    from ui._types import Size
+from pytoui.ui._constants import RENDERING_MODE_AUTOMATIC
+from pytoui.ui._types import Size
 
 __all__ = ("Image",)
 
@@ -55,7 +52,7 @@ class Image:
     @classmethod
     def from_image_context(cls) -> Image:
         """Capture the current ImageContext buffer as an Image."""
-        from ui._draw import _get_draw_ctx
+        from pytoui.ui._draw import _get_draw_ctx
 
         ctx = _get_draw_ctx()
         ic = getattr(ctx, "_image_context", None)
@@ -107,7 +104,7 @@ class Image:
         if self._data is None:
             return
 
-        from ui._draw import _get_draw_ctx
+        from pytoui.ui._draw import _get_draw_ctx
         import ctypes
 
         ctx = _get_draw_ctx()

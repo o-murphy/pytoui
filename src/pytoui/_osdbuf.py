@@ -67,8 +67,6 @@ class _OsdBufLib(ctypes.CDLL):
     FillOver: _OsdBufLibFunc
     SetPixel: _OsdBufLibFunc
     GetPixel: _OsdBufLibFunc
-    CSetPixel: _OsdBufLibFunc
-    CGetPixel: _OsdBufLibFunc
     BlitRGBA: _OsdBufLibFunc
     Scroll: _OsdBufLibFunc
     SetAntiAlias: _OsdBufLibFunc
@@ -78,10 +76,8 @@ class _OsdBufLib(ctypes.CDLL):
     VLine: _OsdBufLibFunc
     Rect: _OsdBufLibFunc
     FillRect: _OsdBufLibFunc
-    FillRectOver: _OsdBufLibFunc
     RoundedRect: _OsdBufLibFunc
     FillRoundedRect: _OsdBufLibFunc
-    FillRoundedRectOver: _OsdBufLibFunc
     Circle: _OsdBufLibFunc
     FillCircle: _OsdBufLibFunc
     Ellipse: _OsdBufLibFunc
@@ -217,18 +213,6 @@ class FrameBuffer:
         L.GetPixel.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
         L.GetPixel.restype = ctypes.c_uint32
 
-        L.CSetPixel.argtypes = [
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_uint32,
-        ]
-        L.CSetPixel.restype = None
-
-        L.CGetPixel.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        L.CGetPixel.restype = ctypes.c_uint32
-
-        # Blit / Scroll
         L.BlitRGBA.argtypes = [
             ctypes.c_int,
             ctypes.POINTER(ctypes.c_ubyte),
@@ -284,17 +268,6 @@ class FrameBuffer:
         ]
         L.FillRect.restype = None
 
-        L.FillRectOver.argtypes = [
-            ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_uint32,
-            ctypes.c_uint8,
-        ]
-        L.FillRectOver.restype = None
-
         # RoundedRect outline (handle, x, y, w, h, radius [i32], color, blend)
         L.RoundedRect.argtypes = (
             [ctypes.c_int] + [ctypes.c_int] * 5 + [ctypes.c_uint32, ctypes.c_uint8]
@@ -314,9 +287,6 @@ class FrameBuffer:
         ]
         L.FillRoundedRect.argtypes = _frr_args
         L.FillRoundedRect.restype = None
-
-        L.FillRoundedRectOver.argtypes = _frr_args
-        L.FillRoundedRectOver.restype = None
 
         # Circle outline (handle, cx, cy, r [i32], color, blend)
         L.Circle.argtypes = (
@@ -665,8 +635,6 @@ class FrameBuffer:
         ret = lib.UnloadFont(font_id)
         if ret == -1:
             raise ValueError(f"Invalid font handle: {font_id}")
-        if ret == -2:
-            raise ValueError("Cannot unload default font")
 
     @classmethod
     def get_default_font(cls) -> int:
@@ -747,19 +715,6 @@ class FrameBuffer:
             self._handle, float(x), float(y), float(w), float(h), int(c), int(blend)
         )
 
-    def fill_rect_over(
-        self,
-        x: float,
-        y: float,
-        w: float,
-        h: float,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.FillRectOver(
-            self._handle, float(x), float(y), float(w), float(h), int(c), int(blend)
-        )
-
     def rounded_rect(
         self,
         x: int,
@@ -783,27 +738,6 @@ class FrameBuffer:
         blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.FillRoundedRect(
-            self._handle,
-            float(x),
-            float(y),
-            float(w),
-            float(h),
-            float(r),
-            int(c),
-            int(blend),
-        )
-
-    def fill_rounded_rect_over(
-        self,
-        x: float,
-        y: float,
-        w: float,
-        h: float,
-        r: float,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.FillRoundedRectOver(
             self._handle,
             float(x),
             float(y),
@@ -875,163 +809,8 @@ class FrameBuffer:
     def c_pixel(self, x: int, y: int, c: int | None = 0) -> int:
         """Center-relative coordinates. c=None -> get, else set."""
         if c is None:
-            return self._lib.CGetPixel(self._handle, x, y)
-        self._lib.CSetPixel(self._handle, x, y, c)
-
-    def c_line(
-        self,
-        x0: int,
-        y0: int,
-        x1: int,
-        y1: int,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.Line(
-            self._handle,
-            x0 + self._cx,
-            y0 + self._cy,
-            x1 + self._cx,
-            y1 + self._cy,
-            c,
-            int(blend),
-        )
-
-    def c_hline(
-        self, x: int, y: int, w: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
-    ) -> None:
-        self._lib.HLine(self._handle, x + self._cx, y + self._cy, w, c, int(blend))
-
-    def c_vline(
-        self, x: int, y: int, h: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
-    ) -> None:
-        self._lib.VLine(self._handle, x + self._cx, y + self._cy, h, c, int(blend))
-
-    def c_rect(
-        self,
-        x: int,
-        y: int,
-        w: int,
-        h: int,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.Rect(self._handle, x + self._cx, y + self._cy, w, h, c, int(blend))
-
-    def c_fill_rect(
-        self,
-        x: float,
-        y: float,
-        w: float,
-        h: float,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.FillRect(
-            self._handle,
-            float(x + self._cx),
-            float(y + self._cy),
-            float(w),
-            float(h),
-            int(c),
-            int(blend),
-        )
-
-    def c_fill_rect_over(
-        self,
-        x: float,
-        y: float,
-        w: float,
-        h: float,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.FillRectOver(
-            self._handle,
-            float(x + self._cx),
-            float(y + self._cy),
-            float(w),
-            float(h),
-            int(c),
-            int(blend),
-        )
-
-    def c_circle(
-        self, cx: int, cy: int, r: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
-    ) -> None:
-        self._lib.Circle(self._handle, cx + self._cx, cy + self._cy, r, c, int(blend))
-
-    def c_fill_circle(
-        self,
-        cx: float,
-        cy: float,
-        r: float,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.FillCircle(
-            self._handle,
-            float(cx + self._cx),
-            float(cy + self._cy),
-            float(r),
-            int(c),
-            int(blend),
-        )
-
-    def c_ellipse(
-        self,
-        cx: int,
-        cy: int,
-        rx: int,
-        ry: int,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.Ellipse(
-            self._handle, cx + self._cx, cy + self._cy, rx, ry, c, int(blend)
-        )
-
-    def c_fill_ellipse(
-        self,
-        cx: float,
-        cy: float,
-        rx: float,
-        ry: float,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.FillEllipse(
-            self._handle,
-            float(cx + self._cx),
-            float(cy + self._cy),
-            float(rx),
-            float(ry),
-            int(c),
-            int(blend),
-        )
-
-    def c_ellipse_arc(
-        self,
-        cx: int,
-        cy: int,
-        rx: int,
-        ry: int,
-        startAngle: float,
-        endAngle: float,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        self._lib.EllipseArc(
-            self._handle,
-            cx + self._cx,
-            cy + self._cy,
-            rx,
-            ry,
-            startAngle,
-            endAngle,
-            c,
-            int(blend),
-        )
+            return self._lib.GetPixel(self._handle, x + self._cx, y + self._cy)
+        self._lib.SetPixel(self._handle, x + self._cx, y + self._cy, c)
 
     # ============= Text =============
 
@@ -1053,33 +832,6 @@ class FrameBuffer:
             s.encode("utf-8"),
             x,
             y,
-            anchor,
-            c,
-            ctypes.c_float(spacing),
-        )
-        if ret == -1:
-            raise ValueError("Invalid framebuffer handle")
-        if ret == -2:
-            raise ValueError(f"Invalid font handle: {font_id}")
-
-    def c_text(
-        self,
-        s: str,
-        x: int,
-        y: int,
-        c: int = 0,
-        size: float = 0.0,
-        font_id: int = 0,
-        anchor: TextAnchor = TextAnchor.LEFT | TextAnchor.TOP,
-        spacing: float = 0.0,
-    ) -> None:
-        ret = self._lib.DrawText(
-            self._handle,
-            font_id,
-            ctypes.c_float(size),
-            s.encode("utf-8"),
-            x + self._cx,
-            y + self._cy,
             anchor,
             c,
             ctypes.c_float(spacing),

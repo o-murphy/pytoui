@@ -1,24 +1,13 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-try:
-    from ui import (
-        ALIGN_NATURAL,
-        LB_TRUNCATE_TAIL,
-        View,
-        Rect,
-        draw_string,
-        measure_string,
-        parse_color,
-    )
-except ImportError:
-    from ui._constants import ALIGN_NATURAL, LB_TRUNCATE_TAIL
-    from ui._view import View
-    from ui._types import Rect
-    from ui._draw import draw_string, measure_string, parse_color
+from pytoui.ui._constants import ALIGN_NATURAL, LB_TRUNCATE_TAIL
+from pytoui.ui._view import View
+from pytoui.ui._types import Rect
+from pytoui.ui._draw import draw_string, measure_string, parse_color
 
 if TYPE_CHECKING:
-    from ui._types import (
+    from pytoui.ui._types import (
         _RGBA,
         _ColorLike,
         _Font,

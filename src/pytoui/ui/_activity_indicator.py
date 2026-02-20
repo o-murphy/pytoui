@@ -3,28 +3,14 @@ from __future__ import annotations
 import math
 import os
 
-try:
-    from ui import (
-        GState,
-        Path,
-        Transform,
-        concat_ctm,
-        set_color,
-        Rect,
-        View,
-        ACTIVITY_INDICATOR_STYLE_GRAY,
-        ACTIVITY_INDICATOR_STYLE_WHITE,
-        ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
-    )
-except ImportError:
-    from ui._draw import GState, Path, Transform, concat_ctm, set_color
-    from ui._types import Rect
-    from ui._view import View
-    from ui._constants import (
-        ACTIVITY_INDICATOR_STYLE_GRAY,
-        ACTIVITY_INDICATOR_STYLE_WHITE,
-        ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
-    )
+from pytoui.ui._draw import GState, Path, Transform, concat_ctm, set_color
+from pytoui.ui._types import Rect
+from pytoui.ui._view import View
+from pytoui.ui._constants import (
+    ACTIVITY_INDICATOR_STYLE_GRAY,
+    ACTIVITY_INDICATOR_STYLE_WHITE,
+    ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
+)
 
 
 _UI_DISABLE_ANIMATIONS = os.environ.get(

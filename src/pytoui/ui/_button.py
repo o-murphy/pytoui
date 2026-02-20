@@ -49,6 +49,7 @@ class Button(View):
 
     # Authentic iOS system blue color
     _IOS_BLUE: _RGBA = (0.0, 122 / 255, 1.0, 1.0)
+    _WHITE: _RGBA = (1.0, 1.0, 1.0, 1.0)
 
     def __init__(self):
         self._action: _Action | None = None
@@ -70,14 +71,32 @@ class Button(View):
         lbl = Label.__new__(Label)
         Label.__init__(lbl)
         lbl._font = ("<system>", 17)
-        lbl._text_color = self._IOS_BLUE
         lbl._alignment = ALIGN_CENTER
         lbl._line_break_mode = LB_TRUNCATE_TAIL
         lbl._number_of_lines = 1
+        # We don't set a hard text_color here to allow dynamic switching
+        lbl._text_color = None
 
         self._title_label: Label = lbl
 
         self.__animations_disabled: bool = False
+
+    def _get_contrast_text_color(self) -> _RGBA:
+        """Determines the best text color based on background brightness."""
+        bg = self.background_color
+
+        # If no background color or it's fully transparent, use system blue
+        if bg is None or bg[3] <= 0.01:
+            return self._IOS_BLUE
+
+        # Calculate perceived luminance (standard W3C formula)
+        # 0.299*R + 0.587*G + 0.114*B
+        r, g, b = bg[0], bg[1], bg[2]
+        luminance = (0.299 * r) + (0.587 * g) + (0.114 * b)
+
+        # If background is dark, text should be white.
+        # If light, use system blue (or black/dark blue for even better contrast)
+        return self._WHITE if luminance < 0.6 else self._IOS_BLUE
 
     @property
     def action(self) -> _Action | None:
@@ -108,15 +127,6 @@ class Button(View):
         self._title_label._text = value
         self.set_needs_display()
 
-    # @property
-    # def text_color(self) -> RGBA | None:
-    #     return self._title_label._text_color
-
-    # @text_color.setter
-    # def text_color(self, value: ColorLike):
-    #     self._title_label._text_color = parse_color(value)
-    #     self.set_needs_display()
-
     def draw(self):
         now = time.time()
         dt = min(now - self._last_time, 0.1)
@@ -142,14 +152,13 @@ class Button(View):
 
         # --- AUTOMATIC TEXT COLOR SELECTION ---
         if not self.enabled:
-            text_color = (0.7, 0.7, 0.7, 1.0)  # disabled gray
-        elif self._tracked:
-            text_color = (1.0, 1.0, 1.0, 1.0)  # highlighted (white)
+            base_color = (0.7, 0.7, 0.7, 1.0)  # disabled gray
         else:
-            text_color = self._IOS_BLUE  # normal state
+            # If user manually set label color, use it. Otherwise, adapt.
+            base_color = lbl._text_color or self._get_contrast_text_color()
 
         # Apply animated opacity
-        r, g, b, a = text_color
+        r, g, b, a = base_color
         current_color = (r, g, b, a * self._anim_alpha)
 
         it, il, ib, ir = self._content_insets

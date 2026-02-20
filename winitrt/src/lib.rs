@@ -137,13 +137,22 @@ fn get_or_start_loop() -> Arc<Mutex<EventLoopProxy<AppEvent>>> {
                                         .build(elwt)
                                         .expect("Failed to create window"),
                                 );
+                                // Use the actual physical inner size (may differ from logical
+                                // on HiDPI / Wayland with scale_factor > 1).
+                                let phys = window.inner_size();
+                                let pw = phys.width.max(1);
+                                let ph = phys.height.max(1);
+                                unsafe {
+                                    *req.width_ptr  = pw;
+                                    *req.height_ptr = ph;
+                                }
                                 let ctx = Context::new(Arc::clone(&window)).unwrap();
                                 let mut surface =
                                     Surface::new(&ctx, Arc::clone(&window)).unwrap();
                                 surface
                                     .resize(
-                                        NonZeroU32::new(req.width.max(1)).unwrap(),
-                                        NonZeroU32::new(req.height.max(1)).unwrap(),
+                                        NonZeroU32::new(pw).unwrap(),
+                                        NonZeroU32::new(ph).unwrap(),
                                     )
                                     .unwrap();
 

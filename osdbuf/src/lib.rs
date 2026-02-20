@@ -8,8 +8,8 @@ use std::slice;
 use std::sync::Arc;
 
 use tiny_skia::{
-    BlendMode, Color, FillRule, Mask, Paint, Path, PathBuilder, PixmapMut, Rect,
-    Stroke, StrokeDash, Transform,
+    BlendMode, Color, FillRule, Mask, Paint, Path, PathBuilder, PixmapMut, Rect, Stroke,
+    StrokeDash, Transform,
 };
 
 mod helpers;
@@ -189,72 +189,6 @@ fn ellipse_arc_path(
             pb.move_to(px as f32, py as f32);
         } else {
             pb.line_to(px as f32, py as f32);
-        }
-    }
-    pb.finish()
-}
-
-/// Decode a path from a compact byte buffer.
-///
-/// Segment format (little-endian f32 coords):
-///   0x00  MoveTo   x y          (8 bytes)
-///   0x01  LineTo   x y          (8 bytes)
-///   0x02  CubicTo  cp1x cp1y cp2x cp2y x y  (24 bytes)
-///   0x03  QuadTo   cpx cpy x y (16 bytes)
-///   0x04  Close    (0 bytes)
-fn decode_path(data: &[u8]) -> Option<Path> {
-    let mut pb = PathBuilder::new();
-    let mut i = 0usize;
-    while i < data.len() {
-        let op = data[i];
-        i += 1;
-        match op {
-            0x00 => {
-                if i + 8 > data.len() {
-                    break;
-                }
-                let x = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
-                let y = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
-                pb.move_to(x, y);
-                i += 8;
-            }
-            0x01 => {
-                if i + 8 > data.len() {
-                    break;
-                }
-                let x = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
-                let y = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
-                pb.line_to(x, y);
-                i += 8;
-            }
-            0x02 => {
-                if i + 24 > data.len() {
-                    break;
-                }
-                let cp1x = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
-                let cp1y = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
-                let cp2x = f32::from_le_bytes(data[i + 8..i + 12].try_into().ok()?);
-                let cp2y = f32::from_le_bytes(data[i + 12..i + 16].try_into().ok()?);
-                let x = f32::from_le_bytes(data[i + 16..i + 20].try_into().ok()?);
-                let y = f32::from_le_bytes(data[i + 20..i + 24].try_into().ok()?);
-                pb.cubic_to(cp1x, cp1y, cp2x, cp2y, x, y);
-                i += 24;
-            }
-            0x03 => {
-                if i + 16 > data.len() {
-                    break;
-                }
-                let cpx = f32::from_le_bytes(data[i..i + 4].try_into().ok()?);
-                let cpy = f32::from_le_bytes(data[i + 4..i + 8].try_into().ok()?);
-                let x = f32::from_le_bytes(data[i + 8..i + 12].try_into().ok()?);
-                let y = f32::from_le_bytes(data[i + 12..i + 16].try_into().ok()?);
-                pb.quad_to(cpx, cpy, x, y);
-                i += 16;
-            }
-            0x04 => {
-                pb.close();
-            }
-            _ => break,
         }
     }
     pb.finish()
@@ -902,43 +836,6 @@ impl FrameBuffer {
         self.draw_text(font, text, size, sx, sy, color, spacing);
     }
 
-    fn fill_path_data(&mut self, data: &[u8], r: u8, g: u8, b: u8, a: u8, blend: BlendMode) {
-        let aa = self.antialias;
-        if let Some(path) = decode_path(data) {
-            let ctm = self.ctm;
-            if let Some(mut pm) = self.pixmap_mut() {
-                let paint = make_paint(r, g, b, a, blend, aa);
-                pm.fill_path(&path, &paint, FillRule::Winding, ctm, None);
-            }
-        }
-    }
-
-    fn stroke_path_data(
-        &mut self,
-        data: &[u8],
-        width: f32,
-        cap: u8,
-        join: u8,
-        r: u8,
-        g: u8,
-        b: u8,
-        a: u8,
-        blend: BlendMode,
-    ) {
-        let aa = self.antialias;
-        if let Some(path) = decode_path(data) {
-            let ctm = self.ctm;
-            if let Some(mut pm) = self.pixmap_mut() {
-                let paint = make_paint(r, g, b, a, blend, aa);
-                let mut stroke = Stroke::default();
-                stroke.width = width;
-                stroke.line_cap = map_cap(cap);
-                stroke.line_join = map_join(join);
-                pm.stroke_path(&path, &paint, &stroke, ctm, None);
-            }
-        }
-    }
-
     pub fn apply_yuv422_compensation(&mut self, x: i32, y: i32, w: i32, h: i32) {
         let x1 = (x.max(0)) & !1;
         let x2 = ((x + w).min(self.w)) & !1;
@@ -1436,39 +1333,6 @@ pub extern "C" fn EllipseArc(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn FillPath(handle: i32, data: *const u8, len: i32, color: u32, blend: u8) {
-    if data.is_null() || len <= 0 {
-        return;
-    }
-    let data_slice = slice::from_raw_parts(data, len as usize);
-    let (r, g, b, a) = hex_to_rgba(color);
-    let bm = map_blend_mode(blend);
-    with_fb(handle, |fb| fb.fill_path_data(data_slice, r, g, b, a, bm));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn StrokePath(
-    handle: i32,
-    data: *const u8,
-    len: i32,
-    width: f32,
-    cap: u8,
-    join: u8,
-    color: u32,
-    blend: u8,
-) {
-    if data.is_null() || len <= 0 {
-        return;
-    }
-    let data_slice = slice::from_raw_parts(data, len as usize);
-    let (r, g, b, a) = hex_to_rgba(color);
-    let bm = map_blend_mode(blend);
-    with_fb(handle, |fb| {
-        fb.stroke_path_data(data_slice, width, cap, join, r, g, b, a, bm)
-    });
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn BlitRGBA(
     handle: i32,
     src_data: *const u8,
@@ -1520,23 +1384,6 @@ pub extern "C" fn ApplyYUV422Compensation(handle: i32, x: i32, y: i32, w: i32, h
 
 // --- Text rendering ---
 
-pub struct TextAnchor;
-
-impl TextAnchor {
-    pub const CENTER: u32 = 0;
-    pub const TOP: u32 = 0b01;
-    pub const BOTTOM: u32 = 0b10;
-    pub const LEFT: u32 = 0b0100;
-    pub const RIGHT: u32 = 0b1000;
-
-    pub fn get_v(anchor: u32) -> u32 {
-        anchor & 0b11
-    }
-    pub fn get_h(anchor: u32) -> u32 {
-        (anchor >> 2) & 0b11
-    }
-}
-
 fn with_font<F, R>(handle: i32, f: F) -> R
 where
     F: FnOnce(&fontdue::Font) -> R,
@@ -1558,8 +1405,8 @@ fn calculate_anchor_pos(
     height: f32,
     ascent: f32,
 ) -> (f32, f32) {
-    let left = (anchor & TextAnchor::LEFT) != 0;
-    let right = (anchor & TextAnchor::RIGHT) != 0;
+    let left = (anchor & 0b0100) != 0;
+    let right = (anchor & 0b1000) != 0;
     let x = if left && !right {
         base_x
     } else if right && !left {
@@ -1568,8 +1415,8 @@ fn calculate_anchor_pos(
         base_x - width / 2.0
     };
 
-    let top = (anchor & TextAnchor::TOP) != 0;
-    let bottom = (anchor & TextAnchor::BOTTOM) != 0;
+    let top = (anchor & 0b0001) != 0;
+    let bottom = (anchor & 0b0010) != 0;
     let y = if top && !bottom {
         base_y + ascent
     } else if bottom && !top {

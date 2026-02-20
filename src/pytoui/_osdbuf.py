@@ -92,8 +92,6 @@ class _OsdBufLib(ctypes.CDLL):
     RectStroke: _OsdBufLibFunc
     StrokeRoundedRect: _OsdBufLibFunc
     EllipseStroke: _OsdBufLibFunc
-    FillPath: _OsdBufLibFunc
-    StrokePath: _OsdBufLibFunc
     SetCTM: _OsdBufLibFunc
     # GState
     GStatePush: _OsdBufLibFunc
@@ -428,29 +426,6 @@ class FrameBuffer:
             ctypes.c_uint8,
         ]
         L.EllipseStroke.restype = None
-
-        # FillPath (handle, data, len [i32], color, blend)
-        L.FillPath.argtypes = [
-            ctypes.c_int,
-            ctypes.POINTER(ctypes.c_uint8),
-            ctypes.c_int,
-            ctypes.c_uint32,
-            ctypes.c_uint8,
-        ]
-        L.FillPath.restype = None
-
-        # StrokePath (handle, data, len [i32], width [f32], cap, join [u8], color, blend)
-        L.StrokePath.argtypes = [
-            ctypes.c_int,
-            ctypes.POINTER(ctypes.c_uint8),
-            ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_uint8,
-            ctypes.c_uint8,
-            ctypes.c_uint32,
-            ctypes.c_uint8,
-        ]
-        L.StrokePath.restype = None
 
         # SetCTM (handle, a, b, c, d, tx, ty [f32]) — sets current transform matrix
         L.SetCTM.argtypes = [
@@ -1039,42 +1014,6 @@ class FrameBuffer:
             ctypes.c_float(d),
             ctypes.c_float(tx),
             ctypes.c_float(ty),
-        )
-
-    def fill_path(
-        self,
-        path_data: bytes,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        """Fill an arbitrary path encoded as a byte buffer (see _draw._encode_path_segments)."""
-        if not path_data:
-            return
-        buf = (ctypes.c_uint8 * len(path_data)).from_buffer_copy(path_data)
-        self._lib.FillPath(self._handle, buf, len(path_data), int(c), int(blend))
-
-    def stroke_path(
-        self,
-        path_data: bytes,
-        width: float = 1.0,
-        cap: LineCapStyle = LineCapStyle.BUTT,
-        join: LineJoinStyle = LineJoinStyle.MITER,
-        c: int = 0,
-        blend: BlendMode = BlendMode.NORMAL,
-    ) -> None:
-        """Stroke an arbitrary path encoded as a byte buffer (see _draw._encode_path_segments)."""
-        if not path_data:
-            return
-        buf = (ctypes.c_uint8 * len(path_data)).from_buffer_copy(path_data)
-        self._lib.StrokePath(
-            self._handle,
-            buf,
-            len(path_data),
-            float(width),
-            int(cap),
-            int(join),
-            int(c),
-            int(blend),
         )
 
     # ============= GState =============

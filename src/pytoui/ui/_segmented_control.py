@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import os
 import time
 from typing import Sequence, TYPE_CHECKING
 
-from pytoui.ui._constants import ALIGN_CENTER
+from pytoui.ui._constants import ALIGN_CENTER, _UI_DISABLE_ANIMATIONS
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
 from pytoui.ui._draw import Path, set_color, draw_string
@@ -14,16 +13,6 @@ if TYPE_CHECKING:
 
 
 __all__ = ("SegmentedControl",)
-
-
-_UI_DISABLE_ANIMATIONS = os.environ.get(
-    "UI_DISABLE_ANIMATIONS", "0"
-).strip().strip().lower() in (
-    "true",
-    "1",
-    "yes",
-    "y",
-)
 
 
 class SegmentedControl(View):

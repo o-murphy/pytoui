@@ -1,6 +1,6 @@
 """UI runtimes for View.present().
 
-GLOBAL_UI_RUNTIME (from env var UI_RUNTIME) selects which runtime to use:
+_UI_RUNTIME (from env var UI_RUNTIME) selects which runtime to use:
   "sdl"  — SDLRuntime:            renders to an SDL2 window (default)
   "fb"   — RawFrameBufferRuntime: renders to raw pixel buffer (headless/test)
 
@@ -23,8 +23,8 @@ from typing import TYPE_CHECKING
 from pytoui._osdbuf import FrameBuffer
 
 from pytoui.ui._constants import (
-    GLOBAL_UI_ANTIALIAS,
-    GLOBAL_UI_RT,
+    _UI_ANTIALIAS,
+    _UI_RT,
 )
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class RawFrameBufferRuntime:
     def run(self):
         pixel_data = (ctypes.c_ubyte * (self.width * self.height * 4))()
         with FrameBuffer(pixel_data, self.width, self.height) as fb:
-            fb.antialias = GLOBAL_UI_ANTIALIAS
+            fb.antialias = _UI_ANTIALIAS
             self.render_fn(fb)
         self.root.close()
 
@@ -66,18 +66,18 @@ class RawFrameBufferRuntime:
 
 def get_screen_size() -> tuple[int, int]:
     """Return the size of the main screen as a (width, height) tuple (in points)."""
-    if GLOBAL_UI_RT == "fb":
+    if _UI_RT == "fb":
         return (1920, 1080)
-    if GLOBAL_UI_RT == "winit":
+    if _UI_RT == "winit":
         try:
-            from winitrt import WinitRuntime
+            from winitrt import WinitRuntime  # type: ignore[attr-defined]
 
             return WinitRuntime.get_screen_size()
         except Exception:
             return (1920, 1080)
     try:
         try:
-            from sdlrt import SDLRuntime
+            from sdlrt import SDLRuntime  # type: ignore[import-not-found]
 
             return SDLRuntime.get_screen_size()
         except Exception:
@@ -106,10 +106,10 @@ def get_ui_style() -> str:
 
 
 def launch_runtime(root_view: View, render_fn) -> None:
-    """Pick and run the appropriate runtime based on GLOBAL_UI_RUNTIME."""
+    """Pick and run the appropriate runtime based on _UI_RUNTIME."""
     w = int(root_view._frame.w)
     h = int(root_view._frame.h)
-    match GLOBAL_UI_RT:
+    match _UI_RT:
         case "fb":
             RawFrameBufferRuntime(root_view, w, h, render_fn).run()
         case "winit":

@@ -29,6 +29,7 @@ Runtime
   * get_screen_size
   * get_window_size
 * does Viev.wait_modal implemented right?
+* 
 * WinitRuntime macOS support: EventLoop must run on main thread — needs separate #[cfg(target_os="macos")] code path in lib.rs (no background thread, first winit_run runs loop inline)
 * Add possibility to add custom runtimes, not build it to the library (for overriding etc)
 * maybe add View _global_dirty_counter to skip some rerenders?
@@ -59,8 +60,8 @@ View classes:
 * ~~ActivityIndicator~~
 
 Other Classes:
-* ~~Image~~
-* ~~ImageContext~~
+* Image
+* ImageContext
 * ~~Path~~
 * ~~Touch~~
 * ~~Transform~~
@@ -113,7 +114,7 @@ DONE:
 * ~~need implement full ui.draw.Transform support~~
 * ~~ui.draw._layout_lines maybe should use ctx.fb automatically or it's inner calls can be optimized?~~
 * ~~maybe ui.draw.render_view_tree, ui.draw._render_view should be inside View draw method? or as a separate View._render~~
-* ~~use constants_.GLOBAL_UI_RUNTIME (one of SDLRuntime or RawFrameBufferRuntime), render_view_tree now seems like useless, we need to make the View find runtime itself during .present() to launch the application identically to Pythonista ui~~
+* ~~use constants_._UI_RUNTIME (one of SDLRuntime or RawFrameBufferRuntime), render_view_tree now seems like useless, we need to make the View find runtime itself during .present() to launch the application identically to Pythonista ui~~
 * ~~implement ui.animate - fix imports because it's currently animate for runtime~~
 * ~~implement ui._draw.animate (ui.animate) like in pythonista.ui~~
 * ~~need add set_alpha in _draw.py and implement usage~~

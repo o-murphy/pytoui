@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 from typing import TYPE_CHECKING, Sequence, cast
 
 import time
@@ -9,6 +8,7 @@ from threading import Event
 from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
+    _UI_DISABLE_ANIMATIONS,
 )
 from pytoui.ui._types import _PresentOrientation, Rect, Point, Touch
 from pytoui.ui._draw import (
@@ -35,11 +35,6 @@ if TYPE_CHECKING:
         _ColorLike,
         _PointLike,
     )
-
-
-_UI_DISABLE_ANIMATIONS = os.environ.get(
-    "UI_DISABLE_ANIMATIONS", "0"
-).strip().lower() in ("true", "1", "yes", "y")
 
 __all__ = ("View",)
 

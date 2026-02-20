@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from pytoui._osdbuf import FrameBuffer
 
 from pytoui.ui._constants import (
-    GLOBAL_UI_ANTIALIAS,
-    GLOBAL_UI_RT_FPS,
+    _UI_ANTIALIAS,
+    _UI_RT_FPS,
 )
 from pytoui.ui._draw import (
     _tick,
@@ -135,7 +135,7 @@ class WinitRuntime:
         now = time.time()
 
         # FPS Logic
-        if GLOBAL_UI_RT_FPS:
+        if _UI_RT_FPS:
             self._fps_frame_count += 1
             elapsed = now - self._fps_last_t
             if elapsed >= 1.0:
@@ -162,7 +162,7 @@ class WinitRuntime:
             FrameBuffer._lib.DestroyFrameBuffer(fb._handle)
             fb._handle = 0
             self._fb = FrameBuffer(self.pixel_data, w, h)
-            self._fb.antialias = GLOBAL_UI_ANTIALIAS
+            self._fb.antialias = _UI_ANTIALIAS
             fb = self._fb
             # Keep root view frame in sync so its background fills the full fb
             rf = self.root._frame
@@ -255,7 +255,7 @@ class WinitRuntime:
         self._fb = FrameBuffer(
             self.pixel_data, self._width_c.value, self._height_c.value
         )
-        self._fb.antialias = GLOBAL_UI_ANTIALIAS
+        self._fb.antialias = _UI_ANTIALIAS
 
         try:
             self._lib.winit_run(

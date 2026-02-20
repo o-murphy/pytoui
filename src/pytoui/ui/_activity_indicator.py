@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import os
 
 from pytoui.ui._draw import GState, Path, Transform, concat_ctm, set_color
 from pytoui.ui._types import Rect
@@ -10,12 +9,8 @@ from pytoui.ui._constants import (
     ACTIVITY_INDICATOR_STYLE_GRAY,
     ACTIVITY_INDICATOR_STYLE_WHITE,
     ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
+    _UI_DISABLE_ANIMATIONS,
 )
-
-
-_UI_DISABLE_ANIMATIONS = os.environ.get(
-    "UI_DISABLE_ANIMATIONS", "0"
-).strip().lower() in ("true", "1", "yes", "y")
 
 
 class ActivityIndicator(View):

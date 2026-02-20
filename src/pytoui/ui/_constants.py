@@ -130,19 +130,19 @@ def _get_env_bool(name: str, default: str) -> bool:
     )
 
 
-GLOBAL_UI_DISABLE_ANIMATIONS = _get_env_bool("UI_DISABLE_ANIMATIONS", "0")
-GLOBAL_UI_ANTIALIAS = _get_env_bool("UI_ANTIALIAS", "1")
+_UI_DISABLE_ANIMATIONS = _get_env_bool("UI_DISABLE_ANIMATIONS", "0")
+_UI_ANTIALIAS = _get_env_bool("UI_ANTIALIAS", "1")
 # Runtime environment options
-_env_ui_runtime = _get_env_var("UI_RT", "sdl")
-GLOBAL_UI_RT = _env_ui_runtime if _env_ui_runtime in ["sdl", "fb", "winit"] else "sdl"
-GLOBAL_UI_RT_FPS = _get_env_bool("UI_RT_FPS", "0")
+_env_ui_runtime = _get_env_var("UI_RT", "winit")
+_UI_RT = _env_ui_runtime if _env_ui_runtime in {"sdl", "fb", "winit"} else "winit"
+_UI_RT_FPS = _get_env_bool("UI_RT_FPS", "0")
 _env_ui_runtime_delay = _get_env_var("UI_RT_SDL_DELAY", "4")
 if _env_ui_runtime_delay in {"1", "2", "4", "8", "16"}:
-    GLOBAL_UI_RT_SDL_DELAY = int(_env_ui_runtime_delay)
+    _UI_RT_SDL_DELAY = int(_env_ui_runtime_delay)
 else:
-    GLOBAL_UI_RT_SDL_DELAY = 4
+    _UI_RT_SDL_DELAY = 4
 
-GLOBAL_UI_RT_SDL_MAX_DELAY = 16
+_UI_RT_SDL_MAX_DELAY = 16
 
 
 __all__ = (
@@ -245,10 +245,10 @@ __all__ = (
     "RENDERING_MODE_ORIGINAL",
     "RENDERING_MODE_TEMPLATE",
     # Globals
-    "GLOBAL_UI_DISABLE_ANIMATIONS",
-    "GLOBAL_UI_RT",
-    "GLOBAL_UI_ANTIALIAS",
-    "GLOBAL_UI_RT_FPS",
-    "GLOBAL_UI_RT_SDL_DELAY",
-    "GLOBAL_UI_RT_SDL_MAX_DELAY",
+    "_UI_DISABLE_ANIMATIONS",
+    "_UI_RT",
+    "_UI_ANTIALIAS",
+    "_UI_RT_FPS",
+    "_UI_RT_SDL_DELAY",
+    "_UI_RT_SDL_MAX_DELAY",
 )

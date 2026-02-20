@@ -1,8 +1,8 @@
 # osdbuf.py
 import ctypes
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 from pathlib import Path
-from typing import Protocol
+from typing import Any
 
 
 _OSDBUF_PATH = str(Path(__file__).parent / "libosdbuf.so")
@@ -51,88 +51,7 @@ class BlendMode(IntEnum):
     PLUS_LIGHTER = 27  # Plus
 
 
-class _OsdBufLibFunc(Protocol):
-    def __call__(self, *args) -> object: ...
-
-
-class _OsdBufLib(ctypes.CDLL):
-    CreateFrameBuffer: _OsdBufLibFunc
-    DestroyFrameBuffer: _OsdBufLibFunc
-    LoadFont: _OsdBufLibFunc
-    UnloadFont: _OsdBufLibFunc
-    GetDefaultFont: _OsdBufLibFunc
-    GetFontCount: _OsdBufLibFunc
-    GetFontIDs: _OsdBufLibFunc
-    Fill: _OsdBufLibFunc
-    FillOver: _OsdBufLibFunc
-    SetPixel: _OsdBufLibFunc
-    GetPixel: _OsdBufLibFunc
-    BlitRGBA: _OsdBufLibFunc
-    Scroll: _OsdBufLibFunc
-    SetAntiAlias: _OsdBufLibFunc
-    GetAntiAlias: _OsdBufLibFunc
-    Line: _OsdBufLibFunc
-    HLine: _OsdBufLibFunc
-    VLine: _OsdBufLibFunc
-    Rect: _OsdBufLibFunc
-    FillRect: _OsdBufLibFunc
-    RoundedRect: _OsdBufLibFunc
-    FillRoundedRect: _OsdBufLibFunc
-    Circle: _OsdBufLibFunc
-    FillCircle: _OsdBufLibFunc
-    Ellipse: _OsdBufLibFunc
-    FillEllipse: _OsdBufLibFunc
-    EllipseArc: _OsdBufLibFunc
-    DrawText: _OsdBufLibFunc
-    MeasureText: _OsdBufLibFunc
-    GetTextHeight: _OsdBufLibFunc
-    GetTextMetrics: _OsdBufLibFunc
-    ApplyYUV422Compensation: _OsdBufLibFunc
-    LineStroke: _OsdBufLibFunc
-    RectStroke: _OsdBufLibFunc
-    StrokeRoundedRect: _OsdBufLibFunc
-    EllipseStroke: _OsdBufLibFunc
-    SetCTM: _OsdBufLibFunc
-    # GState
-    GStatePush: _OsdBufLibFunc
-    GStatePop: _OsdBufLibFunc
-    # Transform
-    CreateTransform: _OsdBufLibFunc
-    DestroyTransform: _OsdBufLibFunc
-    TransformRotation: _OsdBufLibFunc
-    TransformScale: _OsdBufLibFunc
-    TransformTranslation: _OsdBufLibFunc
-    TransformConcat: _OsdBufLibFunc
-    TransformInvert: _OsdBufLibFunc
-    TransformGet: _OsdBufLibFunc
-    # Path
-    CreatePath: _OsdBufLibFunc
-    DestroyPath: _OsdBufLibFunc
-    PathMoveTo: _OsdBufLibFunc
-    PathLineTo: _OsdBufLibFunc
-    PathAddCurve: _OsdBufLibFunc
-    PathAddQuadCurve: _OsdBufLibFunc
-    PathAddArc: _OsdBufLibFunc
-    PathClose: _OsdBufLibFunc
-    PathAppend: _OsdBufLibFunc
-    PathRect: _OsdBufLibFunc
-    PathOval: _OsdBufLibFunc
-    PathRoundedRect: _OsdBufLibFunc
-    PathSetLineWidth: _OsdBufLibFunc
-    PathSetLineCap: _OsdBufLibFunc
-    PathSetLineJoin: _OsdBufLibFunc
-    PathSetLineDash: _OsdBufLibFunc
-    PathFill: _OsdBufLibFunc
-    PathStroke: _OsdBufLibFunc
-    PathHitTest: _OsdBufLibFunc
-    PathSetEoFillRule: _OsdBufLibFunc
-    PathGetBounds: _OsdBufLibFunc
-    PathAddClip: _OsdBufLibFunc
-    # TESTING ONLY
-    DrawCheckerBoard: _OsdBufLibFunc
-
-
-class TextAnchor(IntEnum):
+class TextAnchor(IntFlag):
     CENTER = 0
     TOP = 1 << 0  # 1
     BOTTOM = 1 << 1  # 2
@@ -152,10 +71,10 @@ class TextAnchor(IntEnum):
 class FrameBuffer:
     """Pythonic wrapper for osdbuf framebuffer with TTF support"""
 
-    _lib: _OsdBufLib = None
+    _lib: Any = None
 
     @classmethod
-    def _ensure_lib_loaded(cls, path: str = None) -> object:
+    def _ensure_lib_loaded(cls, path: str | None = None):
         if cls._lib is None:
             target_path = str(path) if path else _OSDBUF_PATH
             print(f"DEBUG: Loading CDLL into class from {target_path}...", flush=True)
@@ -165,7 +84,7 @@ class FrameBuffer:
         return cls._lib
 
     @staticmethod
-    def _setup_argtypes_static(lib: _OsdBufLib) -> None:
+    def _setup_argtypes_static(lib) -> None:
         """Set up argtypes once"""
         L = lib
 
@@ -639,11 +558,12 @@ class FrameBuffer:
     def fill_over(self, c: int = 0) -> None:
         self._lib.FillOver(self._handle, c)
 
-    def pixel(self, x: int, y: int, c: int | None = 0) -> int:
+    def pixel(self, x: int, y: int, c: int | None = 0) -> int | None:
         """Absolute coordinates. c=None -> get, else set."""
         if c is None:
             return self._lib.GetPixel(self._handle, x, y)
         self._lib.SetPixel(self._handle, x, y, c)
+        return None
 
     def line(
         self,
@@ -778,14 +698,6 @@ class FrameBuffer:
         self._lib.EllipseArc(
             self._handle, cx, cy, rx, ry, startAngle, endAngle, c, int(blend)
         )
-
-    # ============= Center-relative variants =============
-
-    def c_pixel(self, x: int, y: int, c: int | None = 0) -> int:
-        """Center-relative coordinates. c=None -> get, else set."""
-        if c is None:
-            return self._lib.GetPixel(self._handle, x + self._cx, y + self._cy)
-        self._lib.SetPixel(self._handle, x + self._cx, y + self._cy, c)
 
     # ============= Text =============
 

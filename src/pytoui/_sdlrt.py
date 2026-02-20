@@ -1,6 +1,6 @@
 """UI runtimes for View.present().
 
-GLOBAL_UI_RUNTIME (from env var UI_RUNTIME) selects which runtime to use:
+_UI_RUNTIME (from env var UI_RUNTIME) selects which runtime to use:
   "sdl"  — SDLRuntime:            renders to an SDL2 window (default)
   "fb"   — RawFrameBufferRuntime: renders to raw pixel buffer (headless/test)
 
@@ -26,10 +26,10 @@ from typing import TYPE_CHECKING
 from pytoui._osdbuf import FrameBuffer
 
 from pytoui.ui._constants import (
-    GLOBAL_UI_ANTIALIAS,
-    GLOBAL_UI_RT_FPS,
-    GLOBAL_UI_RT_SDL_DELAY,
-    GLOBAL_UI_RT_SDL_MAX_DELAY,
+    _UI_ANTIALIAS,
+    _UI_RT_FPS,
+    _UI_RT_SDL_DELAY,
+    _UI_RT_SDL_MAX_DELAY,
 )
 from pytoui.ui._draw import (
     _tick,
@@ -337,12 +337,12 @@ class SDLRuntime:
         _fps_last_t = time.time()
 
         fb = FrameBuffer(self.pixel_data, self.width, self.height)
-        fb.antialias = GLOBAL_UI_ANTIALIAS
+        fb.antialias = _UI_ANTIALIAS
         try:
             while self.running and self.root._presented:
                 now = time.time()
 
-                if GLOBAL_UI_RT_FPS:
+                if _UI_RT_FPS:
                     _fps_frame_count += 1
                     elapsed = now - _fps_last_t
                     if elapsed >= 1.0:
@@ -360,7 +360,7 @@ class SDLRuntime:
                     FrameBuffer._lib.DestroyFrameBuffer(fb._handle)
                     fb._handle = 0
                     fb = FrameBuffer(self.pixel_data, w, h)
-                    fb.antialias = GLOBAL_UI_ANTIALIAS
+                    fb.antialias = _UI_ANTIALIAS
                     sdl2.SDL_DestroyTexture(self.texture)
                     self.texture = sdl2.SDL_CreateTexture(
                         self.renderer,
@@ -395,11 +395,11 @@ class SDLRuntime:
                     sdl2.SDL_RenderCopy(self.renderer, self.texture, None, None)
                     sdl2.SDL_RenderPresent(self.renderer)
 
-                    sdl2.SDL_Delay(GLOBAL_UI_RT_SDL_DELAY)
+                    sdl2.SDL_Delay(_UI_RT_SDL_DELAY)
 
                 else:
                     # if nothing changes — sleep longer
-                    sdl2.SDL_Delay(GLOBAL_UI_RT_SDL_MAX_DELAY)
+                    sdl2.SDL_Delay(_UI_RT_SDL_MAX_DELAY)
         finally:
             if fb._handle > 0:
                 FrameBuffer._lib.DestroyFrameBuffer(fb._handle)

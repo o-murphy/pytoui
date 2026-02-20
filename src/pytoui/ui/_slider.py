@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 from typing import TYPE_CHECKING
 
 import time
@@ -7,20 +6,12 @@ import time
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
 from pytoui.ui._draw import set_color, Path
+from pytoui.ui._constants import _UI_DISABLE_ANIMATIONS
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
 
 __all__ = ("Slider",)
-
-_UI_DISABLE_ANIMATIONS = os.environ.get(
-    "UI_DISABLE_ANIMATIONS", "0"
-).strip().strip().lower() in (
-    "true",
-    "1",
-    "yes",
-    "y",
-)
 
 
 class Slider(View):

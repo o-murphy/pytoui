@@ -5,9 +5,9 @@ OUT_DIR     = src/pytoui
 OUT_SO_OSDLIB      = $(OUT_DIR)/libosdbuf.so
 OUT_SO_WINITRT      = $(OUT_DIR)/libwinitrt.so
 
-.PHONY: host clean eject-device push-device gen-headers
+.PHONY: build clean eject-device push-device gen-headers
 
-host:
+build:
 	@echo "==> Building osdbuf cdylib (host)..."
 	cd osdbuf && $(CARGO) build $(CARGO_FLAGS)
 	@mkdir -p $(OUT_DIR)

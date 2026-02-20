@@ -65,8 +65,6 @@ class View:
         "_presented",
         "_touch_enabled",
         # NOT FOR PYTHONISTA
-        "_tracked",
-        "_tracked_view",
         "_last_update_t",
         "_content_draw_w",
         "_content_draw_h",
@@ -99,9 +97,7 @@ class View:
         self._close_event: Event = Event()
         self._presented: bool = False
         self._touch_enabled: bool = True
-        # Internal only
-        self._tracked: bool = False
-        self._tracked_view: View | None = None
+
         self._last_update_t: float = 0.0
         self._content_draw_w: float = 0.0
         self._content_draw_h: float = 0.0
@@ -369,23 +365,6 @@ class View:
         self._update_interval = float(value)
         if value > 0.0:
             self._last_update_t = time.time()
-
-    # ──  touch tracking state ────────────────────────────────────────────────────
-    @property
-    def tracked(self) -> bool:
-        return self._tracked
-
-    @tracked.setter
-    def tracked(self, value: bool):
-        self._tracked = value
-
-    @property
-    def tracked_view(self) -> View | None:
-        return self._tracked_view
-
-    @tracked_view.setter
-    def tracked_view(self, value: View | None):
-        self._tracked_view = value
 
     # ── subview management ────────────────────────────────────────────────────
 

@@ -68,10 +68,10 @@ class WinitRuntime:
 
         self.render_fn = render_fn
 
-        # Interaction State
-        self.tracked_view = None
-        self.active_touch_id = 0
-        self.last_screen_point = (0.0, 0.0)
+        # Interaction State: touch_id → view / last position
+        # touch_id == -1 is the mouse pointer; >= 0 are real touch fingers
+        self._tracked: dict[int, "View"] = {}
+        self._last_pos: dict[int, tuple[float, float]] = {}
 
         # Performance Monitoring
         self._fps_frame_count = 0
@@ -96,15 +96,15 @@ class WinitRuntime:
             ctypes.POINTER(ctypes.c_uint32),  # height_ptr
             ctypes.CFUNCTYPE(ctypes.c_int),  # render_callback -> 0=continue, 1=close
             ctypes.CFUNCTYPE(
-                None, ctypes.c_int, ctypes.c_double, ctypes.c_double
-            ),  # event_callback
+                None, ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int64
+            ),  # event_callback(etype, x, y, touch_id)  touch_id==-1 → mouse
             ctypes.c_char_p,  # title
         ]
 
         # Wrap methods in callbacks to prevent Garbage Collection
         self._render_cb = ctypes.CFUNCTYPE(ctypes.c_int)(self._internal_render)
         self._event_cb = ctypes.CFUNCTYPE(
-            None, ctypes.c_int, ctypes.c_double, ctypes.c_double
+            None, ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int64
         )(self._internal_event)
 
     @classmethod
@@ -177,20 +177,20 @@ class WinitRuntime:
         self.render_fn(fb)
         return 0
 
-    def _internal_event(self, etype, x, y):
-        """Internal callback for mouse/touch events from the native window."""
-        # etype mapping: 0=Down, 1=Up, 2=Move, 3=Leave
-        if x < 0 and y < 0:
-            x, y = self.last_screen_point
+    def _internal_event(self, etype, x, y, touch_id: int):
+        """Internal callback for mouse/touch events from the native window.
 
+        etype: 0=Down, 1=Up, 2=Move, 3=Cancel/Leave
+        touch_id: -1 for mouse pointer, >= 0 for real touch fingers
+        """
         if etype == 0:
-            self._mouse_down(x, y)
+            self._touch_down(x, y, touch_id)
         elif etype == 1:
-            self._mouse_up(x, y)
+            self._touch_up(x, y, touch_id)
         elif etype == 2:
-            self._mouse_move(x, y)
+            self._touch_move(x, y, touch_id)
         elif etype == 3:
-            self._mouse_cancel()
+            self._touch_cancel(touch_id)
 
     def _update_hierarchy(self, view: View, now: float):
         """Recursively call update() on views that have a defined update_interval."""
@@ -201,53 +201,52 @@ class WinitRuntime:
         for sv in view.subviews:
             self._update_hierarchy(sv, now)
 
-    def _create_touch(self, view: View, screen_x, screen_y, phase):
+    def _create_touch(self, view: View, screen_x, screen_y, phase, touch_id, prev_pos):
         """Create a Touch object with localized coordinates."""
         local = convert_point((screen_x, screen_y), to_view=view)
-        prev_local = convert_point(self.last_screen_point, to_view=view)
+        prev_local = convert_point(prev_pos, to_view=view)
         return Touch(
             location=(local.x, local.y),
             phase=phase,
             prev_location=(prev_local.x, prev_local.y),
             timestamp=int(time.time() * 1000),
-            touch_id=self.active_touch_id,
+            touch_id=touch_id,
         )
 
-    def _mouse_down(self, x, y):
-        self.last_screen_point = (x, y)
+    def _touch_down(self, x, y, touch_id):
+        self._last_pos[touch_id] = (x, y)
         target = find_view_at(self.root, x, y)
         if target:
-            self.tracked_view = target
-            self.active_touch_id += 1
-            target.touch_began(self._create_touch(target, x, y, "began"))
+            self._tracked[touch_id] = target
+            target.touch_began(
+                self._create_touch(target, x, y, "began", touch_id, (x, y))
+            )
 
-    def _mouse_move(self, x, y):
-        if not self.tracked_view:
-            self.last_screen_point = (x, y)
+    def _touch_move(self, x, y, touch_id):
+        prev = self._last_pos.get(touch_id, (x, y))
+        self._last_pos[touch_id] = (x, y)
+        target = self._tracked.get(touch_id)
+        if not target:
             return
-        phase = "moved" if (x, y) != self.last_screen_point else "stationary"
-        touch = self._create_touch(self.tracked_view, x, y, phase)
-        self.last_screen_point = (x, y)
-        self.tracked_view.touch_moved(touch)
+        phase = "moved" if (x, y) != prev else "stationary"
+        target.touch_moved(self._create_touch(target, x, y, phase, touch_id, prev))
 
-    def _mouse_up(self, x, y):
-        if not self.tracked_view:
+    def _touch_up(self, x, y, touch_id):
+        prev = self._last_pos.pop(touch_id, (x, y))
+        target = self._tracked.pop(touch_id, None)
+        if not target:
             return
         current = find_view_at(self.root, x, y)
-        phase = "ended" if current is self.tracked_view else "cancelled"
-        self.tracked_view.touch_ended(
-            self._create_touch(self.tracked_view, x, y, phase)
-        )
-        self.tracked_view = None
-        self.last_screen_point = (x, y)
+        phase = "ended" if current is target else "cancelled"
+        target.touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
 
-    def _mouse_cancel(self):
-        if self.tracked_view:
-            x, y = self.last_screen_point
-            self.tracked_view.touch_ended(
-                self._create_touch(self.tracked_view, x, y, "cancelled")
+    def _touch_cancel(self, touch_id):
+        x, y = self._last_pos.pop(touch_id, (0.0, 0.0))
+        target = self._tracked.pop(touch_id, None)
+        if target:
+            target.touch_ended(
+                self._create_touch(target, x, y, "cancelled", touch_id, (x, y))
             )
-            self.tracked_view = None
 
     def run(self):
         """Start the runtime loop and initialize the native window."""

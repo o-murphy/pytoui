@@ -144,6 +144,39 @@ def _route_event(sdl2, event) -> None:
     elif t == sdl2.SDL_MOUSEMOTION:
         wid = event.motion.windowID
         _send(wid, ("mousemove", event.motion.state, event.motion.x, event.motion.y))
+    elif t == sdl2.SDL_FINGERDOWN:
+        wid = event.tfinger.windowID
+        _send(
+            wid,
+            (
+                "fingerdown",
+                int(event.tfinger.fingerId),
+                float(event.tfinger.x),
+                float(event.tfinger.y),
+            ),
+        )
+    elif t == sdl2.SDL_FINGERUP:
+        wid = event.tfinger.windowID
+        _send(
+            wid,
+            (
+                "fingerup",
+                int(event.tfinger.fingerId),
+                float(event.tfinger.x),
+                float(event.tfinger.y),
+            ),
+        )
+    elif t == sdl2.SDL_FINGERMOTION:
+        wid = event.tfinger.windowID
+        _send(
+            wid,
+            (
+                "fingermotion",
+                int(event.tfinger.fingerId),
+                float(event.tfinger.x),
+                float(event.tfinger.y),
+            ),
+        )
     elif t == sdl2.SDL_KEYDOWN:
         wid = event.key.windowID
         _send(wid, ("keydown", event.key.keysym.sym))
@@ -182,9 +215,10 @@ class SDLRuntime:
         self.render_fn = render_fn
         self.running = False
 
-        self.tracked_view = None
-        self.active_touch_id = 0
-        self.last_screen_point = (0, 0)
+        # Interaction State: touch_id → view / last position
+        # touch_id == -1 is the mouse pointer; >= 0 are real touch fingers
+        self._tracked: dict[int, "View"] = {}
+        self._last_pos: dict[int, tuple] = {}
 
         self._event_queue: queue.SimpleQueue = queue.SimpleQueue()
 
@@ -236,51 +270,51 @@ class SDLRuntime:
     # Touch helpers
     # ------------------------------------------------------------------
 
-    def _create_touch(self, view: View, screen_x, screen_y, phase):
+    def _create_touch(self, view: View, screen_x, screen_y, phase, touch_id, prev_pos):
         local_pos = convert_point((screen_x, screen_y), to_view=view)
-        prev_local = convert_point(self.last_screen_point, to_view=view)
+        prev_local = convert_point(prev_pos, to_view=view)
         return Touch(
             location=(local_pos.x, local_pos.y),
             phase=phase,
             prev_location=(prev_local.x, prev_local.y),
             timestamp=int(time.time() * 1000),
-            touch_id=self.active_touch_id,
+            touch_id=touch_id,
         )
 
-    def _mouse_down(self, x, y):
-        self.last_screen_point = (x, y)
+    def _touch_down(self, x, y, touch_id):
+        self._last_pos[touch_id] = (x, y)
         target = find_view_at(self.root, x, y)
         if target:
-            self.tracked_view = target
-            self.active_touch_id += 1
-            target.touch_began(self._create_touch(target, x, y, "began"))
+            self._tracked[touch_id] = target
+            target.touch_began(
+                self._create_touch(target, x, y, "began", touch_id, (x, y))
+            )
 
-    def _mouse_move(self, x, y):
-        if not self.tracked_view:
+    def _touch_move(self, x, y, touch_id):
+        prev = self._last_pos.get(touch_id, (x, y))
+        self._last_pos[touch_id] = (x, y)
+        target = self._tracked.get(touch_id)
+        if not target:
             return
-        phase = "moved" if (x, y) != self.last_screen_point else "stationary"
-        touch = self._create_touch(self.tracked_view, x, y, phase)
-        self.last_screen_point = (x, y)
-        self.tracked_view.touch_moved(touch)
+        phase = "moved" if (x, y) != prev else "stationary"
+        target.touch_moved(self._create_touch(target, x, y, phase, touch_id, prev))
 
-    def _mouse_up(self, x, y):
-        if not self.tracked_view:
+    def _touch_up(self, x, y, touch_id):
+        prev = self._last_pos.pop(touch_id, (x, y))
+        target = self._tracked.pop(touch_id, None)
+        if not target:
             return
         current = find_view_at(self.root, x, y)
-        phase = "ended" if current is self.tracked_view else "cancelled"
-        self.tracked_view.touch_ended(
-            self._create_touch(self.tracked_view, x, y, phase)
-        )
-        self.tracked_view = None
-        self.last_screen_point = (x, y)
+        phase = "ended" if current is target else "cancelled"
+        target.touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
 
-    def _mouse_cancel(self):
-        if self.tracked_view:
-            x, y = self.last_screen_point
-            self.tracked_view.touch_ended(
-                self._create_touch(self.tracked_view, x, y, "cancelled")
+    def _touch_cancel(self, touch_id):
+        x, y = self._last_pos.pop(touch_id, (0, 0))
+        target = self._tracked.pop(touch_id, None)
+        if target:
+            target.touch_ended(
+                self._create_touch(target, x, y, "cancelled", touch_id, (x, y))
             )
-            self.tracked_view = None
 
     # ------------------------------------------------------------------
     # Event dispatch (from per-window queue)
@@ -303,16 +337,25 @@ class SDLRuntime:
                 self._current_w, self._current_h = msg[1], msg[2]
             elif kind == "windowevent":
                 if msg[1] == sdl2.SDL_WINDOWEVENT_LEAVE:
-                    self._mouse_cancel()
+                    self._touch_cancel(-1)
             elif kind == "mousedown":
                 if msg[1] == sdl2.SDL_BUTTON_LEFT:
-                    self._mouse_down(msg[2], msg[3])
+                    self._touch_down(msg[2], msg[3], -1)
             elif kind == "mouseup":
                 if msg[1] == sdl2.SDL_BUTTON_LEFT:
-                    self._mouse_up(msg[2], msg[3])
+                    self._touch_up(msg[2], msg[3], -1)
             elif kind == "mousemove":
                 if msg[1] & sdl2.SDL_BUTTON_LMASK:
-                    self._mouse_move(msg[2], msg[3])
+                    self._touch_move(msg[2], msg[3], -1)
+            elif kind == "fingerdown":
+                fid, nx, ny = msg[1], msg[2], msg[3]
+                self._touch_down(nx * self._current_w, ny * self._current_h, fid)
+            elif kind == "fingerup":
+                fid, nx, ny = msg[1], msg[2], msg[3]
+                self._touch_up(nx * self._current_w, ny * self._current_h, fid)
+            elif kind == "fingermotion":
+                fid, nx, ny = msg[1], msg[2], msg[3]
+                self._touch_move(nx * self._current_w, ny * self._current_h, fid)
 
     # ------------------------------------------------------------------
     # Update hierarchy (update_interval)

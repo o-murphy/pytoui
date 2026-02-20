@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytoui"
+dynamic = ["version"]
+description = "Pythonista UI simulator"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pillow>=12.1.1",
+    "pysdl2>=0.9.17",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/ui/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ui"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+ignore = ["E402"]
+
+[tool.mypy]
+mypy_path = "src"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "ruff>=0.15.0",
+]

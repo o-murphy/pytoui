@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pytoui._osdbuf import FrameBuffer
+from pytoui._base_runtime import BaseRuntime
 
 from pytoui.ui._constants import (
     _UI_ANTIALIAS,
@@ -42,20 +43,15 @@ FrameBuffer.load_font(str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans-Bold.ttf")
 # ---------------------------------------------------------------------------
 
 
-class RawFrameBufferRuntime:
+class RawFrameBufferRuntime(BaseRuntime):
     """Renders one frame to a raw pixel buffer and exits. Useful for tests."""
-
-    def __init__(self, root_view: View, width: int, height: int, render_fn):
-        self.root = root_view
-        self.width = width
-        self.height = height
-        self.render_fn = render_fn
 
     def run(self):
         pixel_data = (ctypes.c_ubyte * (self.width * self.height * 4))()
         with FrameBuffer(pixel_data, self.width, self.height) as fb:
             fb.antialias = _UI_ANTIALIAS
             self.render_fn(fb)
+        self._unregister()
         self.root.close()
 
 
@@ -66,22 +62,9 @@ class RawFrameBufferRuntime:
 
 def get_screen_size() -> tuple[int, int]:
     """Return the size of the main screen as a (width, height) tuple (in points)."""
-    if _UI_RT == "fb":
-        return (1920, 1080)
-    if _UI_RT == "winit":
-        try:
-            from pytoui._winitrt import WinitRuntime  # type: ignore[attr-defined]
-
-            return WinitRuntime.get_screen_size()
-        except Exception:
-            return (1920, 1080)
+    runtime = _get_runtime()
     try:
-        try:
-            from pytoui._sdlrt import SDLRuntime  # type: ignore[import-not-found]
-
-            return SDLRuntime.get_screen_size()
-        except Exception:
-            return (1920, 1080)
+        return runtime.get_screen_size()
     except Exception:
         return (1920, 1080)
 
@@ -124,4 +107,4 @@ def launch_runtime(root_view: View, render_fn) -> None:
     w = int(root_view._frame.w)
     h = int(root_view._frame.h)
     runtime = _get_runtime()
-    runtime.run(root_view, w, h, render_fn)
+    runtime(root_view, w, h, render_fn).run()

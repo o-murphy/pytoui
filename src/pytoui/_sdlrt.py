@@ -1,10 +1,4 @@
-"""UI runtimes for View.present().
-
-_UI_RUNTIME (from env var UI_RUNTIME) selects which runtime to use:
-  "sdl"  — SDLRuntime:            renders to an SDL2 window (default)
-  "fb"   — RawFrameBufferRuntime: renders to raw pixel buffer (headless/test)
-
-View.present() calls launch_runtime(self) which picks and runs the right one.
+"""SDLRuntime — renders to an SDL2 window.
 
 Multi-window note
 -----------------
@@ -25,58 +19,20 @@ from typing import TYPE_CHECKING
 
 from pytoui._osdbuf import FrameBuffer
 
+from pytoui._base_runtime import BaseRuntime, _any_dirty, CHECKER_SIZE
 from pytoui.ui._constants import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
     _UI_RT_SDL_DELAY,
     _UI_RT_SDL_MAX_DELAY,
 )
-from pytoui.ui._draw import (
-    _tick,
-    _screen_origin,
-    _tick_delays,
-    convert_point,
-)
-from pytoui.ui._types import Touch
+from pytoui.ui._draw import _tick, _tick_delays
 
 if TYPE_CHECKING:
     from pytoui.ui._view import View
 
 
 __all__ = ("SDLRuntime",)
-
-# ---------------------------------------------------------------------------
-# Coordinate helpers (shared by all runtimes)
-# ---------------------------------------------------------------------------
-
-
-def _any_dirty(view: "View") -> bool:
-    """Return True if view or any descendant has _needs_display set."""
-    if view._needs_display:
-        return True
-    for sv in view._subviews:
-        if _any_dirty(sv):
-            return True
-    return False
-
-
-def find_view_at(view: View, screen_x: float, screen_y: float):
-    """Return the topmost touch-enabled View at the given screen coordinates."""
-
-    if view.hidden:
-        return None
-
-    ox, oy = _screen_origin(view)
-    fw, fh = view._frame.w, view._frame.h
-    if not (ox <= screen_x < ox + fw and oy <= screen_y < oy + fh):
-        return None
-
-    for child in reversed(view.subviews):
-        target = find_view_at(child, screen_x, screen_y)
-        if target is not None and target.touch_enabled:
-            return target
-
-    return view if view.touch_enabled else None
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +56,7 @@ def _register_runtime(rt: "SDLRuntime") -> None:
             _pump_thread.start()
 
 
-def _unregister_runtime(rt: "SDLRuntime") -> None:
+def _unregister_sdl_runtime(rt: "SDLRuntime") -> None:
     with _wmap_lock:
         _window_map.pop(rt.window_id, None)
 
@@ -193,32 +149,24 @@ def _send(wid: int, msg: tuple) -> None:
 # SDLRuntime
 # ---------------------------------------------------------------------------
 
-CHECKER_SIZE = 8
 
-
-class SDLRuntime:
+class SDLRuntime(BaseRuntime):
     _sdl_ref_count = 0
     _sdl_lock = threading.Lock()
 
-    def __init__(self, root_view: View, width: int, height: int, render_fn):
+    def __init__(self, root_view: "View", width: int, height: int, render_fn):
+        super().__init__(root_view, width, height, render_fn)
+
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
         os.environ.setdefault("PYSDL2_DLL_PATH", "/usr/lib")
 
         import sdl2  # type: ignore[import-untyped]
 
         self._sdl2 = sdl2
-        self._FrameBuffer = FrameBuffer
-
-        self.root = root_view
-        self.width = width
-        self.height = height
-        self.render_fn = render_fn
         self.running = False
 
-        # Interaction State: touch_id → view / last position
-        # touch_id == -1 is the mouse pointer; >= 0 are real touch fingers
-        self._tracked: dict[int, "View"] = {}
-        self._last_pos: dict[int, tuple] = {}
+        self._current_w = width
+        self._current_h = height
 
         self._event_queue: queue.SimpleQueue = queue.SimpleQueue()
 
@@ -227,9 +175,6 @@ class SDLRuntime:
                 if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) != 0:
                     raise RuntimeError(sdl2.SDL_GetError().decode())
             SDLRuntime._sdl_ref_count += 1
-
-        self._current_w = width
-        self._current_h = height
 
         self.window = sdl2.SDL_CreateWindow(
             root_view.name.encode(),
@@ -265,60 +210,6 @@ class SDLRuntime:
         rect = sdl2.rect.SDL_Rect()
         sdl2.SDL_GetDisplayBounds(0, ctypes.byref(rect))
         return (rect.w, rect.h)
-
-    # ------------------------------------------------------------------
-    # Touch helpers
-    # ------------------------------------------------------------------
-
-    def _create_touch(self, view: View, screen_x, screen_y, phase, touch_id, prev_pos):
-        local_pos = convert_point((screen_x, screen_y), to_view=view)
-        prev_local = convert_point(prev_pos, to_view=view)
-        return Touch(
-            location=(local_pos.x, local_pos.y),
-            phase=phase,
-            prev_location=(prev_local.x, prev_local.y),
-            timestamp=int(time.time() * 1000),
-            touch_id=touch_id,
-        )
-
-    def _touch_down(self, x, y, touch_id):
-        self._last_pos[touch_id] = (x, y)
-        target = find_view_at(self.root, x, y)
-        if target:
-            if not target.multitouch_enabled and any(
-                v is target for v in self._tracked.values()
-            ):
-                return
-            self._tracked[touch_id] = target
-            target.touch_began(
-                self._create_touch(target, x, y, "began", touch_id, (x, y))
-            )
-
-    def _touch_move(self, x, y, touch_id):
-        prev = self._last_pos.get(touch_id, (x, y))
-        self._last_pos[touch_id] = (x, y)
-        target = self._tracked.get(touch_id)
-        if not target:
-            return
-        phase = "moved" if (x, y) != prev else "stationary"
-        target.touch_moved(self._create_touch(target, x, y, phase, touch_id, prev))
-
-    def _touch_up(self, x, y, touch_id):
-        prev = self._last_pos.pop(touch_id, (x, y))
-        target = self._tracked.pop(touch_id, None)
-        if not target:
-            return
-        current = find_view_at(self.root, x, y)
-        phase = "ended" if current is target else "cancelled"
-        target.touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
-
-    def _touch_cancel(self, touch_id):
-        x, y = self._last_pos.pop(touch_id, (0, 0))
-        target = self._tracked.pop(touch_id, None)
-        if target:
-            target.touch_ended(
-                self._create_touch(target, x, y, "cancelled", touch_id, (x, y))
-            )
 
     # ------------------------------------------------------------------
     # Event dispatch (from per-window queue)
@@ -360,18 +251,6 @@ class SDLRuntime:
             elif kind == "fingermotion":
                 fid, nx, ny = msg[1], msg[2], msg[3]
                 self._touch_move(nx * self._current_w, ny * self._current_h, fid)
-
-    # ------------------------------------------------------------------
-    # Update hierarchy (update_interval)
-    # ------------------------------------------------------------------
-
-    def _update_hierarchy(self, view: View, now: float):
-        if view.update_interval > 0:
-            if now - view._last_update_t >= view.update_interval:
-                view.update()
-                view._last_update_t = now
-        for sv in view.subviews:
-            self._update_hierarchy(sv, now)
 
     # ------------------------------------------------------------------
     # Main loop
@@ -445,7 +324,6 @@ class SDLRuntime:
                     sdl2.SDL_Delay(_UI_RT_SDL_DELAY)
 
                 else:
-                    # if nothing changes — sleep longer
                     sdl2.SDL_Delay(_UI_RT_SDL_MAX_DELAY)
         finally:
             if fb._handle > 0:
@@ -456,7 +334,8 @@ class SDLRuntime:
         self.root.close()
 
     def _cleanup(self):
-        _unregister_runtime(self)
+        self._unregister()
+        _unregister_sdl_runtime(self)
         sdl2 = self._sdl2
         sdl2.SDL_DestroyTexture(self.texture)
         sdl2.SDL_DestroyRenderer(self.renderer)

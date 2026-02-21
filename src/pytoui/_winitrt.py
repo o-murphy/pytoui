@@ -1,4 +1,7 @@
+"""WinitRuntime — renders via a Rust/winit native window (libwinitrt.so)."""
+
 from __future__ import annotations
+
 import ctypes
 import time
 from pathlib import Path
@@ -6,18 +9,12 @@ from typing import TYPE_CHECKING
 
 from pytoui._osdbuf import FrameBuffer
 
+from pytoui._base_runtime import BaseRuntime, CHECKER_SIZE
 from pytoui.ui._constants import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
 )
-from pytoui.ui._draw import (
-    _tick,
-    _tick_delays,
-    _screen_origin,
-    convert_point,
-)
-from pytoui.ui._types import Touch
-
+from pytoui.ui._draw import _tick, _tick_delays
 
 if TYPE_CHECKING:
     from pytoui.ui._view import View
@@ -25,60 +22,25 @@ if TYPE_CHECKING:
 
 __all__ = ("WinitRuntime",)
 
-
-# Coordinate Helpers
-def _any_dirty(view: View) -> bool:
-    """Recursively check if any view in the hierarchy needs to be redrawn."""
-    if view._needs_display:
-        return True
-    for sv in view._subviews:
-        if _any_dirty(sv):
-            return True
-    return False
-
-
-def find_view_at(view: View, screen_x: float, screen_y: float):
-    """Identify the topmost touch-enabled view at the specific screen coordinates."""
-    if view.hidden:
-        return None
-    ox, oy = _screen_origin(view)
-    fw, fh = view._frame.w, view._frame.h
-    if not (ox <= screen_x < ox + fw and oy <= screen_y < oy + fh):
-        return None
-    for child in reversed(view.subviews):
-        target = find_view_at(child, screen_x, screen_y)
-        if target is not None and target.touch_enabled:
-            return target
-    return view if view.touch_enabled else None
-
-
 _LIB_PATH = str(Path(__file__).parent / "libwinitrt.so")
-CHECKER_SIZE = 8
 
 
-class WinitRuntime:
+class WinitRuntime(BaseRuntime):
     """Runtime using Rust-based winit for windowing and event handling."""
 
-    def __init__(self, root_view: View, width: int, height: int, render_fn):
-        self.root = root_view
+    def __init__(self, root_view: "View", width: int, height: int, render_fn):
+        super().__init__(root_view, width, height, render_fn)
 
         # Use ctypes for stable memory addresses used by the shared library
         self._width_c = ctypes.c_uint32(width)
         self._height_c = ctypes.c_uint32(height)
 
-        self.render_fn = render_fn
-
-        # Interaction State: touch_id → view / last position
-        # touch_id == -1 is the mouse pointer; >= 0 are real touch fingers
-        self._tracked: dict[int, "View"] = {}
-        self._last_pos: dict[int, tuple[float, float]] = {}
-
         # Performance Monitoring
         self._fps_frame_count = 0
         self._fps_last_t = time.time()
 
-        # Pre-allocate pixel buffer. Standard softbuffer is 0xAARRGGBB (4 bytes per pixel).
-        # We allocate for 4K resolution immediately to avoid reallocating memory.
+        # Pre-allocate pixel buffer (0xAARRGGBB, 4 bytes/pixel).
+        # Allocate for 4K immediately to avoid reallocation on resize.
         self._max_pixels = 3840 * 2160
         self.pixel_data = (ctypes.c_uint32 * self._max_pixels)()
 
@@ -107,6 +69,14 @@ class WinitRuntime:
             None, ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int64
         )(self._internal_event)
 
+    @property
+    def _cur_width(self):
+        return self._width_c.value
+
+    @property
+    def _cur_height(self):
+        return self._height_c.value
+
     @classmethod
     def get_screen_size(cls):
         """Retrieve the primary display bounds using the winit library."""
@@ -122,19 +92,10 @@ class WinitRuntime:
         lib.winit_screen_size(ctypes.byref(w), ctypes.byref(h))
         return (w.value, h.value)
 
-    @property
-    def width(self):
-        return self._width_c.value
-
-    @property
-    def height(self):
-        return self._height_c.value
-
     def _internal_render(self) -> int:
         """Internal callback executed by Rust for every frame draw."""
         now = time.time()
 
-        # FPS Logic
         if _UI_RT_FPS:
             self._fps_frame_count += 1
             elapsed = now - self._fps_last_t
@@ -143,13 +104,11 @@ class WinitRuntime:
                 self._fps_frame_count = 0
                 self._fps_last_t = now
 
-        # System Updates
         self._update_hierarchy(self.root, now)
         _tick(now)
         _tick_delays(now)
 
-        # Get current dimensions (might have changed due to resizing in Rust)
-        w, h = self.width, self.height
+        w, h = self._cur_width, self._cur_height
         if w == 0 or h == 0:
             return 0
 
@@ -157,22 +116,18 @@ class WinitRuntime:
         if fb is None:
             return 0
 
-        # Handle window resizing: recreate FrameBuffer if dimensions changed
         if fb._width != w or fb._height != h:
             FrameBuffer._lib.DestroyFrameBuffer(fb._handle)
             fb._handle = 0
             self._fb = FrameBuffer(self.pixel_data, w, h)
             self._fb.antialias = _UI_ANTIALIAS
             fb = self._fb
-            # Keep root view frame in sync so its background fills the full fb
             rf = self.root._frame
             self.root.frame = (rf.x, rf.y, float(w), float(h))
 
-        # Signal Rust to close the window if view.close() was called
         if not self.root._presented:
             return 1
 
-        # Render directly to pixel_data
         fb.draw_checkerboard(CHECKER_SIZE)
         self.render_fn(fb)
         return 0
@@ -192,69 +147,8 @@ class WinitRuntime:
         elif etype == 3:
             self._touch_cancel(touch_id)
 
-    def _update_hierarchy(self, view: View, now: float):
-        """Recursively call update() on views that have a defined update_interval."""
-        if view.update_interval > 0:
-            if now - view._last_update_t >= view.update_interval:
-                view.update()
-                view._last_update_t = now
-        for sv in view.subviews:
-            self._update_hierarchy(sv, now)
-
-    def _create_touch(self, view: View, screen_x, screen_y, phase, touch_id, prev_pos):
-        """Create a Touch object with localized coordinates."""
-        local = convert_point((screen_x, screen_y), to_view=view)
-        prev_local = convert_point(prev_pos, to_view=view)
-        return Touch(
-            location=(local.x, local.y),
-            phase=phase,
-            prev_location=(prev_local.x, prev_local.y),
-            timestamp=int(time.time() * 1000),
-            touch_id=touch_id,
-        )
-
-    def _touch_down(self, x, y, touch_id):
-        self._last_pos[touch_id] = (x, y)
-        target = find_view_at(self.root, x, y)
-        if target:
-            if not target.multitouch_enabled and any(
-                v is target for v in self._tracked.values()
-            ):
-                return
-            self._tracked[touch_id] = target
-            target.touch_began(
-                self._create_touch(target, x, y, "began", touch_id, (x, y))
-            )
-
-    def _touch_move(self, x, y, touch_id):
-        prev = self._last_pos.get(touch_id, (x, y))
-        self._last_pos[touch_id] = (x, y)
-        target = self._tracked.get(touch_id)
-        if not target:
-            return
-        phase = "moved" if (x, y) != prev else "stationary"
-        target.touch_moved(self._create_touch(target, x, y, phase, touch_id, prev))
-
-    def _touch_up(self, x, y, touch_id):
-        prev = self._last_pos.pop(touch_id, (x, y))
-        target = self._tracked.pop(touch_id, None)
-        if not target:
-            return
-        current = find_view_at(self.root, x, y)
-        phase = "ended" if current is target else "cancelled"
-        target.touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
-
-    def _touch_cancel(self, touch_id):
-        x, y = self._last_pos.pop(touch_id, (0.0, 0.0))
-        target = self._tracked.pop(touch_id, None)
-        if target:
-            target.touch_ended(
-                self._create_touch(target, x, y, "cancelled", touch_id, (x, y))
-            )
-
     def run(self):
         """Start the runtime loop and initialize the native window."""
-        # Initialize the persistent FrameBuffer
         self._fb = FrameBuffer(
             self.pixel_data, self._width_c.value, self._height_c.value
         )
@@ -272,9 +166,9 @@ class WinitRuntime:
                 self.root.name.encode("utf-8"),
             )
         finally:
-            # Proper cleanup of the FrameBuffer handle
             if self._fb is not None and self._fb._handle > 0:
                 self._fb._lib.DestroyFrameBuffer(self._fb._handle)
                 self._fb._handle = 0
             self._fb = None
+            self._unregister()
             self.root.close()

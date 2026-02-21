@@ -93,6 +93,9 @@ __all__ = (
     "in_background",
     "Path",
     "Transform",
+    "get_screen_size",
+    "get_window_size",
+    "get_ui_style",
     "_set_origin",
     "_content_mode_transform",
     "_tick",
@@ -1554,3 +1557,64 @@ def animate(
     cb = _completion_once if completion else None
     for view, attr, start, end in records:
         ctx.active.append(_Anim(view, attr, start, end, start_t, duration, cb))
+
+
+# ---------------------------------------------------------------------------
+# Pythonista compatibility shim
+# When running inside Pythonista, replace desktop implementations with the
+# native ui-module equivalents.  Internal helpers (_set_origin, _tick, …)
+# become no-ops since the desktop runtime is never started on iOS.
+# ---------------------------------------------------------------------------
+
+from pytoui._platform import IS_PYTHONISTA  # noqa: E402
+
+if IS_PYTHONISTA:
+    from ui import (  # type: ignore[import-not-found,no-redef]
+        set_color,
+        fill_rect,
+        draw_string,
+        measure_string,
+        parse_color,
+        set_blend_mode,
+        concat_ctm,
+        set_shadow,
+        GState,
+        Path,
+        Transform,
+        ImageContext,
+        animate,
+        delay,
+        cancel_delays,
+        in_background,
+        convert_point,
+        convert_rect,
+        get_screen_size,
+        get_window_size,
+        get_ui_style,
+    )
+
+    # begin_path is not in Pythonista's ui — keep as no-op
+    def begin_path() -> None:  # type: ignore[misc]
+        pass
+
+    # Desktop-only internals — unused in Pythonista, stub out so imports don't break
+    def set_backend(fb) -> None:  # type: ignore[misc]
+        pass
+
+    def _set_origin(view) -> None:  # type: ignore[misc]
+        pass
+
+    def _screen_origin(view) -> tuple[float, float]:  # type: ignore[misc]
+        return (0.0, 0.0)
+
+    def _tick(now: float) -> None:  # type: ignore[misc]
+        pass
+
+    def _tick_delays(now: float) -> None:  # type: ignore[misc]
+        pass
+
+    def _record(*args, **kwargs) -> bool:  # type: ignore[misc]
+        return False
+
+    def _content_mode_transform(*args, **kwargs) -> None:  # type: ignore[misc]
+        pass

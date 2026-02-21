@@ -8,7 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* ~~View.multitouch_enabled~~
+* touch redirection from runtime to target (traked) view now managed by runtime itself, maybe touch event should be sent to each view, and the view should manage it itself? For dnd support or for events that can be started out of target view?
+* maybe instead of check IS_PYTHONISTA every time we should create some _ViewMixin class
 * View
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.
@@ -24,7 +25,6 @@ Runtime
   * get_key_commands
   * key_command
 * does Viev.wait_modal implemented right?
-* 
 * WinitRuntime macOS support: EventLoop must run on main thread — needs separate #[cfg(target_os="macos")] code path in lib.rs (no background thread, first winit_run runs loop inline)
 * Add possibility to add custom runtimes, not build it to the library (for overriding etc)
 * maybe add View _global_dirty_counter to skip some rerenders?

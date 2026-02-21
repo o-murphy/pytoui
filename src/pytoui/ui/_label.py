@@ -92,7 +92,7 @@ class Label(View):
             return
 
         font_name, font_size = self._font
-        content_rect = (0, 0, self._frame.w, self._frame.h)
+        content_rect = (0, 0, self.width, self.height)
 
         # iOS Auto-shrink logic
         if self._scales_font and self._number_of_lines == 1:

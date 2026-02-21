@@ -591,3 +591,21 @@ class View:
     def touch_ended(self, touch: Touch): ...
     def keyboard_frame_will_change(self, frame): ...
     def keyboard_frame_did_change(self, frame): ...
+    def _did_become_first_responder(self): ...
+    def _did_resign_first_responder(self): ...
+
+    def become_first_responder(self) -> bool:
+        """Ask the owning window to make this view the first responder.
+
+        Returns True if the runtime was found and the request was accepted,
+        False if the view is not attached to any window.
+        When this view becomes the first responder the previous one
+        automatically loses it (resign is implicit, no public resign call).
+        """
+        from pytoui._base_runtime import _get_runtime_for_view
+
+        rt = _get_runtime_for_view(self)
+        if rt is None:
+            return False
+        rt._set_first_responder(self)
+        return True

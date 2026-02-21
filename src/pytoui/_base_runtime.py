@@ -85,6 +85,11 @@ class BaseRuntime:
 
         _root_to_runtime[id(root_view)] = self
 
+    @property
+    def current_size(self) -> tuple[int, int]:
+        """Current window dimensions in pixels. Subclasses may override for live resize."""
+        return (self.width, self.height)
+
     def _unregister(self) -> None:
         _root_to_runtime.pop(id(self.root), None)
 

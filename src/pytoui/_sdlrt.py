@@ -202,6 +202,10 @@ class SDLRuntime(BaseRuntime):
 
         _register_runtime(self)
 
+    @property
+    def current_size(self) -> tuple[int, int]:
+        return (self._current_w, self._current_h)
+
     @classmethod
     def get_screen_size(cls):
         import sdl2  # type: ignore[import-untyped]

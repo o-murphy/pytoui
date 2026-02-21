@@ -432,3 +432,17 @@ class autoreleasepool:
 
     def __exit__(self, *args):
         pass
+
+
+# ── Pythonista shim ────────────────────────────────────────────────────────────
+
+from pytoui._platform import IS_PYTHONISTA  # noqa: E402
+
+if IS_PYTHONISTA:
+    from ui import (  # type: ignore[import-not-found,no-redef]
+        Vector2,
+        Point,
+        Size,
+        Rect,
+        Touch,
+    )

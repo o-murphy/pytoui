@@ -82,7 +82,7 @@ class ActivityIndicator(View):
 
             curr = self.superview
             while curr:
-                curr._needs_display = True
+                curr.set_needs_display()
                 curr = curr.superview
 
     def draw(self):

@@ -5,6 +5,7 @@ import time
 from uuid import uuid4
 from threading import Event
 
+from pytoui._platform import IS_PYTHONISTA, _pui
 from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
@@ -39,7 +40,33 @@ if TYPE_CHECKING:
 __all__ = ("View",)
 
 
-class View:
+class _ViewBase:
+    __final__ = False
+
+    _SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        for base in cls.__bases__:
+            if getattr(base, "__final__", False):
+                raise TypeError(f"{base.__name__} cannot be subclassed")
+
+        original_init = cls.__dict__.get("__init__")
+        if original_init is not None:
+
+            def wrapped_init(self, *args, __orig=original_init, **kwargs):
+                _ViewBase.__init__(self)
+                __orig(self, *args, **kwargs)
+
+            cls.__init__ = wrapped_init
+
+
+if IS_PYTHONISTA:
+    _ViewBase = _pui.View
+
+
+class View(_ViewBase):
     __final__ = False
 
     __slots__ = (
@@ -60,21 +87,20 @@ class View:
         "_transform",
         "_update_interval",
         "_on_screen",
-        "_needs_display",
-        "_close_event",
-        "_presented",
         "_touch_enabled",
         "_multitouch_enabled",
         # NOT FOR PYTHONISTA
+        "_presented",
+        "_needs_display",
+        "_close_event",
         "_last_update_t",
         "_content_draw_w",
         "_content_draw_h",
         "__animations_disabled",
     )
 
-    _SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
-
     def __init__(self):
+        super().__init__()
         self._alpha: float = 1.0
         self._background_color: _RGBA | None = (0.0, 0.0, 0.0, 0.0)
         self._border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
@@ -132,7 +158,10 @@ class View:
         if _record(self, "alpha", self._alpha, value):
             return
         self._alpha = float(value)
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.alpha.fset(self, self._alpha)
+        else:
+            self.set_needs_display()
 
     @property
     def background_color(self) -> _RGBA | None:
@@ -145,7 +174,10 @@ class View:
         if _record(self, "background_color", self._background_color, parsed):
             return
         self._background_color = parsed
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.background_color.fset(self, parsed)
+        else:
+            self.set_needs_display()
 
     # bg_color as alias
     bg_color = background_color
@@ -158,7 +190,10 @@ class View:
     @border_color.setter
     def border_color(self, value: _ColorLike):
         self._border_color = parse_color(value)
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.border_color.fset(self, self._border_color)
+        else:
+            self.set_needs_display()
 
     @property
     def border_width(self) -> float:
@@ -168,7 +203,10 @@ class View:
     @border_width.setter
     def border_width(self, value: float):
         self._border_width = float(value)
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.border_width.fset(self, self._border_width)
+        else:
+            self.set_needs_display()
 
     @property
     def bounds(self) -> Rect:
@@ -258,7 +296,10 @@ class View:
     @corner_radius.setter
     def corner_radius(self, value: float):
         self._corner_radius = float(value)
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.corner_radius.fset(self, self._corner_radius)
+        else:
+            self.set_needs_display()
 
     @property
     def flex(self) -> _ViewFlex:
@@ -286,7 +327,12 @@ class View:
             self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
             self._apply_autoresizing(old_w, old_h)
             self.layout()
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.frame.fset(
+                self, (new_frame.x, new_frame.y, new_frame.w, new_frame.h)
+            )
+        else:
+            self.set_needs_display()
 
     @property
     def hidden(self) -> bool:
@@ -296,7 +342,10 @@ class View:
     @hidden.setter
     def hidden(self, value: bool):
         self._hidden = value
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.hidden.fset(self, value)
+        else:
+            self.set_needs_display()
 
     @property
     def name(self) -> str:
@@ -335,7 +384,10 @@ class View:
     @tint_color.setter
     def tint_color(self, value: _ColorLike):
         self._tint_color = parse_color(value)
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.tint_color.fset(self, self._tint_color)
+        else:
+            self.set_needs_display()
 
     @property
     def touch_enabled(self) -> bool:
@@ -364,7 +416,10 @@ class View:
         if _record(self, "transform", self._transform, value):
             return
         self._transform = value
-        self.set_needs_display()
+        if IS_PYTHONISTA:
+            _pui.View.transform.fset(self, value)
+        else:
+            self.set_needs_display()
 
     @property
     def update_interval(self) -> float:
@@ -393,11 +448,15 @@ class View:
             view._superview.remove_subview(view)
         self._subviews.append(view)
         view._superview = self
+        if IS_PYTHONISTA:
+            super().add_subview(view)
 
     def remove_subview(self, view: View):
         """Remove a child view."""
         self._subviews.remove(view)
         view._superview = None
+        if IS_PYTHONISTA:
+            super().remove_subview(view)
 
     def bring_to_front(self):
         """Show the view on top of its sibling views."""
@@ -449,6 +508,8 @@ class View:
     def set_needs_display(self):
         """Mark the view as needing to be redrawn."""
         self._needs_display = True
+        if IS_PYTHONISTA:
+            super().set_needs_display()
 
     def size_to_fit(self):
         """Resize to enclose all subviews."""
@@ -472,6 +533,18 @@ class View:
         hide_close_button: bool = False,
     ):
         """Present the view on screen."""
+        if IS_PYTHONISTA:
+            super().present(
+                "fullscreen" if style == "full_screen" else style,
+                animated=animated,
+                popover_location=popover_location,
+                hide_title_bar=hide_title_bar,
+                title_bar_color=title_bar_color,
+                title_color=title_color,
+                orientations=orientations,
+                hide_close_button=hide_close_button,
+            )
+            return
         if self._presented:
             raise RuntimeError("View is already presented")
         self._presented = True
@@ -514,6 +587,9 @@ class View:
 
     def close(self):
         """Close a view that was presented via View.present()."""
+        if IS_PYTHONISTA:
+            super().close()
+            return
         if not self._presented:
             return
         self.will_close()
@@ -523,6 +599,9 @@ class View:
 
     def wait_modal(self):
         """Block until the view is dismissed."""
+        if IS_PYTHONISTA:
+            super().wait_modal()
+            return
         if not self._on_screen:
             return
         self._close_event.wait()
@@ -602,6 +681,8 @@ class View:
         When this view becomes the first responder the previous one
         automatically loses it (resign is implicit, no public resign call).
         """
+        if IS_PYTHONISTA:
+            return super().become_first_responder()
         from pytoui._base_runtime import _get_runtime_for_view
 
         rt = _get_runtime_for_view(self)

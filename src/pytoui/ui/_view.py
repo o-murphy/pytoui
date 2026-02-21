@@ -64,6 +64,7 @@ class View:
         "_close_event",
         "_presented",
         "_touch_enabled",
+        "_multitouch_enabled",
         # NOT FOR PYTHONISTA
         "_last_update_t",
         "_content_draw_w",
@@ -97,6 +98,7 @@ class View:
         self._close_event: Event = Event()
         self._presented: bool = False
         self._touch_enabled: bool = True
+        self._multitouch_enabled: bool = False
 
         self._last_update_t: float = 0.0
         self._content_draw_w: float = 0.0
@@ -342,6 +344,15 @@ class View:
     @touch_enabled.setter
     def touch_enabled(self, value: bool):
         self._touch_enabled = value
+
+    @property
+    def multitouch_enabled(self) -> bool:
+        """If True, the view receives all simultaneous touches. If False (default), only the first touch is tracked."""
+        return self._multitouch_enabled
+
+    @multitouch_enabled.setter
+    def multitouch_enabled(self, value: bool):
+        self._multitouch_enabled = bool(value)
 
     @property
     def transform(self) -> Transform | None:

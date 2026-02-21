@@ -8,7 +8,7 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* View.multitouch_enabled
+* ~~View.multitouch_enabled~~
 * View
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.
@@ -23,7 +23,7 @@ Runtime
 * Add keyboard events for View that supports input or hot-keys binding (idk if Pythonista ) (for sdl for now)
   * get_key_commands
   * key_command
-* This functions does same,but shoud do different things
+* This functions does same, but shoud do different things
   * get_screen_size
   * get_window_size
 * does Viev.wait_modal implemented right?
@@ -42,7 +42,7 @@ View classes:
 * ~~View~~
 * ~~Button~~
 * ButtonItem
-* ~~ImageView~~
+* ImageView
 * ~~Label~~
 * NavigationView
 * ScrollView

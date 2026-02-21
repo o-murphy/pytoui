@@ -70,14 +70,14 @@ def get_screen_size() -> tuple[int, int]:
         return (1920, 1080)
     if _UI_RT == "winit":
         try:
-            from winitrt import WinitRuntime  # type: ignore[attr-defined]
+            from pytoui._winitrt import WinitRuntime  # type: ignore[attr-defined]
 
             return WinitRuntime.get_screen_size()
         except Exception:
             return (1920, 1080)
     try:
         try:
-            from sdlrt import SDLRuntime  # type: ignore[import-not-found]
+            from pytoui._sdlrt import SDLRuntime  # type: ignore[import-not-found]
 
             return SDLRuntime.get_screen_size()
         except Exception:
@@ -105,18 +105,23 @@ def get_ui_style() -> str:
     return style if style in ("dark", "light") else "dark"
 
 
+def _get_runtime():
+    match _UI_RT:
+        case "fb":
+            return RawFrameBufferRuntime
+        case "winit":
+            from pytoui._winitrt import WinitRuntime
+
+            return WinitRuntime
+        case _:
+            from pytoui._sdlrt import SDLRuntime
+
+            return SDLRuntime
+
+
 def launch_runtime(root_view: View, render_fn) -> None:
     """Pick and run the appropriate runtime based on _UI_RUNTIME."""
     w = int(root_view._frame.w)
     h = int(root_view._frame.h)
-    match _UI_RT:
-        case "fb":
-            RawFrameBufferRuntime(root_view, w, h, render_fn).run()
-        case "winit":
-            from pytoui._winitrt import WinitRuntime
-
-            WinitRuntime(root_view, w, h, render_fn).run()
-        case _:
-            from pytoui._sdlrt import SDLRuntime
-
-            SDLRuntime(root_view, w, h, render_fn).run()
+    runtime = _get_runtime()
+    runtime.run(root_view, w, h, render_fn)

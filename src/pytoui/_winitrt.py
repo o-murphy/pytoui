@@ -217,6 +217,10 @@ class WinitRuntime:
         self._last_pos[touch_id] = (x, y)
         target = find_view_at(self.root, x, y)
         if target:
+            if not target.multitouch_enabled and any(
+                v is target for v in self._tracked.values()
+            ):
+                return
             self._tracked[touch_id] = target
             target.touch_began(
                 self._create_touch(target, x, y, "began", touch_id, (x, y))

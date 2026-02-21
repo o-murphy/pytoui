@@ -33,6 +33,7 @@ ignore = ["E402"]
 
 [tool.mypy]
 mypy_path = "src"
+files = "src"
 
 [dependency-groups]
 dev = [

@@ -70,10 +70,16 @@ def get_screen_size() -> tuple[int, int]:
 
 
 def get_window_size() -> tuple[int, int]:
-    """Return the size of the app's main window as a (width, height) tuple.
+    """Return the current window size as a (width, height) tuple.
 
-    On desktop this is the same as get_screen_size() (no split-screen mode).
+    Unlike get_screen_size(), this reflects the actual window dimensions
+    and changes when the window is resized.  Falls back to get_screen_size()
+    if no window is currently open.
     """
+    from pytoui._base_runtime import _root_to_runtime
+
+    for rt in _root_to_runtime.values():
+        return rt.current_size
     return get_screen_size()
 
 

@@ -23,9 +23,6 @@ Runtime
 * Add keyboard events for View that supports input or hot-keys binding (idk if Pythonista ) (for sdl for now)
   * get_key_commands
   * key_command
-* This functions does same, but shoud do different things
-  * get_screen_size
-  * get_window_size
 * does Viev.wait_modal implemented right?
 * 
 * WinitRuntime macOS support: EventLoop must run on main thread — needs separate #[cfg(target_os="macos")] code path in lib.rs (no background thread, first winit_run runs loop inline)

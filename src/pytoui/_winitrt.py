@@ -77,6 +77,10 @@ class WinitRuntime(BaseRuntime):
     def _cur_height(self):
         return self._height_c.value
 
+    @property
+    def current_size(self) -> tuple[int, int]:
+        return (self._width_c.value, self._height_c.value)
+
     @classmethod
     def get_screen_size(cls):
         """Retrieve the primary display bounds using the winit library."""

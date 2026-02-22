@@ -869,6 +869,9 @@ def draw_string(
     """Draw a string in the given rectangle.
 
     Pythonista-compatible. Coordinates are relative to the current view origin.
+    FIXME: Pythonista allows to use \n in the strings to draw multiline text
+           but it will not align it vertically! alignment will be by first line
+           after this fix we should simplify Label.draw
     """
     ctx = _get_draw_ctx()
     fb = ctx.backend

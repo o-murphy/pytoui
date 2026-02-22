@@ -104,6 +104,9 @@ class Button(View):
         self._target_alpha = 1.0 if value else 0.3
         if self._pytoui_animations_disabled:
             self._anim_alpha = self._target_alpha
+        else:
+            self._last_time = time.time()
+            self.update_interval = 1.0 / 60.0
         self.set_needs_display()
 
     @property
@@ -115,25 +118,32 @@ class Button(View):
         self._title_label._text = value
         self.set_needs_display()
 
-    def draw(self):
+    def update(self):
         now = time.time()
-        dt = min(now - self._last_time, 0.1)
+        dt = min(now - self._last_time, 0.05)
         self._last_time = now
 
         # --- ANIMATION ---
         if self._pytoui_animations_disabled:
             self._anim_alpha = self._target_alpha
+            self.update_interval = 0
+            self.set_needs_display()
+            return
+
+        lerp_speed = 1.0 - (0.00005**dt)
+        diff = self._target_alpha - self._anim_alpha
+
+        if abs(diff) > 0.001:
+            self._anim_alpha += diff * lerp_speed
+            self.set_needs_display()
         else:
-            # Fast and smooth interpolation similar to Switch
-            lerp_speed = 1.0 - (0.00005**dt)
-            diff = self._target_alpha - self._anim_alpha
+            self._anim_alpha = self._target_alpha
 
-            if abs(diff) > 0.001:
-                self._anim_alpha += diff * lerp_speed
-                self.set_needs_display()
-            else:
-                self._anim_alpha = self._target_alpha
+            if not self._tracked:
+                self.update_interval = 0
+            self.set_needs_display()
 
+    def draw(self):
         lbl = self._title_label
         if not lbl._text:
             return
@@ -151,9 +161,7 @@ class Button(View):
 
         draw_string(
             lbl.text,
-            rect=self.bounds.inset(
-                self._content_insets.x, self._content_insets.y
-            ),  # (il, it, self.width - il - ir, self.height - it - ib),
+            rect=self.bounds.inset(self._content_insets.x, self._content_insets.y),
             font=lbl.font,
             color=current_color,
             alignment=lbl._alignment,
@@ -169,6 +177,8 @@ class Button(View):
         self._target_alpha = 0.25
         if self._pytoui_animations_disabled:
             self._anim_alpha = 0.25
+        else:
+            self.update_interval = 1.0 / 60.0
         self.set_needs_display()
 
     def touch_moved(self, touch: Touch):
@@ -183,6 +193,9 @@ class Button(View):
 
             if new_target != self._target_alpha:
                 self._target_alpha = new_target
+                if self.update_interval == 0 and not self._pytoui_animations_disabled:
+                    self._last_time = time.time()
+                    self.update_interval = 1.0 / 60.0
                 self.set_needs_display()
 
     def touch_ended(self, touch: Touch):
@@ -198,6 +211,9 @@ class Button(View):
             if self.enabled and touch.phase == "ended" and inside:
                 self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 
+            if not self._pytoui_animations_disabled:
+                self._last_time = time.time()
+                self.update_interval = 1.0 / 60.0
             self.set_needs_display()
         self._tracked = False
 

@@ -9,24 +9,24 @@ OUT_SO_WINITRT      = $(OUT_DIR)/libwinitrt.so
 
 build:
 	@echo "==> Building osdbuf cdylib (host)..."
-	cd lib/osdbuf && $(CARGO) build $(CARGO_FLAGS)
+	cd deps/osdbuf && $(CARGO) build $(CARGO_FLAGS)
 	@mkdir -p $(OUT_DIR)
-	cp lib/osdbuf/target/release/libosdbuf.so $(OUT_SO_OSDLIB)
+	cp deps/osdbuf/target/release/libosdbuf.so $(OUT_SO_OSDLIB)
 	@echo "==> Done."
 
 	@echo "==> Building winitrt cdylib (host)..."
-	cd lib/winitrt && $(CARGO) build $(CARGO_FLAGS)
+	cd deps/winitrt && $(CARGO) build $(CARGO_FLAGS)
 	@mkdir -p $(OUT_DIR)
-	cp lib/winitrt/target/release/libwinitrt.so $(OUT_SO_WINITRT)
+	cp deps/winitrt/target/release/libwinitrt.so $(OUT_SO_WINITRT)
 	@echo "==> Done."
 
 gen-headers:
 	@echo "==> Generating C header..."
-	cd lib/osdbuf && cbindgen --config cbindgen.toml --output osdbuf.h
-	cd lib/winitrt && cbindgen --config cbindgen.toml --output winitrt.h
+	cd deps/osdbuf && cbindgen --config cbindgen.toml --output osdbuf.h
+	cd deps/winitrt && cbindgen --config cbindgen.toml --output winitrt.h
 
 clean:
-	cd lib/osdbuf && cargo clean
-	cd lib/winitrt && cargo clean
+	cd deps/osdbuf && cargo clean
+	cd deps/winitrt && cargo clean
 	rm -f $(OUT_SO_OSDLIB)
 	rm -f $(OUT_SO_WINITRT)

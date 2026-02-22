@@ -612,7 +612,7 @@ class View:
 
 
 if IS_PYTHONISTA:
-    from ui import View as _View  # type: ignore[import-not-found,no-redef]  # noqa: F811
+    from ui import View as _View  # type: ignore[import-not-found]  # noqa: F811
 
-    class View(_View):
+    class View(_View):  # type: ignore[no-redef]
         pass

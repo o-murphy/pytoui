@@ -106,6 +106,7 @@ class Label(View):
                 font_size -= 0.5
             font_size = max(font_size, min_size)
 
+        # FIXME: draw_string is not supports number_of_lines
         draw_string(
             self._text,
             rect=content_rect,
@@ -113,7 +114,6 @@ class Label(View):
             color=self._text_color,
             alignment=self._alignment,
             line_break_mode=self._line_break_mode,
-            number_of_lines=self._number_of_lines,
         )
 
     def size_to_fit(self):

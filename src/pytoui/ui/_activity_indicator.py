@@ -75,6 +75,14 @@ class ActivityIndicator(View):
             self.hidden = True
         self.set_needs_display()
 
+    def start_animating(self):
+        # FIXME: not implemented 
+        pass
+
+    def stop_animating(self):
+        # FIXME: not implemented
+        pass
+
     def update(self):
         if self._is_animating:
             self._anim_step = (self._anim_step + 1) % 12

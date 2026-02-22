@@ -34,7 +34,7 @@ from functools import lru_cache
 from re import fullmatch
 from threading import local
 import time
-from typing import Any, Callable, cast, TYPE_CHECKING
+from typing import Any, Callable, Sequence, cast, TYPE_CHECKING
 
 from pytoui.ui._constants import (
     ALIGN_CENTER,
@@ -68,6 +68,7 @@ from pytoui.ui._types import (
     Rect,
     Size,
 )
+from resources.stubgen.ui_stubs import __PointLike
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _RGBA, _RectLike, _ColorLike
@@ -270,7 +271,7 @@ class Transform:
         return obj
 
     @classmethod
-    def rotation(cls, rad: float) -> "Transform":
+    def rotation(cls, rad: float) -> Transform:
         import ctypes
 
         lib = _get_rust_lib()
@@ -283,7 +284,7 @@ class Transform:
         return cls(cos_a, sin_a, -sin_a, cos_a, 0.0, 0.0)
 
     @classmethod
-    def scale(cls, sx: float, sy: float) -> "Transform":
+    def scale(cls, sx: float, sy: float) -> Transform:
         import ctypes
 
         lib = _get_rust_lib()
@@ -294,7 +295,7 @@ class Transform:
         return cls(sx, 0.0, 0.0, sy, 0.0, 0.0)
 
     @classmethod
-    def translation(cls, tx: float, ty: float) -> "Transform":
+    def translation(cls, tx: float, ty: float) -> Transform:
         import ctypes
 
         lib = _get_rust_lib()
@@ -304,7 +305,7 @@ class Transform:
                 return cls._from_handle(h)
         return cls(1.0, 0.0, 0.0, 1.0, tx, ty)
 
-    def concat(self, other: "Transform") -> "Transform":
+    def concat(self, other: Transform) -> Transform:
         lib = _get_rust_lib()
         ha = self._ensure_handle()
         hb = other._ensure_handle()
@@ -322,7 +323,7 @@ class Transform:
             self.b * other.tx + self.d * other.ty + self.ty,
         )
 
-    def invert(self) -> "Transform":
+    def invert(self) -> Transform:
         lib = _get_rust_lib()
         h = self._ensure_handle()
         if lib and h > 0:
@@ -934,7 +935,7 @@ def _screen_origin(view) -> tuple[float, float]:
 
 
 def convert_point(
-    point=(0, 0),
+    point = (0, 0),
     from_view=None,
     to_view=None,
 ) -> Point:
@@ -956,7 +957,7 @@ def convert_point(
 
 
 def convert_rect(
-    rect=(0, 0, 0, 0),
+    rect = (0, 0, 0, 0),
     from_view=None,
     to_view=None,
 ) -> Rect:
@@ -1226,7 +1227,7 @@ class Path:
             if lib:
                 lib.PathClose(self._handle)
 
-    def append_path(self, other: "Path"):
+    def append_path(self, other: Path):
         """Append all segments of other into this path."""
         if self._handle > 0 and other._handle > 0:
             lib = _get_rust_lib()
@@ -1234,7 +1235,7 @@ class Path:
                 lib.PathAppend(self._handle, other._handle)
                 self._has_segments = True
 
-    def set_line_dash(self, sequence: list[float], phase: float = 0.0):
+    def set_line_dash(self, sequence: Sequence[float], phase: float = 0.0):
         """Set dashed stroke pattern. Pass empty list to clear."""
         if self._handle <= 0:
             return

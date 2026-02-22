@@ -9,8 +9,8 @@ from pytoui.ui._constants import (
     ACTIVITY_INDICATOR_STYLE_GRAY,
     ACTIVITY_INDICATOR_STYLE_WHITE,
     ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
-    _UI_DISABLE_ANIMATIONS,
 )
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
 
 
 class ActivityIndicator(View):
@@ -76,7 +76,7 @@ class ActivityIndicator(View):
         self.set_needs_display()
 
     def start_animating(self):
-        # FIXME: not implemented 
+        # FIXME: not implemented
         pass
 
     def stop_animating(self):

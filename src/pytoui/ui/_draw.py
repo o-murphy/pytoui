@@ -68,7 +68,6 @@ from pytoui.ui._types import (
     Rect,
     Size,
 )
-from resources.stubgen.ui_stubs import __PointLike
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _RGBA, _RectLike, _ColorLike
@@ -935,7 +934,7 @@ def _screen_origin(view) -> tuple[float, float]:
 
 
 def convert_point(
-    point = (0, 0),
+    point=(0, 0),
     from_view=None,
     to_view=None,
 ) -> Point:
@@ -957,7 +956,7 @@ def convert_point(
 
 
 def convert_rect(
-    rect = (0, 0, 0, 0),
+    rect=(0, 0, 0, 0),
     from_view=None,
     to_view=None,
 ) -> Rect:

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 from pytoui._osdbuf import FrameBuffer
 
 from pytoui._base_runtime import BaseRuntime, _any_dirty, CHECKER_SIZE
-from pytoui.ui._constants import (
+from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
     _UI_RT_SDL_DELAY,

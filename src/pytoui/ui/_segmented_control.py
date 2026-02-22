@@ -3,10 +3,11 @@ from __future__ import annotations
 import time
 from typing import Sequence, TYPE_CHECKING
 
-from pytoui.ui._constants import ALIGN_CENTER, _UI_DISABLE_ANIMATIONS
+from pytoui.ui._constants import ALIGN_CENTER
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
 from pytoui.ui._draw import Path, set_color, draw_string
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action

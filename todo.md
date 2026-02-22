@@ -9,7 +9,8 @@ NOTE:
 
 HOT:
 * ~~maybe instead of check IS_PYTHONISTA every time we should create some _ViewMixin class~~ (done: _BaseView)
-* touch redirection from runtime to target (traked) view now managed by runtime itself, maybe touch event should be sent to each view, and the view should manage it itself? For dnd support or for events that can be started out of target view? we need implement hit_test strategy or use the `Path.hit_test`
+* try to improve touch handling with hit_test logic?
+* FIXME in Label and ActivityIndicator
 * View
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.

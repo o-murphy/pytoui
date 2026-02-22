@@ -865,7 +865,6 @@ def draw_string(
     color: _ColorLike | None = None,
     alignment: int = ALIGN_NATURAL,
     line_break_mode: int = LB_TRUNCATE_TAIL,
-    number_of_lines: int = 1,
 ):
     """Draw a string in the given rectangle.
 
@@ -895,7 +894,7 @@ def draw_string(
         _color = (_color[0], _color[1], _color[2], _color[3] * ctx.alpha)
     c = _rgba_to_uint32(_color)
 
-    lines = _layout_lines(s, w, font_size, fid, line_break_mode, number_of_lines)
+    lines = _layout_lines(s, w, font_size, fid, line_break_mode, 1)
     line_h = type(fb).get_text_height(size=font_size, font_id=fid)
     total_h = line_h * len(lines)
     start_y = y + (h - total_h) // 2

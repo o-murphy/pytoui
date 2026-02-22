@@ -16,13 +16,13 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from pytoui.ui._draw import _screen_origin, convert_point
+from pytoui.ui._draw import convert_point
 from pytoui.ui._types import Touch
 
 if TYPE_CHECKING:
     from pytoui.ui._view import View
 
-__all__ = ("BaseRuntime", "find_view_at", "_any_dirty", "CHECKER_SIZE")
+__all__ = ("BaseRuntime", "_any_dirty", "CHECKER_SIZE", "_get_runtime_for_view")
 
 CHECKER_SIZE = 8
 
@@ -45,21 +45,6 @@ def _any_dirty(view: View) -> bool:
         if _any_dirty(sv):
             return True
     return False
-
-
-def find_view_at(view: View, screen_x: float, screen_y: float) -> "View | None":
-    """Return the topmost touch-enabled View at the given screen coordinates."""
-    if view.hidden:
-        return None
-    ox, oy = _screen_origin(view)
-    fw, fh = view._frame.w, view._frame.h
-    if not (ox <= screen_x < ox + fw and oy <= screen_y < oy + fh):
-        return None
-    for child in reversed(view.subviews):
-        target = find_view_at(child, screen_x, screen_y)
-        if target is not None and target.touch_enabled:
-            return target
-    return view if view.touch_enabled else None
 
 
 class BaseRuntime:
@@ -126,7 +111,7 @@ class BaseRuntime:
 
     def _touch_down(self, x, y, touch_id):
         self._last_pos[touch_id] = (x, y)
-        target = find_view_at(self.root, x, y)
+        target = self.root._pytoui_hit_test(x, y)
         if target:
             if not target.multitouch_enabled and any(
                 v is target for v in self._tracked.values()
@@ -151,7 +136,7 @@ class BaseRuntime:
         target = self._tracked.pop(touch_id, None)
         if not target:
             return
-        current = find_view_at(self.root, x, y)
+        current = self.root._pytoui_hit_test(x, y)
         phase = "ended" if current is target else "cancelled"
         target.touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
 

@@ -562,6 +562,31 @@ class View:
 
     # ── CUSOM INTERNALS ─────────────────────────────────────────────────────────────
 
+    @property
+    def _pytoui_animations_disabled(self) -> bool:
+        return bool(self.__pytoui_animations_disabled or _UI_DISABLE_ANIMATIONS)
+
+    @_pytoui_animations_disabled.setter
+    def _pytoui_animations_disabled(self, value: bool):
+        self.__pytoui_animations_disabled = value
+
+    def _pytoui_hit_test(self, x: float, y: float) -> View | None:
+        """
+        Recursively searches for the highest Z-index View
+        that supports touch at the specified coordinates.
+        """
+        if self.hidden:
+            return None
+        ox, oy = _screen_origin(self)
+        fw, fh = self.frame.size
+        if not (ox <= x < ox + fw and oy <= y < oy + fh):
+            return None
+        for child in reversed(self.subviews):
+            target = child._pytoui_hit_test(x, y)
+            if target is not None and target.touch_enabled:
+                return target
+        return self if self.touch_enabled else None
+
     def _pytoui_did_become_first_responder(self): ...
     def _pytoui_did_resign_first_responder(self): ...
 
@@ -614,14 +639,6 @@ class View:
 
         for sv in self._subviews:
             sv._pytoui_render()
-
-    @property
-    def _pytoui_animations_disabled(self) -> bool:
-        return bool(self.__pytoui_animations_disabled or _UI_DISABLE_ANIMATIONS)
-
-    @_pytoui_animations_disabled.setter
-    def _pytoui_animations_disabled(self, value: bool):
-        self.__pytoui_animations_disabled = value
 
 
 if IS_PYTHONISTA:
@@ -874,4 +891,9 @@ if IS_PYTHONISTA:
         def _pytoui_apply_autoresizing(self, old_w: float, old_h: float):
             raise RuntimeError(
                 "View._pytoui_apply_autoresizing can be used only on not Pythonista runtime"
+            )
+
+        def _pytoui_hit_test(self, x: float, y: float) -> View | None:
+            raise RuntimeError(
+                "View._pytoui_hit_test can be used only on not Pythonista runtime"
             )

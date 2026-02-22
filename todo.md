@@ -9,7 +9,7 @@ NOTE:
 
 HOT:
 * FIXME in SegmentedControl
-* try to improve touch handling with hit_test logic?
+* draw_string have some different behaviour on pythonista
 * View
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.
@@ -20,11 +20,11 @@ HOT:
 
 Runtime
 * Pillow can be not always available, so maybe we are need some rust based fallback like an "image" crate for ui.ImageContext, ui.ImageView ui.Image
-* Add raw FrameBuffer runtime but with loop and possibility to use external pointer to fb
 * Add keyboard events for View that supports input or hot-keys binding (idk if Pythonista ) (for sdl for now)
   * get_key_commands
   * key_command
 * does Viev.wait_modal implemented right?
+* Add raw FrameBuffer runtime but with loop and possibility to use external pointer to fb
 * WinitRuntime macOS support: EventLoop must run on main thread — needs separate #[cfg(target_os="macos")] code path in lib.rs (no background thread, first winit_run runs loop inline)
 * Add possibility to add custom runtimes, not build it to the library (for overriding etc)
 * maybe add View _global_dirty_counter to skip some rerenders?

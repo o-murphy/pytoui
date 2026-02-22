@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 from pytoui.ui._constants import (
     ALIGN_NATURAL,
     LB_TRUNCATE_TAIL,
-    LB_CLIP,
 )
 from pytoui.ui._view import View
 from pytoui.ui._types import Rect
@@ -14,7 +13,6 @@ from pytoui.ui._draw import (
     parse_color,
     _layout_lines,
     _font_id,
-    _get_draw_ctx,
 )
 
 if TYPE_CHECKING:

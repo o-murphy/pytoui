@@ -16,8 +16,6 @@ __all__ = ("SegmentedControl",)
 
 
 class SegmentedControl(View):
-    # FIXME: The segmented control has not that smooth animation on edge cases
-    #        There was the same problem with Switch but now seems like it solved
     __final__ = True
 
     __slots__ = (
@@ -25,11 +23,11 @@ class SegmentedControl(View):
         "_enabled",
         "_segments",
         "_selected_index",
+        "_tracking_index",
         "_anim_index",
         "_last_time",
         "_tracked",
         "_press_scale",
-        "_target_scale",
         "_press_start_time",
     )
 
@@ -43,11 +41,11 @@ class SegmentedControl(View):
         self._enabled: bool = True
         self._segments: Sequence[str] = []
         self._selected_index = 0
+        self._tracking_index = 0.0
         self._anim_index = 0.0
 
         # Press scale animation
         self._press_scale = 1.0
-        self._target_scale = 1.0
         self._press_start_time = 0.0
 
         self._last_time = time.time()
@@ -82,8 +80,12 @@ class SegmentedControl(View):
         new_index = max(0, min(value, count - 1)) if count > 0 else -1
         if self._selected_index != new_index:
             self._selected_index = new_index
+            self._tracking_index = float(new_index)
             if self._pytoui_animations_disabled:
                 self._anim_index = float(self._selected_index)
+            else:
+                self._last_time = time.time()
+                self.update_interval = 1.0 / 60.0
             self.set_needs_display()
 
     @property
@@ -96,55 +98,60 @@ class SegmentedControl(View):
         self._selected_index = (
             max(0, min(self._selected_index, len(segments) - 1)) if segments else -1
         )
+        self._tracking_index = float(self._selected_index)
         self._anim_index = float(self._selected_index)
         self.set_needs_display()
 
-    def draw(self):
+    def update(self):
+        """Driven by update_interval for smooth transitions."""
         now = time.time()
         # dt clamping for stability during lag
         dt = min(now - self._last_time, 0.05)
         self._last_time = now
 
+        if self._pytoui_animations_disabled:
+            self._anim_index = float(self._tracking_index)
+            self._press_scale = 1.0
+            self.update_interval = 0
+            self.set_needs_display()
+            return
+
+        lerp_speed = 1.0 - (0.00005**dt)
+        done = True
+
+        # Slider animation - follows _tracking_index
+        target_idx = float(self._tracking_index)
+        diff_idx = target_idx - self._anim_index
+        if abs(diff_idx) > 0.001:
+            self._anim_index += diff_idx * lerp_speed
+            done = False
+        else:
+            self._anim_index = target_idx
+
+        # Scale animation
+        if self._tracked:
+            elapsed = now - self._press_start_time
+            target_scale = 0.95 if elapsed > 0.03 else 1.0
+        else:
+            target_scale = 1.0
+
+        diff_scale = target_scale - self._press_scale
+        if abs(diff_scale) > 0.001:
+            self._press_scale += diff_scale * lerp_speed
+            done = False
+        else:
+            self._press_scale = target_scale
+
+        self.set_needs_display()
+
+        if done and not self._tracked:
+            self.update_interval = 0
+
+    def draw(self):
         segments = self.segments
         count = len(segments)
         if count == 0:
             return
-
-        # --- ANIMATION ---
-        needs_redraw = False
-
-        if self._tracked:
-            elapsed = now - self._press_start_time
-            # Squeezing starts after 0.03s (iOS feel)
-            self._target_scale = 0.95 if elapsed > 0.03 else 1.0
-        else:
-            self._target_scale = 1.0
-
-        if self._pytoui_animations_disabled:
-            self._anim_index = float(self._selected_index)
-            self._press_scale = self._target_scale
-        else:
-            # Use same formula as Switch/Button for consistency
-            lerp_speed = 1.0 - (0.00005**dt)
-
-            # Slider animation
-            diff_idx = float(self._selected_index) - self._anim_index
-            if abs(diff_idx) > 0.001:
-                self._anim_index += diff_idx * lerp_speed
-                needs_redraw = True
-            else:
-                self._anim_index = float(self._selected_index)
-
-            # Scale animation
-            diff_scale = self._target_scale - self._press_scale
-            if abs(diff_scale) > 0.001:
-                self._press_scale += diff_scale * lerp_speed
-                needs_redraw = True
-            else:
-                self._press_scale = self._target_scale
-
-        if needs_redraw:
-            self.set_needs_display()
 
         # --- DRAWING ---
         w, h = self.width, self.height
@@ -215,45 +222,52 @@ class SegmentedControl(View):
         if not self.enabled:
             return
 
-        x, y = touch.location
-        # Start tracking only inside logical pill height
-        if y < 0 or y > self.height:
-            return
-
         self._tracked = True
         self._press_start_time = time.time()
         self._last_time = self._press_start_time
-        self._target_scale = 1.0
+
+        # Initialize tracking index at current selection
+        self._tracking_index = float(self._selected_index)
+
+        if not self._pytoui_animations_disabled:
+            self.update_interval = 1.0 / 60.0
         self.set_needs_display()
 
     def touch_moved(self, touch: Touch):
-        if self._tracked and self.enabled:
-            # Switch index during movement
-            new_index = self._get_index_at_location(touch.location.x)
-            if new_index != -1 and new_index != self._selected_index:
-                self.selected_index = new_index
-                self._ensure_action_and_call(self)  # type: ignore[attr-defined]
+        if not (self._tracked and self.enabled):
+            return
 
-            # Bounds check to reset scale
-            inside = (
-                0 <= touch.location.x <= self.width
-                and 0 <= touch.location.y <= self.height
-            )
-            if not inside:
-                self._target_scale = 1.0
+        # Update tracking index so animation follows the finger
+        new_idx = self._get_index_at_location(touch.location[0])
+        if new_idx != -1:
+            self._tracking_index = float(new_idx)
+            if self.update_interval == 0 and not self._pytoui_animations_disabled:
+                self._last_time = time.time()
+                self.update_interval = 1.0 / 60.0
 
-            self.set_needs_display()
+        self.set_needs_display()
 
     def touch_ended(self, touch: Touch):
-        if self._tracked:
-            self._target_scale = 1.0
-            if self.enabled and touch.phase == "ended":
-                new_index = self._get_index_at_location(touch.location.x)
-                if new_index != -1 and new_index != self._selected_index:
-                    self.selected_index = new_index
-                    self._ensure_action_and_call(self)  # type: ignore[attr-defined]
-            self.set_needs_display()
+        if not (self._tracked and self.enabled):
+            return
+
+        if touch.phase == "ended":
+            # Change actual value and call action ONLY on release
+            new_index = self._get_index_at_location(touch.location[0])
+            if new_index != -1:
+                # selected_index setter will also sync tracking_index
+                self.selected_index = new_index
+                self._ensure_action_and_call(self)
+            else:
+                # Reset tracking to actual selection if released outside
+                self._tracking_index = float(self._selected_index)
+
         self._tracked = False
+        # Ensure scale and position return to final states
+        if not self._pytoui_animations_disabled:
+            self._last_time = time.time()
+            self.update_interval = 1.0 / 60.0
+        self.set_needs_display()
 
     def _ensure_action_and_call(self, sender=None):
         action = getattr(self, "action", None)

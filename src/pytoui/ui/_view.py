@@ -615,4 +615,22 @@ if IS_PYTHONISTA:
     from ui import View as _View  # type: ignore[import-not-found]  # noqa: F811
 
     class View(_View):  # type: ignore[no-redef]
-        pass
+        # Proxy _frame / _bounds to the native properties so that subclass
+        # __init__ assignments (e.g. self._frame = Rect(...)) immediately update
+        # the native frame and reads always reflect the current geometry.
+
+        @property
+        def _frame(self):
+            return self.frame
+
+        @_frame.setter
+        def _frame(self, value):
+            self.frame = value
+
+        @property
+        def _bounds(self):
+            return self.bounds
+
+        @_bounds.setter
+        def _bounds(self, value):
+            self.bounds = value

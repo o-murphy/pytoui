@@ -9,6 +9,7 @@ NOTE:
 
 HOT:
 * ~~maybe instead of check IS_PYTHONISTA every time we should create some _ViewMixin class~~ (done: _BaseView)
+* View shim logic for some props possibly wrong
 * try to improve touch handling with hit_test logic?
 * FIXME in Label and ActivityIndicator
 * View

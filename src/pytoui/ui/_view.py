@@ -89,6 +89,9 @@ class View(_ViewBase):
         "_on_screen",
         "_touch_enabled",
         "_multitouch_enabled",
+        # NOT YET DONE
+        # "_right_button_items"
+        # "_left_button_items"
         # NOT FOR PYTHONISTA
         "_presented",
         "_needs_display",
@@ -439,6 +442,9 @@ class View(_ViewBase):
             if view.name == name:
                 return view
         raise KeyError(name)
+    
+    def __len__(self) -> int:
+        return len(self._subviews)
 
     def add_subview(self, view: View):
         """Add another view as a child of this view."""

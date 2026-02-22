@@ -1,10 +1,21 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from pytoui.ui._constants import ALIGN_NATURAL, LB_TRUNCATE_TAIL
+from pytoui.ui._constants import (
+    ALIGN_NATURAL,
+    LB_TRUNCATE_TAIL,
+    LB_CLIP,
+)
 from pytoui.ui._view import View
 from pytoui.ui._types import Rect
-from pytoui.ui._draw import draw_string, measure_string, parse_color
+from pytoui.ui._draw import (
+    draw_string,
+    measure_string,
+    parse_color,
+    _layout_lines,
+    _font_id,
+    _get_draw_ctx,
+)
 
 if TYPE_CHECKING:
     from pytoui.ui._types import (
@@ -92,29 +103,57 @@ class Label(View):
             return
 
         font_name, font_size = self._font
-        content_rect = (0, 0, self.width, self.height)
+        w, h = self.width, self.height
 
-        # iOS Auto-shrink logic
+        # iOS Auto-shrink logic (single-line only)
         if self._scales_font and self._number_of_lines == 1:
             min_scale = self._min_font_scale if self._min_font_scale > 0 else 0.5
             min_size = font_size * min_scale
 
             while font_size > min_size:
                 tw, _ = measure_string(self._text, font=(font_name, font_size))
-                if tw <= content_rect[2]:
+                if tw <= w:
                     break
                 font_size -= 0.5
             font_size = max(font_size, min_size)
 
-        # FIXME: draw_string is not supports number_of_lines
-        draw_string(
-            self._text,
-            rect=content_rect,
-            font=(font_name, font_size),
-            color=self._text_color,
-            alignment=self._alignment,
-            line_break_mode=self._line_break_mode,
-        )
+        if self._number_of_lines == 1:
+            draw_string(
+                self._text,
+                rect=(0, 0, w, h),
+                font=(font_name, font_size),
+                color=self._text_color,
+                alignment=self._alignment,
+                line_break_mode=self._line_break_mode,
+            )
+        else:
+            # Multi-line: lay out all lines then draw each one in its own row
+            ctx = _get_draw_ctx()
+            fb = ctx.backend
+            if fb is None:
+                return
+            fid = _font_id(font_name)
+            lines = _layout_lines(
+                self._text,
+                int(w),
+                font_size,
+                fid,
+                self._line_break_mode,
+                self._number_of_lines,
+            )
+            line_h = type(fb).get_text_height(size=font_size, font_id=fid)
+            for i, line in enumerate(lines):
+                y_off = i * line_h
+                if y_off + line_h > h:
+                    break
+                draw_string(
+                    line,
+                    rect=(0, y_off, w, line_h),
+                    font=(font_name, font_size),
+                    color=self._text_color,
+                    alignment=self._alignment,
+                    line_break_mode=LB_CLIP,
+                )
 
     def size_to_fit(self):
         """Resizes the label to perfectly fit its text content."""
@@ -124,6 +163,6 @@ class Label(View):
         tw, th = measure_string(
             self._text,
             font=self._font,
-            width=self._frame.w if self._number_of_lines != 1 else 0,
+            max_width=self._frame.w if self._number_of_lines != 1 else 0,
         )
         self.frame = Rect(self._frame.x, self._frame.y, tw, th)

@@ -76,12 +76,10 @@ class ActivityIndicator(View):
         self.set_needs_display()
 
     def start_animating(self):
-        # FIXME: not implemented
-        pass
+        self.start()
 
     def stop_animating(self):
-        # FIXME: not implemented
-        pass
+        self.stop()
 
     def update(self):
         if self._is_animating:

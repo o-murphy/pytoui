@@ -160,7 +160,6 @@ class Button(View):
             color=current_color,
             alignment=lbl._alignment,
             line_break_mode=lbl._line_break_mode,
-            number_of_lines=lbl._number_of_lines,
         )
 
     def touch_began(self, touch: Touch):

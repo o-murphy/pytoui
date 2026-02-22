@@ -5,7 +5,7 @@ OUT_DIR     = src/pytoui
 OUT_SO_OSDLIB      = $(OUT_DIR)/libosdbuf.so
 OUT_SO_WINITRT      = $(OUT_DIR)/libwinitrt.so
 
-.PHONY: build clean eject-device push-device gen-headers
+.PHONY: build clean gen-headers
 
 build:
 	@echo "==> Building osdbuf cdylib (host)..."
@@ -19,9 +19,6 @@ build:
 	@mkdir -p $(OUT_DIR)
 	cp lib/winitrt/target/release/libwinitrt.so $(OUT_SO_WINITRT)
 	@echo "==> Done."
-
-eject-device:
-	ar-sign --dev --eject
 
 gen-headers:
 	@echo "==> Generating C header..."

@@ -11,7 +11,9 @@ from pytoui.ui._types import (
 from pytoui.ui._label import Label
 from pytoui.ui._image import Image
 from pytoui.ui._draw import draw_string
-from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL, _UI_DISABLE_ANIMATIONS
+from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
+
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action, _RGBA

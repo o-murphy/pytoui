@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
 from pytoui.ui._draw import set_color, Path
-from pytoui.ui._constants import _UI_DISABLE_ANIMATIONS
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action

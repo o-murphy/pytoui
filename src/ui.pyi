@@ -303,9 +303,7 @@ class autoreleasepool:
 class View:
     _objc_ptr: Any = ...  # default: <attribute '_objc_ptr' of '_ui.View' objects>
     alpha: float = ...  # default: <attribute 'alpha' of '_ui.View' objects>
-    autoresizing: bool = (
-        ...
-    )  # default: <attribute 'autoresizing' of '_ui.View' objects>
+    autoresizing: str = ...  # default: <attribute 'autoresizing' of '_ui.View' objects>
     background_color: __ColorLike = (
         ...
     )  # default: <attribute 'background_color' of '_ui.View' objects>
@@ -325,7 +323,7 @@ class View:
         ...
     )  # default: <attribute 'corner_radius' of '_ui.View' objects>
     flex: __ViewFlex = ...  # default: <attribute 'flex' of '_ui.View' objects>
-    frame: float = ...  # default: <attribute 'frame' of '_ui.View' objects>
+    frame: __RectLike = ...  # default: <attribute 'frame' of '_ui.View' objects>
     height: float = ...  # default: <attribute 'height' of '_ui.View' objects>
     hidden: bool = ...  # default: <attribute 'hidden' of '_ui.View' objects>
     left_button_items: Any = (
@@ -345,8 +343,8 @@ class View:
     right_button_items: Any = (
         ...
     )  # default: <attribute 'right_button_items' of '_ui.View' objects>
-    subviews: Sequence[
-        View
+    subviews: tuple[
+        View, ...
     ] = ...  # default: <attribute 'subviews' of '_ui.View' objects>
     superview: (
         View | None

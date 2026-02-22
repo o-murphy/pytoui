@@ -8,9 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* View shim logic for some props possibly wron, much more, we should hide internal implementation with mangling `__` to be sure subclasses use getters/setters
+* FIXME in draw_string, SegmentedControl
 * try to improve touch handling with hit_test logic?
-* FIXME in Label and ActivityIndicator
 * View
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.

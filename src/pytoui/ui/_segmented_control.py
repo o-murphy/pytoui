@@ -7,7 +7,6 @@ from pytoui.ui._constants import ALIGN_CENTER
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
 from pytoui.ui._draw import Path, set_color, draw_string
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
@@ -32,7 +31,6 @@ class SegmentedControl(View):
         "_press_scale",
         "_target_scale",
         "_press_start_time",
-        "__animations_disabled",
     )
 
     _DEFAULT_MARGIN = 2.0
@@ -56,8 +54,6 @@ class SegmentedControl(View):
         self._tracked = False
 
         self._frame = Rect(0.00, 0.00, 120.0, 32.0)
-
-        self.__animations_disabled: bool = False
 
     @property
     def action(self) -> _Action | None:
@@ -86,7 +82,7 @@ class SegmentedControl(View):
         new_index = max(0, min(value, count - 1)) if count > 0 else -1
         if self._selected_index != new_index:
             self._selected_index = new_index
-            if self._animations_disabled:
+            if self._pytoui_animations_disabled:
                 self._anim_index = float(self._selected_index)
             self.set_needs_display()
 
@@ -124,7 +120,7 @@ class SegmentedControl(View):
         else:
             self._target_scale = 1.0
 
-        if self._animations_disabled:
+        if self._pytoui_animations_disabled:
             self._anim_index = float(self._selected_index)
             self._press_scale = self._target_scale
         else:
@@ -269,13 +265,3 @@ class SegmentedControl(View):
             action(sender if sender is not None else self)
         else:
             action()
-
-    # ── animation ─────────────────────────────────────────────────────────────
-
-    @property
-    def _animations_disabled(self) -> bool:
-        return self.__animations_disabled or _UI_DISABLE_ANIMATIONS
-
-    @_animations_disabled.setter
-    def _animations_disabled(self, value: bool) -> None:
-        self.__animations_disabled = value

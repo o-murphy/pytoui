@@ -10,7 +10,6 @@ from pytoui.ui._constants import (
     ACTIVITY_INDICATOR_STYLE_WHITE,
     ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
 )
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
 
 
 class ActivityIndicator(View):
@@ -21,8 +20,6 @@ class ActivityIndicator(View):
         "_hides_when_stopped",
         "_anim_step",
         "_is_animating",
-        "_last_static_update",
-        "__animations_disabled",
     )
 
     def __init__(self):
@@ -30,8 +27,6 @@ class ActivityIndicator(View):
         self._hides_when_stopped = True
         self._anim_step = 0
         self._is_animating = False
-        self._last_static_update = 0.0
-        self.__animations_disabled: bool = False
 
         # default size for standard style; frame is user-settable and must not
         # change automatically when style changes
@@ -59,7 +54,7 @@ class ActivityIndicator(View):
     def start(self):
         if not self._is_animating:
             self._is_animating = True
-            if self._animations_disabled:
+            if self._pytoui_animations_disabled:
                 self.update_interval = 0.5
             else:
                 self.update_interval = 1.0 / 12.0
@@ -118,7 +113,7 @@ class ActivityIndicator(View):
             angle = i * (2.0 * math.pi / num_lines)
             dist = (i - self._anim_step) % num_lines
 
-            if self._animations_disabled:
+            if self._pytoui_animations_disabled:
                 if dist == 0:
                     alpha = 1.0
                 elif dist == 1:
@@ -142,13 +137,3 @@ class ActivityIndicator(View):
                     line_width / 2,
                 )
                 p.fill()
-
-    # ── animation ─────────────────────────────────────────────────────────────
-
-    @property
-    def _animations_disabled(self) -> bool:
-        return self.__animations_disabled or _UI_DISABLE_ANIMATIONS
-
-    @_animations_disabled.setter
-    def _animations_disabled(self, value: bool) -> None:
-        self.__animations_disabled = value

@@ -439,7 +439,7 @@ class autoreleasepool:
 from pytoui._platform import IS_PYTHONISTA  # noqa: E402
 
 if IS_PYTHONISTA:
-    from ui import (  # type: ignore[import-not-found,no-redef]
+    from ui import (  # type: ignore[import-not-found,no-redef,assignment]
         Vector2,
         Point,
         Size,

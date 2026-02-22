@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
 from pytoui.ui._draw import set_color, Path
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
@@ -33,7 +32,6 @@ class Switch(View):
         "_did_change_during_move",
         "_press_start_time",
         "_current_stretch",
-        "__animations_disabled",
     )
 
     _IOS_GREEN = (0.2, 0.78, 0.35, 1.0)
@@ -55,9 +53,7 @@ class Switch(View):
         self._current_stretch = 0.0
         self._last_time = time.time()
 
-        self.__animations_disabled: bool = False
-
-        self.frame = Rect(0, 0, 51, 31)
+        self._frame = Rect(0, 0, 51, 31)
 
     @property
     def action(self) -> _Action | None:
@@ -85,7 +81,7 @@ class Switch(View):
         if self._value != value:
             self._value = value
             self._target_progress = 1.0 if value else 0.0
-            if self._animations_disabled:
+            if self._pytoui_animations_disabled:
                 self._anim_progress = self._target_progress
             else:
                 self._last_time = time.time()
@@ -98,7 +94,7 @@ class Switch(View):
         dt = min(now - self._last_time, 0.05)
         self._last_time = now
 
-        if self._animations_disabled:
+        if self._pytoui_animations_disabled:
             self._anim_progress = self._target_progress
             self._current_stretch = 8.0 if self._tracked else 0.0
             self.update_interval = 0
@@ -197,7 +193,7 @@ class Switch(View):
         self._press_start_time = time.time()
         self._last_time = time.time()
 
-        if not self._animations_disabled:
+        if not self._pytoui_animations_disabled:
             self.update_interval = 1.0 / 60.0
         self.set_needs_display()
 
@@ -224,7 +220,7 @@ class Switch(View):
                 self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 
         # Continue animating stretch retraction if needed
-        if self._current_stretch > 0.01 and not self._animations_disabled:
+        if self._current_stretch > 0.01 and not self._pytoui_animations_disabled:
             self._last_time = time.time()
             self.update_interval = 1.0 / 60.0
         self.set_needs_display()
@@ -246,13 +242,3 @@ class Switch(View):
             action(sender if sender is not None else self)
         else:
             action()
-
-    # ── animation settings ──────────────────────────────────────────────────
-
-    @property
-    def _animations_disabled(self) -> bool:
-        return self.__animations_disabled or _UI_DISABLE_ANIMATIONS
-
-    @_animations_disabled.setter
-    def _animations_disabled(self, value: bool) -> None:
-        self.__animations_disabled = value

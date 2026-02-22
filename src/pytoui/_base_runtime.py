@@ -30,16 +30,16 @@ CHECKER_SIZE = 8
 _root_to_runtime: dict[int, "BaseRuntime"] = {}
 
 
-def _get_runtime_for_view(view: "View") -> "BaseRuntime | None":
+def _get_runtime_for_view(view: View) -> "BaseRuntime | None":
     root = view
     while root._superview is not None:
         root = root._superview
     return _root_to_runtime.get(id(root))
 
 
-def _any_dirty(view: "View") -> bool:
+def _any_dirty(view: View) -> bool:
     """Return True if view or any descendant needs redrawing."""
-    if view._needs_display:
+    if view._pytoui_needs_display:
         return True
     for sv in view._subviews:
         if _any_dirty(sv):
@@ -47,7 +47,7 @@ def _any_dirty(view: "View") -> bool:
     return False
 
 
-def find_view_at(view: "View", screen_x: float, screen_y: float) -> "View | None":
+def find_view_at(view: View, screen_x: float, screen_y: float) -> "View | None":
     """Return the topmost touch-enabled View at the given screen coordinates."""
     if view.hidden:
         return None
@@ -102,10 +102,10 @@ class BaseRuntime:
         if old is view:
             return
         if old is not None:
-            old._did_resign_first_responder()
+            old._pytoui_did_resign_first_responder()
         self._first_responder = view
         if view is not None:
-            view._did_become_first_responder()
+            view._pytoui_did_become_first_responder()
 
     # ------------------------------------------------------------------
     # Touch handling
@@ -169,8 +169,8 @@ class BaseRuntime:
 
     def _update_hierarchy(self, view: "View", now: float):
         if view.update_interval > 0:
-            if now - view._last_update_t >= view.update_interval:
+            if now - view._pytoui_last_update_t >= view.update_interval:
                 view.update()
-                view._last_update_t = now
+                view._pytoui_last_update_t = now
         for sv in view.subviews:
             self._update_hierarchy(sv, now)

@@ -10,7 +10,7 @@ from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
 )
-from pytoui.ui._types import _PresentOrientation, Rect, Point, Touch
+from pytoui.ui._types import _PresentOrientation, Rect, Point, Size, Touch
 from pytoui.ui._draw import (
     GState,
     Path,
@@ -54,22 +54,21 @@ class View:
         "_frame",
         "_hidden",
         "_name",
+        "_on_screen",
         "_subviews",
         "_superview",
         "_tint_color",
         "_transform",
         "_update_interval",
-        "_on_screen",
-        "_needs_display",
-        "_close_event",
-        "_presented",
         "_touch_enabled",
         "_multitouch_enabled",
         # NOT FOR PYTHONISTA
-        "_last_update_t",
-        "_content_draw_w",
-        "_content_draw_h",
-        "__animations_disabled",
+        "_pytoui_needs_display",
+        "_pytoui_presented",
+        "_pytoui_close_event",
+        "_pytoui_last_update_t",
+        "_pytoui_animations_disabled",
+        "_pytoui_content_draw_size",
     )
 
     _SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
@@ -94,15 +93,16 @@ class View:
         self._transform: Transform | None = None
         self._update_interval: float = 0.0
         self._on_screen: bool = False
-        self._needs_display: bool = True
-        self._close_event: Event = Event()
-        self._presented: bool = False
         self._touch_enabled: bool = True
         self._multitouch_enabled: bool = False
 
-        self._last_update_t: float = 0.0
-        self._content_draw_w: float = 0.0
-        self._content_draw_h: float = 0.0
+        # CUSTOM
+        self._pytoui_presented: bool = False
+        self._pytoui_close_event: Event = Event()
+        self._pytoui_needs_display: bool = True
+        self._pytoui_last_update_t: float = 0.0
+        self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
+        self._pytoui_animations_disabled: bool = False
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -183,7 +183,7 @@ class View:
         new_w, new_h = new_bounds.w, new_bounds.h
         if new_w != old_w or new_h != old_h:
             self._frame = Rect(self._frame.x, self._frame.y, new_w, new_h)
-            self._apply_autoresizing(old_w, old_h)
+            self._pytoui_apply_autoresizing(old_w, old_h)
             self.layout()
         self.set_needs_display()
 
@@ -246,8 +246,7 @@ class View:
     @content_mode.setter
     def content_mode(self, value: int):
         self._content_mode = value
-        self._content_draw_w = 0.0
-        self._content_draw_h = 0.0
+        self._pytoui_content_draw_size = Size(0.0, 0.0)
         self.set_needs_display()
 
     @property
@@ -269,6 +268,8 @@ class View:
     def flex(self, value: _ViewFlex):
         self._flex = value
 
+    autoresizing = flex
+
     @property
     def frame(self) -> Rect:
         """The view's position and size in the coordinate system of its superview."""
@@ -284,7 +285,7 @@ class View:
         new_w, new_h = new_frame.w, new_frame.h
         if new_w != old_w or new_h != old_h:
             self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
-            self._apply_autoresizing(old_w, old_h)
+            self._pytoui_apply_autoresizing(old_w, old_h)
             self.layout()
         self.set_needs_display()
 
@@ -360,7 +361,7 @@ class View:
         return self._transform
 
     @transform.setter
-    def transform(self, value: Transform):
+    def transform(self, value: Transform | None):
         if _record(self, "transform", self._transform, value):
             return
         self._transform = value
@@ -375,7 +376,7 @@ class View:
     def update_interval(self, value: float):
         self._update_interval = float(value)
         if value > 0.0:
-            self._last_update_t = time.time()
+            self._pytoui_last_update_t = time.time()
 
     # ── subview management ────────────────────────────────────────────────────
 
@@ -419,7 +420,7 @@ class View:
 
     # ── layout ────────────────────────────────────────────────────────────────
 
-    def _apply_autoresizing(self, old_w: float, old_h: float):
+    def _pytoui_apply_autoresizing(self, old_w: float, old_h: float):
         """Resize subviews based on their flex flags after this view's size changed."""
         dw = self._bounds.w - old_w
         dh = self._bounds.h - old_h
@@ -448,7 +449,7 @@ class View:
 
     def set_needs_display(self):
         """Mark the view as needing to be redrawn."""
-        self._needs_display = True
+        self._pytoui_needs_display = True
 
     def size_to_fit(self):
         """Resize to enclose all subviews."""
@@ -472,12 +473,12 @@ class View:
         hide_close_button: bool = False,
     ):
         """Present the view on screen."""
-        if self._presented:
+        if self._pytoui_presented:
             raise RuntimeError("View is already presented")
-        self._presented = True
+        self._pytoui_presented = True
         self._on_screen = True
-        self._close_event.clear()
-        self._needs_display = True
+        self._pytoui_close_event.clear()
+        self._pytoui_needs_display = True
 
         from pytoui.ui._runtime import launch_runtime
 
@@ -499,38 +500,74 @@ class View:
                 elif self._alpha < 1.0:
                     self._alpha = 1.0
                 set_backend(fb)
-                self._render()
+                self._pytoui_render()
                 set_backend(None)
                 if animating:
-                    self._needs_display = True  # after _render() so it's not cleared
+                    self._pytoui_needs_display = (
+                        True  # after _render() so it's not cleared
+                    )
         else:
 
             def _render_frame(fb) -> None:
                 set_backend(fb)
-                self._render()
+                self._pytoui_render()
                 set_backend(None)
 
         launch_runtime(self, _render_frame)
 
     def close(self):
         """Close a view that was presented via View.present()."""
-        if not self._presented:
+        if not self._pytoui_presented:
             return
         self.will_close()
         self._on_screen = False
-        self._presented = False
-        self._close_event.set()
+        self._pytoui_presented = False
+        self._pytoui_close_event.set()
 
     def wait_modal(self):
         """Block until the view is dismissed."""
         if not self._on_screen:
             return
-        self._close_event.wait()
+        self._pytoui_close_event.wait()
+
+    def become_first_responder(self) -> bool:
+        """Ask the owning window to make this view the first responder.
+
+        Returns True if the runtime was found and the request was accepted,
+        False if the view is not attached to any window.
+        When this view becomes the first responder the previous one
+        automatically loses it (resign is implicit, no public resign call).
+        """
+        from pytoui._base_runtime import _get_runtime_for_view
+
+        rt = _get_runtime_for_view(self)
+        if rt is None:
+            return False
+        rt._set_first_responder(self)
+        return True
+
+    # ── overridable hooks ─────────────────────────────────────────────────────
+
+    def did_load(self): ...
+    def will_close(self): ...
+    def draw(self): ...
+    def layout(self): ...
+    def update(self): ...
+    def touch_began(self, touch: Touch): ...
+    def touch_moved(self, touch: Touch): ...
+    def touch_ended(self, touch: Touch): ...
+    def keyboard_frame_will_change(self, frame): ...
+    def keyboard_frame_did_change(self, frame): ...
+
+    # ── internals ─────────────────────────────────────────────────────────────
+
+    def _pytoui_did_become_first_responder(self): ...
+    def _pytoui_did_resign_first_responder(self): ...
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
-    def _render(self):
-        self._needs_display = False
+    def _pytoui_render(self):
+        self._pytoui_needs_display = False
         if self._hidden:
             return
 
@@ -564,12 +601,10 @@ class View:
             if cm == CONTENT_REDRAW:
                 self.draw()
             else:
-                cw = self._content_draw_w
-                ch = self._content_draw_h
+                cw, ch = self._pytoui_content_draw_size.as_tuple()
                 if cw <= 0.0 or ch <= 0.0:
                     # First render — record the size draw() was called at
-                    self._content_draw_w = fw
-                    self._content_draw_h = fh
+                    self._pytoui_content_draw_size = Size(fw, fh)
                     self.draw()
                 else:
                     with GState():
@@ -577,60 +612,192 @@ class View:
                         self.draw()
 
         for sv in self._subviews:
-            sv._render()
-
-    # ── overridable hooks ─────────────────────────────────────────────────────
-
-    def did_load(self): ...
-    def will_close(self): ...
-    def draw(self): ...
-    def layout(self): ...
-    def update(self): ...
-    def touch_began(self, touch: Touch): ...
-    def touch_moved(self, touch: Touch): ...
-    def touch_ended(self, touch: Touch): ...
-    def keyboard_frame_will_change(self, frame): ...
-    def keyboard_frame_did_change(self, frame): ...
-    def _did_become_first_responder(self): ...
-    def _did_resign_first_responder(self): ...
-
-    def become_first_responder(self) -> bool:
-        """Ask the owning window to make this view the first responder.
-
-        Returns True if the runtime was found and the request was accepted,
-        False if the view is not attached to any window.
-        When this view becomes the first responder the previous one
-        automatically loses it (resign is implicit, no public resign call).
-        """
-        from pytoui._base_runtime import _get_runtime_for_view
-
-        rt = _get_runtime_for_view(self)
-        if rt is None:
-            return False
-        rt._set_first_responder(self)
-        return True
+            sv._pytoui_render()
 
 
 if IS_PYTHONISTA:
-    from ui import View as _View  # type: ignore[import-not-found]  # noqa: F811
+    import ui  # type: ignore[import-not-found]  # noqa: F811
 
-    class View(_View):  # type: ignore[no-redef]
-        # Proxy _frame / _bounds to the native properties so that subclass
+    class View(ui.View):  # type: ignore[no-redef]
+        # Proxy to the native properties so that subclass
         # __init__ assignments (e.g. self._frame = Rect(...)) immediately update
         # the native frame and reads always reflect the current geometry.
 
-        @property
-        def _frame(self):
-            return self.frame
+        def __init__(self):
+            # CUSTOM
+            self._pytoui_presented: bool = False
+            self._pytoui_close_event: Event = Event()
+            self._pytoui_needs_display: bool = True
+            self._pytoui_last_update_t: float = 0.0
+            self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
+            self._pytoui_animations_disabled: bool = False
 
-        @_frame.setter
-        def _frame(self, value):
-            self.frame = value
+        @property
+        def _alpha(self) -> float:
+            return self.alpha
+
+        @_alpha.setter
+        def _alpha(self, value: float):
+            self.alpha = value
 
         @property
-        def _bounds(self):
-            return self.bounds
+        def _background_color(self) -> _RGBA:
+            return cast(_RGBA, self.background_color)
+
+        @_background_color.setter
+        def _background_color(self, value: _ColorLike):
+            self.background_color = cast(_RGBA, value)
+
+        @property
+        def _border_color(self) -> _RGBA:
+            return cast(_RGBA, self.border_color)
+
+        @_border_color.setter
+        def _border_color(self, value: _ColorLike):
+            self.border_color = cast(_RGBA, value)
+
+        @property
+        def _border_width(self) -> float:
+            return self.border_width
+
+        @_border_width.setter
+        def _border_width(self, value: float):
+            self.border_width = value
+
+        @property
+        def _bounds(self) -> Rect:
+            return cast(Rect, self.bounds)
 
         @_bounds.setter
-        def _bounds(self, value):
-            self.bounds = value
+        def _bounds(self, value: _RectLike):
+            self.bounds = cast(ui.Rect, value)
+
+        @property
+        def _content_mode(self) -> int:
+            return self.content_mode
+
+        @_content_mode.setter
+        def _content_mode(self, value: int):
+            self.content_mode = value
+
+        @property
+        def _corner_radius(self) -> float:
+            return self.corner_radius
+
+        @_corner_radius.setter
+        def _corner_radius(self, value: float):
+            self.corner_radius = value
+
+        @property
+        def _flex(self) -> _ViewFlex:
+            return self.flex
+
+        @_flex.setter
+        def _flex(self, value: _ViewFlex):
+            self.flex = value
+
+        _autoresizing = _flex
+
+        @property
+        def _frame(self) -> Rect:
+            return cast(Rect, self.frame)
+
+        @_frame.setter
+        def _frame(self, value: _RectLike):
+            self.frame = cast(ui.Rect, value)
+
+        @property
+        def _hidden(self) -> bool:
+            return self.hidden
+
+        @_hidden.setter
+        def _hidden(self, value: bool):
+            self.hidden = value
+
+        @property
+        def _name(self) -> str:
+            return self.name
+
+        @_name.setter
+        def _name(self, value: str):
+            self.name = value
+
+        @property
+        def _on_screen(self) -> bool:
+            return self.on_screen
+
+        @_on_screen.setter
+        def _on_screen(self, value: bool):
+            self.on_screen = value
+
+        @property
+        def _subviews(self) -> tuple[View, ...]:
+            return cast(tuple[View, ...], self.subviews)
+
+        @property
+        def _superview(self) -> View | None:
+            return cast(View, self.superview)
+
+        @_superview.setter
+        def _superview(self, value: View | None):
+            self.superview = cast(ui.View, value)
+
+        @property
+        def _tint_color(self) -> _RGBA | None:
+            return cast(_RGBA, self.tint_color)
+
+        @_tint_color.setter
+        def _tint_color(self, value: _ColorLike):
+            self.tint_color = cast(_RGBA, value)
+
+        @property
+        def _transform(self) -> Transform | None:
+            return self.transform
+
+        @_transform.setter
+        def _transform(self, value: Transform | None):
+            self.transform = value
+
+        @property
+        def _update_interval(self) -> float:
+            return self.update_interval
+
+        @_update_interval.setter
+        def _update_interval(self, value: float):
+            self.update_interval = value
+
+        @property
+        def _touch_enabled(self) -> bool:
+            return self.touch_enabled
+
+        @_touch_enabled.setter
+        def _touch_enabled(self, value: bool):
+            self.touch_enabled = value
+
+        @property
+        def _multitouch_enabled(self) -> bool:
+            return self.multitouch_enabled
+
+        @_multitouch_enabled.setter
+        def _multitouch_enabled(self, value: bool):
+            self.multitouch_enabled = value
+
+        def _pytoui_render(self):
+            raise RuntimeError(
+                "View._pytoui_render can be used only on not Pythonista runtime"
+            )
+
+        def _pytoui_did_become_first_responder(self):
+            raise RuntimeError(
+                "View._pytoui_did_become_first_responder can be used only on not Pythonista runtime"
+            )
+
+        def _pytoui_did_resign_first_responder(self):
+            raise RuntimeError(
+                "View._pytoui_did_resign_first_responder can be used only on not Pythonista runtime"
+            )
+
+        def _pytoui_apply_autoresizing(self, old_w: float, old_h: float):
+            raise RuntimeError(
+                "View._pytoui_apply_autoresizing can be used only on not Pythonista runtime"
+            )

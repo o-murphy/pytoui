@@ -6,13 +6,13 @@ import time
 from pytoui.ui._view import View
 from pytoui.ui._types import (
     Rect,
+    Size,
     Touch,
 )
 from pytoui.ui._label import Label
 from pytoui.ui._image import Image
 from pytoui.ui._draw import draw_string
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
 
 
 if TYPE_CHECKING:
@@ -33,9 +33,8 @@ class Button(View):
         "_anim_alpha",
         "_target_alpha",
         "_tracked",
-        "_last_time",
         "_content_insets",
-        "__animations_disabled",
+        "_last_time",
     )
 
     # Authentic iOS system blue color
@@ -55,7 +54,7 @@ class Button(View):
         self._last_time = time.time()
 
         # Default iOS content insets (top, left, bottom, right)
-        self._content_insets: tuple[float, float, float, float] = (4.0, 8.0, 4.0, 8.0)
+        self._content_insets: Size = Size(8.0, 8.0)
 
         self._frame = Rect(0.0, 0.0, 80.0, 44.0)
 
@@ -69,8 +68,6 @@ class Button(View):
         lbl._text_color = None
 
         self._title_label: Label = lbl
-
-        self.__animations_disabled: bool = False
 
     def _get_contrast_text_color(self) -> _RGBA:
         """Determines the best text color based on background brightness."""
@@ -105,7 +102,7 @@ class Button(View):
     def enabled(self, value: bool):
         self._enabled = value
         self._target_alpha = 1.0 if value else 0.3
-        if self._animations_disabled:
+        if self._pytoui_animations_disabled:
             self._anim_alpha = self._target_alpha
         self.set_needs_display()
 
@@ -124,7 +121,7 @@ class Button(View):
         self._last_time = now
 
         # --- ANIMATION ---
-        if self._animations_disabled:
+        if self._pytoui_animations_disabled:
             self._anim_alpha = self._target_alpha
         else:
             # Fast and smooth interpolation similar to Switch
@@ -152,10 +149,11 @@ class Button(View):
         r, g, b, a = base_color
         current_color = (r, g, b, a * self._anim_alpha)
 
-        it, il, ib, ir = self._content_insets
         draw_string(
             lbl.text,
-            rect=(il, it, self.width - il - ir, self.height - it - ib),
+            rect=self.bounds.inset(
+                self._content_insets.x, self._content_insets.y
+            ),  # (il, it, self.width - il - ir, self.height - it - ib),
             font=lbl.font,
             color=current_color,
             alignment=lbl._alignment,
@@ -169,7 +167,7 @@ class Button(View):
         self._last_time = time.time()
         # In iOS, the button becomes semi-transparent immediately upon touch
         self._target_alpha = 0.25
-        if self._animations_disabled:
+        if self._pytoui_animations_disabled:
             self._anim_alpha = 0.25
         self.set_needs_display()
 
@@ -213,13 +211,3 @@ class Button(View):
             action(sender if sender is not None else self)
         else:
             action()
-
-    # ── animation ─────────────────────────────────────────────────────────────
-
-    @property
-    def _animations_disabled(self) -> bool:
-        return self.__animations_disabled or _UI_DISABLE_ANIMATIONS
-
-    @_animations_disabled.setter
-    def _animations_disabled(self, value: bool) -> None:
-        self.__animations_disabled = value

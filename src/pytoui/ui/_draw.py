@@ -1571,7 +1571,7 @@ def animate(
 from pytoui._platform import IS_PYTHONISTA  # noqa: E402
 
 if IS_PYTHONISTA:
-    from ui import (  # type: ignore[import-not-found,no-redef]
+    from ui import (  # type: ignore[import-not-found,no-redef,assignment]
         set_color,
         fill_rect,
         draw_string,

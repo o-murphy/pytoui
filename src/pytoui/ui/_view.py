@@ -10,7 +10,7 @@ from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
 )
-from pytoui.ui._types import _PresentOrientation, Rect, Point, Size, Touch
+from pytoui.ui._types import _PresentOrientation, _SizeLike, Rect, Point, Size, Touch
 from pytoui.ui._draw import (
     GState,
     Path,
@@ -62,13 +62,14 @@ class View:
         "_update_interval",
         "_touch_enabled",
         "_multitouch_enabled",
-        # NOT FOR PYTHONISTA
+        # INTERNALS
         "_pytoui_needs_display",
         "_pytoui_presented",
         "_pytoui_close_event",
         "_pytoui_last_update_t",
-        "_pytoui_animations_disabled",
         "_pytoui_content_draw_size",
+        # VIEW ONLY SCOPE INTERNALS
+        "__pytoui_animations_disabled",
     )
 
     _SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
@@ -102,7 +103,7 @@ class View:
         self._pytoui_needs_display: bool = True
         self._pytoui_last_update_t: float = 0.0
         self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
-        self._pytoui_animations_disabled: bool = False
+        self.__pytoui_animations_disabled: bool = False
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -559,7 +560,7 @@ class View:
     def keyboard_frame_will_change(self, frame): ...
     def keyboard_frame_did_change(self, frame): ...
 
-    # ── internals ─────────────────────────────────────────────────────────────
+    # ── CUSOM INTERNALS ─────────────────────────────────────────────────────────────
 
     def _pytoui_did_become_first_responder(self): ...
     def _pytoui_did_resign_first_responder(self): ...
@@ -614,6 +615,14 @@ class View:
         for sv in self._subviews:
             sv._pytoui_render()
 
+    @property
+    def _pytoui_animations_disabled(self) -> bool:
+        return bool(self.__pytoui_animations_disabled or _UI_DISABLE_ANIMATIONS)
+
+    @_pytoui_animations_disabled.setter
+    def _pytoui_animations_disabled(self, value: bool):
+        self.__pytoui_animations_disabled = value
+
 
 if IS_PYTHONISTA:
     import ui  # type: ignore[import-not-found]  # noqa: F811
@@ -622,15 +631,6 @@ if IS_PYTHONISTA:
         # Proxy to the native properties so that subclass
         # __init__ assignments (e.g. self._frame = Rect(...)) immediately update
         # the native frame and reads always reflect the current geometry.
-
-        def __init__(self):
-            # CUSTOM
-            self._pytoui_presented: bool = False
-            self._pytoui_close_event: Event = Event()
-            self._pytoui_needs_display: bool = True
-            self._pytoui_last_update_t: float = 0.0
-            self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
-            self._pytoui_animations_disabled: bool = False
 
         @property
         def _alpha(self) -> float:
@@ -781,6 +781,80 @@ if IS_PYTHONISTA:
         @_multitouch_enabled.setter
         def _multitouch_enabled(self, value: bool):
             self.multitouch_enabled = value
+
+        # CUSTOM
+        @property
+        def _pytoui_presented(self) -> bool:
+            raise RuntimeError(
+                "View._pytoui_presented can be used only on not Pythonista runtime"
+            )
+
+        @_pytoui_presented.setter
+        def _pytoui_presented(self, value: bool):
+            raise RuntimeError(
+                "View._pytoui_presented can be used only on not Pythonista runtime"
+            )
+
+        @property
+        def _pytoui_close_event(self) -> Event:
+            raise RuntimeError(
+                "View._pytoui_close_event can be used only on not Pythonista runtime"
+            )
+
+        @_pytoui_close_event.setter
+        def _pytoui_close_event(self, value: Event):
+            raise RuntimeError(
+                "View._pytoui_close_event can be used only on not Pythonista runtime"
+            )
+
+        @property
+        def _pytoui_needs_display(self) -> bool:
+            raise RuntimeError(
+                "View._pytoui_needs_display can be used only on not Pythonista runtime"
+            )
+
+        @_pytoui_needs_display.setter
+        def _pytoui_needs_display(self, value: bool):
+            raise RuntimeError(
+                "View._pytoui_needs_display can be used only on not Pythonista runtime"
+            )
+
+        @property
+        def _pytoui_last_update_t(self) -> float:
+            raise RuntimeError(
+                "View._pytoui_last_update_t can be used only on not Pythonista runtime"
+            )
+
+        @_pytoui_last_update_t.setter
+        def _pytoui_last_update_t(self, value: float):
+            raise RuntimeError(
+                "View._pytoui_last_update_t can be used only on not Pythonista runtime"
+            )
+
+        @property
+        def _pytoui_content_draw_size(self) -> Size:
+            raise RuntimeError(
+                "View._pytoui_content_draw_size can be used only on not Pythonista runtime"
+            )
+
+        @_pytoui_content_draw_size.setter
+        def _pytoui_content_draw_size(self, value: _SizeLike):
+            raise RuntimeError(
+                "View._pytoui_content_draw_size can be used only on not Pythonista runtime"
+            )
+
+        @property
+        def _pytoui_animations_disabled(self) -> bool:
+            return False or _UI_DISABLE_ANIMATIONS
+
+        @_pytoui_animations_disabled.setter
+        def _pytoui_animations_disabled(self, value: bool):
+            from warnings import warn
+
+            warn(
+                "_pytoui_animations_disabled has no effect in Pythonista runtime",
+                UserWarning,
+            )
 
         def _pytoui_render(self):
             raise RuntimeError(

@@ -8,8 +8,7 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* ~~maybe instead of check IS_PYTHONISTA every time we should create some _ViewMixin class~~ (done: _BaseView)
-* View shim logic for some props possibly wrong
+* View shim logic for some props possibly wron, much more, we should hide internal implementation with mangling `__` to be sure subclasses use getters/setters
 * try to improve touch handling with hit_test logic?
 * FIXME in Label and ActivityIndicator
 * View

@@ -105,11 +105,10 @@ class Label(View):
         font_name, font_size = self._font
         w, h = self.width, self.height
 
-        # iOS Auto-shrink logic (single-line only)
+        # iOS Auto-shrink (only for single line)
         if self._scales_font and self._number_of_lines == 1:
             min_scale = self._min_font_scale if self._min_font_scale > 0 else 0.5
             min_size = font_size * min_scale
-
             while font_size > min_size:
                 tw, _ = measure_string(self._text, font=(font_name, font_size))
                 if tw <= w:
@@ -117,43 +116,22 @@ class Label(View):
                 font_size -= 0.5
             font_size = max(font_size, min_size)
 
-        if self._number_of_lines == 1:
-            draw_string(
-                self._text,
-                rect=(0, 0, w, h),
-                font=(font_name, font_size),
-                color=self._text_color,
-                alignment=self._alignment,
-                line_break_mode=self._line_break_mode,
-            )
-        else:
-            # Multi-line: lay out all lines then draw each one in its own row
-            ctx = _get_draw_ctx()
-            fb = ctx.backend
-            if fb is None:
-                return
-            fid = _font_id(font_name)
-            lines = _layout_lines(
-                self._text,
-                int(w),
-                font_size,
-                fid,
-                self._line_break_mode,
-                self._number_of_lines,
-            )
-            line_h = type(fb).get_text_height(size=font_size, font_id=fid)
-            for i, line in enumerate(lines):
-                y_off = i * line_h
-                if y_off + line_h > h:
-                    break
-                draw_string(
-                    line,
-                    rect=(0, y_off, w, line_h),
-                    font=(font_name, font_size),
-                    color=self._text_color,
-                    alignment=self._alignment,
-                    line_break_mode=LB_CLIP,
-                )
+        # To handle number_of_lines, we manually layout and then join with \n
+        # because draw_string doesn't have a max_lines parameter.
+        fid = _font_id(font_name)
+        lines = _layout_lines(
+            self._text, w, font_size, fid, self._line_break_mode, self._number_of_lines
+        )
+        text_to_draw = "\n".join(lines)
+
+        draw_string(
+            text_to_draw,
+            rect=(0, 0, w, h),
+            font=(font_name, font_size),
+            color=self._text_color,
+            alignment=self._alignment,
+            line_break_mode=self._line_break_mode,
+        )
 
     def size_to_fit(self):
         """Resizes the label to perfectly fit its text content."""

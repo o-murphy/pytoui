@@ -798,52 +798,6 @@ def _wrap_char(fb_cls, text: str, max_w: float, size: float, font_id: int) -> li
     return lines or [""]
 
 
-def _layout_lines(
-    text: str,
-    w: float,
-    font_size: float,
-    font_id: int,
-    mode: int,
-    max_lines: int,
-) -> list[str]:
-    """Break text into lines respecting line_break_mode and number_of_lines.
-
-    Uses ctx.backend automatically; returns [''] if no backend is active.
-    """
-    fb = _get_draw_ctx().backend
-    if fb is None:
-        return [""]
-    fb_cls = type(fb)
-
-    if mode in (
-        LB_TRUNCATE_TAIL,
-        LB_TRUNCATE_HEAD,
-        LB_TRUNCATE_MIDDLE,
-        LB_CLIP,
-    ):
-        if max_lines <= 1:
-            if mode == LB_TRUNCATE_TAIL:
-                return [_truncate_tail(fb_cls, text, w, font_size, font_id)]
-            elif mode == LB_TRUNCATE_HEAD:
-                return [_truncate_head(fb_cls, text, w, font_size, font_id)]
-            elif mode == LB_TRUNCATE_MIDDLE:
-                return [_truncate_middle(fb_cls, text, w, font_size, font_id)]
-            else:
-                return [text]
-
-    if mode == LB_CHAR_WRAP:
-        lines = _wrap_char(fb_cls, text, w, font_size, font_id)
-    else:
-        lines = _wrap_word(fb_cls, text, w, font_size, font_id)
-
-    if max_lines > 0 and len(lines) > max_lines:
-        lines = lines[:max_lines]
-        if mode != LB_CLIP:
-            lines[-1] = _truncate_tail(fb_cls, lines[-1], w, font_size, font_id)
-
-    return lines
-
-
 def _alignment_to_anchor(alignment: int) -> int:
     """Map TextAlignment to osdbuf TextAnchor bit flags."""
     CENTER = 0
@@ -858,32 +812,79 @@ def _alignment_to_anchor(alignment: int) -> int:
     return LEFT
 
 
+def _layout_lines(
+    text: str,
+    w: float,
+    font_size: float,
+    font_id: int,
+    mode: int,
+    max_lines: int,
+) -> list[str]:
+    """Break text into lines respecting line_break_mode and number_of_lines.
+    Now supports explicit newline characters (\\n).
+    """
+    fb = _get_draw_ctx().backend
+    if fb is None:
+        return [""]
+    fb_cls = type(fb)
+
+    # Split by explicit newlines first
+    paragraphs = text.splitlines()
+    if not paragraphs:
+        return [""]
+
+    all_lines = []
+
+    for p in paragraphs:
+        # For each paragraph, apply the wrapping logic
+        if mode in (LB_TRUNCATE_TAIL, LB_TRUNCATE_HEAD, LB_TRUNCATE_MIDDLE, LB_CLIP):
+            # These modes usually imply a single line per paragraph logic in layout
+            if mode == LB_TRUNCATE_TAIL:
+                p_lines = [_truncate_tail(fb_cls, p, w, font_size, font_id)]
+            elif mode == LB_TRUNCATE_HEAD:
+                p_lines = [_truncate_head(fb_cls, p, w, font_size, font_id)]
+            elif mode == LB_TRUNCATE_MIDDLE:
+                p_lines = [_truncate_middle(fb_cls, p, w, font_size, font_id)]
+            else:
+                p_lines = [p]
+        elif mode == LB_CHAR_WRAP:
+            p_lines = _wrap_char(fb_cls, p, w, font_size, font_id)
+        else:
+            # Default to word wrap
+            p_lines = _wrap_word(fb_cls, p, w, font_size, font_id)
+
+        all_lines.extend(p_lines)
+
+    # Apply global max_lines constraint if set
+    if max_lines > 0 and len(all_lines) > max_lines:
+        all_lines = all_lines[:max_lines]
+        if mode != LB_CLIP:
+            all_lines[-1] = _truncate_tail(fb_cls, all_lines[-1], w, font_size, font_id)
+
+    return all_lines
+
+
 def draw_string(
     s: str,
     rect: _RectLike = (0, 0, 0, 0),
     font: tuple[str, float] = ("<system>", 17.0),
-    color: _ColorLike | None = None,
+    color: _ColorLike | None = "black",
     alignment: int = ALIGN_NATURAL,
     line_break_mode: int = LB_TRUNCATE_TAIL,
 ):
     """Draw a string in the given rectangle.
-
-    Pythonista-compatible. Coordinates are relative to the current view origin.
-    FIXME: Pythonista allows to use \n in the strings to draw multiline text
-           but it will not align it vertically! alignment will be by first line
-           after this fix we should simplify Label.draw
+    Now supports multiline text with \\n and vertical centering.
     """
     ctx = _get_draw_ctx()
     fb = ctx.backend
     if fb is None:
         return
 
-    # NOTE: text rendering does not apply CTM rotation — backend fb.text() does not support it.
-    # However, we do apply the full transform (translation + scale) to the text anchor position.
     ox, oy = ctx.origin
     m = ctx.ctm
     if not isinstance(rect, Rect):
         rect = Rect(*rect)
+
     x = m.a * rect.x + m.c * rect.y + m.tx + ox
     y = m.b * rect.x + m.d * rect.y + m.ty + oy
     w, h = rect.w, rect.h
@@ -897,10 +898,19 @@ def draw_string(
         _color = (_color[0], _color[1], _color[2], _color[3] * ctx.alpha)
     c = _rgba_to_uint32(_color)
 
-    lines = _layout_lines(s, w, font_size, fid, line_break_mode, 1)
+    # If line_break_mode is word/char wrap, we don't limit to 1 line.
+    # If it's truncate, we might still want to support multiple lines if \n is present,
+    # but usually Pythonista's draw_string with TRUNCATE_TAIL limits to the rect.
+    # We set max_lines to 0 (unlimited) here, and _layout_lines will handle the logic.
+    max_lines = 0 if line_break_mode in (LB_WORD_WRAP, LB_CHAR_WRAP) else 100
+
+    lines = _layout_lines(s, w, font_size, fid, line_break_mode, max_lines)
+
     line_h = type(fb).get_text_height(size=font_size, font_id=fid)
     total_h = line_h * len(lines)
-    start_y = y + (h - total_h) // 2
+
+    # Calculate starting Y to center the whole block of text vertically in the rect
+    start_y = y + (h - total_h) / 2
 
     anchor = _alignment_to_anchor(alignment)
 
@@ -910,13 +920,17 @@ def draw_string(
         elif alignment == ALIGN_RIGHT:
             tx = x + w
         elif alignment == ALIGN_CENTER:
-            tx = x + w // 2
+            tx = x + w / 2
         else:
             tx = x
 
-        ty = start_y + i * line_h + line_h // 2
+        # ty is the vertical center of the specific line
+        ty = start_y + i * line_h + line_h / 2
+
+        # Simple clipping check: if the line center is outside the rect height, skip
         if ty < y or ty >= y + h:
             continue
+
         fb.text(line, tx, ty, c=c, size=font_size, font_id=fid, anchor=anchor)
 
 

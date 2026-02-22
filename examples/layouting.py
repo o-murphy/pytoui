@@ -7,31 +7,25 @@ Press ESC or close the window to exit.
 from pytoui import ui
 
 
-WIDTH = 720
-HEIGHT = 576
+WIDTH = 540
+HEIGHT = 720
 
 
 def _make_test_image():
     from PIL import Image as PILImage
 
-    try:
-        from pathlib import Path
-
-        pil = PILImage.open(Path("ui/ui_files/ui_switch.png").resolve(), "r").convert(
-            "RGBA"
-        )
-    except OSError:
-        # Fallback if image file is missing
-        pil = PILImage.new("RGBA", (80, 60))
-        for y in range(20):
-            for x in range(80):
-                pil.putpixel((x, y), (0, 128, 0, 255))
-        for y in range(20, 40):
-            for x in range(80):
-                pil.putpixel((x, y), (0, 255, 255, 255))
-        for y in range(40, 60):
-            for x in range(80):
-                pil.putpixel((x, y), (255, 0, 0, 255))
+    # Fallback if image file is missing
+    w, h = 60, 30
+    pil = PILImage.new("RGBA", (w, h))
+    for y in range(10):
+        for x in range(w):
+            pil.putpixel((x, y), (0, 128, 0, 255))
+    for y in range(10, 20):
+        for x in range(w):
+            pil.putpixel((x, y), (0, 255, 255, 255))
+    for y in range(20, 30):
+        for x in range(w):
+            pil.putpixel((x, y), (255, 0, 0, 255))
     w, h = pil.size
     return ui.Image(width=w, height=h, data=pil.tobytes())
 
@@ -93,6 +87,7 @@ class MainView(ui.View):
         self.button.title = "Press the button"
         self.button.background_color = "white"
         self.button.action = self.on_button_click
+        self.button.content_mode = ui.CONTENT_REDRAW
         self.add_subview(self.button)
 
         self.button2 = ui.Button()
@@ -105,6 +100,7 @@ class MainView(ui.View):
         self.add_subview(self.button2)
 
         self.switch = ui.Switch()
+        print(self.switch.__class__)
         self.switch.action = self.on_switch_toggle
         self.switch.value = True
         self.add_subview(self.switch)
@@ -172,23 +168,25 @@ class MainView(ui.View):
     def layout(self):
         self.header.frame = (0, 0, self.width, 32)
         self.title.frame = (0, 0, self.width, 32)
-        self.button.x, self.button.y, self.button.width = 100, 100, 150
-        self.button2.x, self.button2.y, self.button2.width = 100, 150, 100
-        self.switch.x, self.switch.y = 100, 200
-        self.activity.frame = (200, 200, 30, 30)
-        self.segmented.x, self.segmented.y, self.segmented.width = 100, 250, 200
-        self.segmented.bounds = (0, 0, self.segmented.width, self.segmented.height)
-        self.slider.x, self.slider.y, self.slider.width = 100, 300, 200
+        self.button.x, self.button.y, self.button.width = 10, 50, 150
+        self.button2.x, self.button2.y, self.button2.width = 10, 100, 100
+        self.switch.x, self.switch.y = 10, 150
+        self.activity.frame = (150, 150, 30, 30)
+        self.segmented.x, self.segmented.y, self.segmented.width = 10, 200, 200
+        self.slider.x, self.slider.y, self.slider.width = 10, 250, 200
         self.slider_label.x, self.slider_label.y, self.slider_label.width = (
-            100,
-            350,
+            10,
+            300,
             200,
         )
-        self.box.frame = (100, 400, 80, 80)
+        self.box.frame = (200, 50, 80, 80)
         self.inner.frame = (10, 10, 30, 30)
-        self.canvas.frame = (400, 100, 240, 200)
-        self.img_view.frame = (400, 350, 200, 160)
+        self.canvas.frame = (10, 500, 240, 200)
+        self.img_view.frame = (10, 340, 200, 160)
         self.sidebar.frame = (self.width - 60, 50, 50, self.height - 60)
+
+    def draw(self):
+        ui.draw_string("test\nmultiline\ntext", self.frame, alignment=ui.ALIGN_CENTER)
 
     def on_button2_click(self, sender: ui.Button):
         print(f"button clicked: {sender.name}")
@@ -221,7 +219,7 @@ def main():
     root = MainView()
     root.name = "Demo App"
     root.frame = (0, 0, WIDTH, HEIGHT)
-    root.present()
+    root.present("fullscreen")
 
 
 if __name__ == "__main__":

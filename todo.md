@@ -8,7 +8,7 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* FIXME in draw_string, SegmentedControl
+* FIXME in SegmentedControl
 * try to improve touch handling with hit_test logic?
 * View
   * View.present.style
@@ -39,7 +39,7 @@ View classes:
 * ~~View~~
 * ~~Button~~
 * ButtonItem
-* ImageView
+* ImageView - _make_test_image works only on PC
 * ~~Label~~
 * NavigationView
 * ScrollView

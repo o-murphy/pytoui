@@ -17,6 +17,8 @@ __all__ = ("SegmentedControl",)
 
 
 class SegmentedControl(View):
+    # FIXME: The segmented control has not that smooth animation on edge cases
+    #        There was the same problem with Switch but now seems like it solved
     __final__ = True
 
     __slots__ = (

@@ -15,6 +15,7 @@ HOT:
     * View.present("popover") - uses popower location
     * View.present("panel") - uses popower location, as second window not blocks the first one till opened
   * which View.present() args are not completely used?
+  * code after View.present should continue to run
 
 Runtime
 * Pillow can be not always available, so maybe we are need some rust based fallback like an "image" crate for ui.ImageContext, ui.ImageView ui.Image

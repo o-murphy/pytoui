@@ -94,6 +94,16 @@ class Label(View):
         self._alignment = value
         self.set_needs_display()
 
+    @property
+    def number_of_lines(self) -> int:
+        return self._number_of_lines
+
+    @number_of_lines.setter
+    def number_of_lines(self, value: int):
+        if self._number_of_lines != value:
+            self._number_of_lines = value
+            self.set_needs_display()
+
     def _get_text_metrics(self, font_size: float) -> tuple[float, float, float]:
         """Get font metrics for vertical centering using fallback values."""
         # Since we can't access fb directly, use approximate values

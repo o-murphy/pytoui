@@ -88,23 +88,23 @@ uv sync
 ## Running examples
 
 Small example programs are provided in the `examples/` folder. Example files
-include `layouting.py`, `multi_window.py`, and `multitouch.py`.
+include `demo.py`, `multi_window.py`, and `multitouch.py`.
 
 Run an example by selecting a backend and running the module. For example:
 
 ```bash
-# use SDL backend and run the layouting example with standard python
-UI_RT=sdl python -m examples.layouting
+# use SDL backend and run the demo example with standard python
+UI_RT=sdl python -m examples.demo
 
 # or if you have a tiny runner script named `uv` in your environment (optional)
-UI_RT=sdl uv run -m examples.layouting
+UI_RT=sdl uv run -m examples.demo
 ```
 
 Adjust `UI_RT` to `winit` or other supported runtimes as available.
 
 ## Examples overview
 
-- `examples/layouting.py` — demonstrates layout primitives and view hierarchy.
+- `examples/demo.py` — demonstrates layout primitives and view hierarchy.
 - `examples/multi_window.py` — simple multi-window sample (backend permitting).
 - `examples/multitouch.py` — touches and gesture handling demo.
 

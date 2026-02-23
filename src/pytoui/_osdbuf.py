@@ -534,7 +534,7 @@ class FrameBuffer:
     @property
     def height(self) -> int:
         return self._height
-    
+
     def destroy(self):
         if self._handle > 0:
             self.fill(0)

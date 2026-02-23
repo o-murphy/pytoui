@@ -3,10 +3,11 @@ from __future__ import annotations
 import time
 from typing import Sequence, TYPE_CHECKING
 
-from pytoui.ui._constants import ALIGN_CENTER
+from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
 from pytoui.ui._draw import Path, set_color, draw_string, measure_string
+
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
@@ -36,7 +37,7 @@ class SegmentedControl(View):
     _IOS_GRAY_BG = (0.89, 0.89, 0.91, 1.0)
     _IOS_WHITE_SEL = (1.0, 1.0, 1.0, 1.0)
     _TEXT_COLOR = (0.0, 0.0, 0.0, 1.0)
-    _FONT_SIZE = 13.0
+    _FONT_SIZE = 15.0
 
     def __init__(self):
         self._action: _Action | None = None
@@ -214,7 +215,7 @@ class SegmentedControl(View):
                     max_width=max_text_width,
                     font=("<system>", self._FONT_SIZE),
                     alignment=ALIGN_CENTER,
-                    line_break_mode=1,  # LB_TRUNCATE_TAIL
+                    line_break_mode=LB_TRUNCATE_TAIL,
                 )
             except Exception:
                 text_width = max_text_width
@@ -227,6 +228,7 @@ class SegmentedControl(View):
             # Baseline is approximately at 2/3 of the text height from the top
             baseline_y = pill_center_y - text_height / 2  # + self._FONT_SIZE * 0.7
 
+            # if text_height <= scaled_sh:
             # Draw text
             draw_string(
                 string,
@@ -234,7 +236,7 @@ class SegmentedControl(View):
                 font=("<system>", self._FONT_SIZE),
                 color=(r, g, b, alpha),
                 alignment=ALIGN_CENTER,
-                line_break_mode=1,  # LB_TRUNCATE_TAIL
+                line_break_mode=LB_TRUNCATE_TAIL,
             )
 
     def _get_index_at_location(self, x: float) -> int:

@@ -154,11 +154,10 @@ class Button(View):
         # Apply content insets to get the drawing rectangle
         inset_rect = self.bounds.inset(self._content_insets.x, self._content_insets.y)
 
-        font_name, font_size = self._font
-
+        _, font_size = self._font
         # Measure text to get actual dimensions
         try:
-            text_width, text_height = measure_string(
+            _, text_height = measure_string(
                 self._title,
                 max_width=inset_rect.w,
                 font=self._font,
@@ -166,24 +165,14 @@ class Button(View):
                 line_break_mode=LB_TRUNCATE_TAIL,
             )
         except Exception:
-            text_width = inset_rect.w
             text_height = font_size
 
-        # Calculate vertical center of the inset rectangle
-        center_y = inset_rect.y + inset_rect.h / 2
-
-        # Position text so that its center aligns with the button's center
-        # The draw_string function uses baseline, so we need to adjust
-        # Baseline is approximately at 2/3 of the text height from the top
-        baseline_y = center_y - text_height / 2  # + font_size * 0.7
-
-        # Calculate horizontal position for centering
-        text_x = inset_rect.x + (inset_rect.w - text_width) / 2
+        title_rect = inset_rect.inset(0, (inset_rect.height - text_height) / 2)
 
         # Draw text centered
         draw_string(
             self._title,
-            rect=(text_x, baseline_y, text_width, text_height),
+            rect=title_rect,
             font=self._font,
             color=current_color,
             alignment=ALIGN_CENTER,

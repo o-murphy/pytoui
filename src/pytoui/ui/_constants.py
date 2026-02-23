@@ -103,9 +103,11 @@ LB_TRUNCATE_HEAD: Literal[3] = 3
 LB_TRUNCATE_MIDDLE: Literal[5] = 5
 LB_TRUNCATE_TAIL: Literal[4] = 4
 LB_WORD_WRAP: Literal[0] = 0
+
 LINE_CAP_BUTT: Literal[0] = 0
 LINE_CAP_ROUND: Literal[1] = 1
 LINE_CAP_SQUARE: Literal[2] = 2
+
 LINE_JOIN_BEVEL: Literal[2] = 2
 LINE_JOIN_MITER: Literal[0] = 0
 LINE_JOIN_ROUND: Literal[1] = 1

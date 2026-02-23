@@ -268,6 +268,7 @@ class View:
     @flex.setter
     def flex(self, value: _ViewFlex):
         self._flex = value
+        self.set_needs_display()
 
     autoresizing = flex
 
@@ -446,7 +447,7 @@ class View:
                 h = f.h + (share if "H" in flex else 0.0)
             else:
                 y, h = f.y, f.h
-            sv._frame = Rect(x, y, w, h)  # bypass setter to avoid recursion
+            sv.frame = Rect(x, y, w, h)  # bypass setter to avoid recursion
 
     def set_needs_display(self):
         """Mark the view as needing to be redrawn."""
@@ -648,6 +649,26 @@ if IS_PYTHONISTA:
         # Proxy to the native properties so that subclass
         # __init__ assignments (e.g. self._frame = Rect(...)) immediately update
         # the native frame and reads always reflect the current geometry.
+
+        def __init__(self):
+            # disallow *args, **kwargs
+            pass
+
+        def __init_subclass__(cls, **kwargs):
+            super().__init_subclass__(**kwargs)
+
+            for base in cls.__bases__:
+                if getattr(base, "__final__", False):
+                    raise TypeError(f"{base.__name__} cannot be subclassed")
+
+            original_init = cls.__dict__.get("__init__")
+            if original_init is not None:
+
+                def wrapped_init(self, *args, __orig=original_init, **kwargs):
+                    View.__init__(self)
+                    __orig(self, *args, **kwargs)
+
+                cls.__init__ = wrapped_init
 
         @property
         def _alpha(self) -> float:

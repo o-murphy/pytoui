@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, cast
+from typing import TYPE_CHECKING, Sequence, cast, NoReturn
 
 import time
 from uuid import uuid4
 from threading import Event
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
+from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA, pytoui_desktop_only
 from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
@@ -801,64 +801,54 @@ if IS_PYTHONISTA:
 
         # CUSTOM
         @property
+        @pytoui_desktop_only
         def _pytoui_presented(self) -> bool:
-            raise RuntimeError(
-                "View._pytoui_presented can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @_pytoui_presented.setter
+        @pytoui_desktop_only
         def _pytoui_presented(self, value: bool):
-            raise RuntimeError(
-                "View._pytoui_presented can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @property
+        @pytoui_desktop_only
         def _pytoui_close_event(self) -> Event:
-            raise RuntimeError(
-                "View._pytoui_close_event can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @_pytoui_close_event.setter
+        @pytoui_desktop_only
         def _pytoui_close_event(self, value: Event):
-            raise RuntimeError(
-                "View._pytoui_close_event can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @property
+        @pytoui_desktop_only
         def _pytoui_needs_display(self) -> bool:
-            raise RuntimeError(
-                "View._pytoui_needs_display can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @_pytoui_needs_display.setter
+        @pytoui_desktop_only
         def _pytoui_needs_display(self, value: bool):
-            raise RuntimeError(
-                "View._pytoui_needs_display can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @property
+        @pytoui_desktop_only
         def _pytoui_last_update_t(self) -> float:
-            raise RuntimeError(
-                "View._pytoui_last_update_t can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @_pytoui_last_update_t.setter
+        @pytoui_desktop_only
         def _pytoui_last_update_t(self, value: float):
-            raise RuntimeError(
-                "View._pytoui_last_update_t can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @property
-        def _pytoui_content_draw_size(self) -> Size:
-            raise RuntimeError(
-                "View._pytoui_content_draw_size can be used only on not Pythonista runtime"
-            )
+        @pytoui_desktop_only
+        def _pytoui_content_draw_size(self) -> Size | NoReturn:
+            raise NotImplementedError
 
         @_pytoui_content_draw_size.setter
+        @pytoui_desktop_only
         def _pytoui_content_draw_size(self, value: _SizeLike):
-            raise RuntimeError(
-                "View._pytoui_content_draw_size can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
         @property
         def _pytoui_animations_disabled(self) -> bool:
@@ -873,27 +863,22 @@ if IS_PYTHONISTA:
                 UserWarning,
             )
 
+        @pytoui_desktop_only
         def _pytoui_render(self):
-            raise RuntimeError(
-                "View._pytoui_render can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
+        @pytoui_desktop_only
         def _pytoui_did_become_first_responder(self):
-            raise RuntimeError(
-                "View._pytoui_did_become_first_responder can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
+        @pytoui_desktop_only
         def _pytoui_did_resign_first_responder(self):
-            raise RuntimeError(
-                "View._pytoui_did_resign_first_responder can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
+        @pytoui_desktop_only
         def _pytoui_apply_autoresizing(self, old_w: float, old_h: float):
-            raise RuntimeError(
-                "View._pytoui_apply_autoresizing can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError
 
+        @pytoui_desktop_only
         def _pytoui_hit_test(self, x: float, y: float) -> View | None:
-            raise RuntimeError(
-                "View._pytoui_hit_test can be used only on not Pythonista runtime"
-            )
+            raise NotImplementedError

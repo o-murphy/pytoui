@@ -3,7 +3,12 @@ from typing import Literal, Callable, Any, Union
 
 
 __all__ = (
+    "Vector2",
+    "Point",
+    "Size",
     "Rect",
+    "Touch",
+    "autoreleasepool",
     "_RectLike",
     "_PointLike",
     "_RGBA",
@@ -17,11 +22,6 @@ __all__ = (
     "_ViewFlex",
     "_PresentStyle",
     "_PresentOrientation",
-    "Vector2",
-    "Size",
-    "Point",
-    "Touch",
-    "autoreleasepool",
 )
 
 _RGB = tuple[float, float, float]
@@ -445,4 +445,5 @@ if IS_PYTHONISTA:
         Size,
         Rect,
         Touch,
+        autoreleasepool,
     )

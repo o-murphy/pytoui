@@ -1567,8 +1567,11 @@ pub unsafe extern "C" fn CreateTransform(a: f32, b: f32, c: f32, d: f32, tx: f32
 }
 
 #[no_mangle]
-pub extern "C" fn DestroyTransform(handle: i32) {
-    TRANSFORM_MAP.write().remove(&handle);
+pub extern "C" fn DestroyTransform(handle: i32) -> i32 {
+    match TRANSFORM_MAP.write().remove(&handle) {
+        Some(_) => 0,
+        None => -1,
+    }
 }
 
 #[no_mangle]
@@ -1679,8 +1682,11 @@ pub unsafe extern "C" fn CreatePath() -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn DestroyPath(handle: i32) {
-    PATH_MAP.write().remove(&handle);
+pub extern "C" fn DestroyPath(handle: i32) -> i32 {
+    match PATH_MAP.write().remove(&handle) {
+        Some(_) => 0,   // успішно
+        None => -1,     // помилка - не знайдено
+    }
 }
 
 #[no_mangle]
@@ -2040,9 +2046,9 @@ pub unsafe extern "C" fn PathGetBounds(
         *y_out = b.top();
         *w_out = b.width();
         *h_out = b.height();
-        1
-    } else {
         0
+    } else {
+        -1
     }
 }
 

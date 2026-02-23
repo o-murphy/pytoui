@@ -34,7 +34,7 @@ from functools import lru_cache
 from re import fullmatch
 from threading import local
 import time
-from typing import Any, Callable, Sequence, cast, TYPE_CHECKING
+from typing import Callable, Sequence, cast, TYPE_CHECKING
 
 from pytoui.ui._constants import (
     ALIGN_LEFT,
@@ -62,9 +62,11 @@ from pytoui.ui._types import (
     Rect,
     Size,
 )
+from pytoui._platform import pytoui_desktop_only
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _RGBA, _RectLike, _ColorLike
+    from pytoui._osdbuf import FrameBuffer
 
 
 __all__ = (
@@ -76,7 +78,6 @@ __all__ = (
     "set_shadow",
     "fill_rect",
     "concat_ctm",
-    "begin_path",
     "draw_string",
     "measure_string",
     "convert_point",
@@ -116,7 +117,7 @@ class ImageContext:
         self.width = width
         self.height = height
         self.scale = scale
-        self._fb = None
+        self._fb: FrameBuffer | None = None
         self._buf = None
         self._prev_backend = None
         self._prev_origin = None
@@ -152,8 +153,7 @@ class ImageContext:
         ctx._image_context = None
         if self._fb is not None:
             try:
-                self._fb._lib.DestroyFrameBuffer(self._fb._handle)
-                self._fb._handle = 0
+                self._fb.destroy()
             except Exception:
                 pass
             self._fb = None
@@ -172,16 +172,6 @@ class ImageContext:
         return Image(
             width=self.width, height=self.height, scale=self.scale, data=bytes(raw)
         )
-
-
-def _get_rust_lib():
-    """Return the loaded osdbuf Rust library, or None if not yet available."""
-    try:
-        from pytoui._osdbuf import FrameBuffer
-
-        return FrameBuffer._lib
-    except (ImportError, AttributeError):
-        return None
 
 
 class Transform:
@@ -204,108 +194,87 @@ class Transform:
         self._handle: int = 0  # lazily created
 
     def __del__(self):
+        backend = _get_draw_ctx().backend
+        if not backend:
+            return
+
         h = getattr(self, "_handle", 0)
         if h > 0:
-            lib = _get_rust_lib()
-            if lib:
-                try:
-                    lib.DestroyTransform(h)
-                except Exception:
-                    pass
+            try:
+                type(backend).destroy_transform(h)
+            except Exception:
+                pass
 
     def _ensure_handle(self) -> int:
-        if self._handle <= 0:
-            lib = _get_rust_lib()
-            if lib:
-                import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-                self._handle = lib.CreateTransform(
-                    ctypes.c_float(self.a),
-                    ctypes.c_float(self.b),
-                    ctypes.c_float(self.c),
-                    ctypes.c_float(self.d),
-                    ctypes.c_float(self.tx),
-                    ctypes.c_float(self.ty),
-                )
+        if self._handle <= 0:
+            self._handle = type(backend).create_transform(
+                self.a, self.b, self.c, self.d, self.tx, self.ty
+            )
         return self._handle
 
     @classmethod
     def _from_handle(cls, handle: int) -> "Transform":
         """Wrap an existing Rust handle; reads values back via TransformGet."""
-        import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-        obj = cls.__new__(cls)
-        object.__setattr__(obj, "_handle", handle)
-        object.__setattr__(obj, "a", 0.0)
-        object.__setattr__(obj, "b", 0.0)
-        object.__setattr__(obj, "c", 0.0)
-        object.__setattr__(obj, "d", 0.0)
-        object.__setattr__(obj, "tx", 0.0)
-        object.__setattr__(obj, "ty", 0.0)
-        lib = _get_rust_lib()
-        if lib and handle > 0:
-            a = ctypes.c_float()
-            b = ctypes.c_float()
-            c = ctypes.c_float()
-            d = ctypes.c_float()
-            tx = ctypes.c_float()
-            ty = ctypes.c_float()
-            lib.TransformGet(
-                handle,
-                ctypes.byref(a),
-                ctypes.byref(b),
-                ctypes.byref(c),
-                ctypes.byref(d),
-                ctypes.byref(tx),
-                ctypes.byref(ty),
-            )
-            obj.a, obj.b, obj.c, obj.d = a.value, b.value, c.value, d.value
-            obj.tx, obj.ty = tx.value, ty.value
+        a, b, c, d, tx, ty, *_ = type(backend).transform_get(handle)
+        obj = cls(a, b, c, d, tx, ty)
+        obj._handle = handle
         return obj
 
     @classmethod
     def rotation(cls, rad: float) -> Transform:
-        import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-        lib = _get_rust_lib()
-        if lib:
-            h = lib.TransformRotation(ctypes.c_float(rad))
-            if h > 0:
-                return cls._from_handle(h)
+        h = type(backend).transform_rotation(rad)
+        if h > 0:
+            return cls._from_handle(h)
         cos_a = math.cos(rad)
         sin_a = math.sin(rad)
         return cls(cos_a, sin_a, -sin_a, cos_a, 0.0, 0.0)
 
     @classmethod
     def scale(cls, sx: float, sy: float) -> Transform:
-        import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-        lib = _get_rust_lib()
-        if lib:
-            h = lib.TransformScale(ctypes.c_float(sx), ctypes.c_float(sy))
-            if h > 0:
-                return cls._from_handle(h)
+        h = type(backend).transform_scale(sx, sy)
+        if h > 0:
+            return cls._from_handle(h)
         return cls(sx, 0.0, 0.0, sy, 0.0, 0.0)
 
     @classmethod
     def translation(cls, tx: float, ty: float) -> Transform:
-        import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-        lib = _get_rust_lib()
-        if lib:
-            h = lib.TransformTranslation(ctypes.c_float(tx), ctypes.c_float(ty))
-            if h > 0:
-                return cls._from_handle(h)
+        h = type(backend).transform_translation(tx, ty)
+        if h > 0:
+            return cls._from_handle(h)
         return cls(1.0, 0.0, 0.0, 1.0, tx, ty)
 
     def concat(self, other: Transform) -> Transform:
-        lib = _get_rust_lib()
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
         ha = self._ensure_handle()
         hb = other._ensure_handle()
-        if lib and ha > 0 and hb > 0:
-            h = lib.TransformConcat(ha, hb)
-            if h > 0:
-                return Transform._from_handle(h)
+
+        h = type(backend).transform_concat(ha, hb)
+        if h > 0:
+            return Transform._from_handle(h)
+
         # Python fallback
         return Transform(
             self.a * other.a + self.c * other.b,
@@ -317,12 +286,14 @@ class Transform:
         )
 
     def invert(self) -> Transform:
-        lib = _get_rust_lib()
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
         h = self._ensure_handle()
-        if lib and h > 0:
-            ih = lib.TransformInvert(h)
-            if ih > 0:
-                return Transform._from_handle(ih)
+        ih = type(backend).transform_invert(h)
+        if ih > 0:
+            return Transform._from_handle(ih)
         # Python fallback
         det = self.a * self.d - self.b * self.c
         if abs(det) < 1e-10:
@@ -352,7 +323,7 @@ class _DrawingContext:
 
     color: tuple[float, float, float, float]
     blend_mode: int
-    backend: Any
+    backend: FrameBuffer | None
     clip: Rect | None
     origin: tuple[float, float]
     shadow: tuple[_RGBA | None, float, float, float] | None
@@ -449,6 +420,7 @@ def _sync_ctm_to_rust(ctx) -> None:
     fb.set_ctm(m.a, m.b, m.c, m.d, m.tx + ox, m.ty + oy)
 
 
+@pytoui_desktop_only
 def set_backend(backend):
     """Set the active drawing backend (e.g. osdbuf.FrameBuffer instance).
     Called by the render loop before View.draw()."""
@@ -457,6 +429,7 @@ def set_backend(backend):
     _sync_ctm_to_rust(ctx)
 
 
+@pytoui_desktop_only
 def _set_origin(x: float, y: float):
     """Set the coordinate origin for subsequent draw calls.
     Called by the render loop to translate to the view's absolute position.
@@ -588,15 +561,11 @@ def concat_ctm(transform: Transform):
     _sync_ctm_to_rust(ctx)
 
 
-def begin_path():
-    """Begin a new empty path. Returns a new Path."""
-    return Path()
-
-
 def fill_rect(x: float, y: float, w: float, h: float):
     Path.rect(x, y, w, h).fill()
 
 
+@pytoui_desktop_only
 def _content_mode_transform(
     mode: int, cw: float, ch: float, fw: float, fh: float
 ) -> None:
@@ -735,19 +704,19 @@ def measure_string(
     alignment: int = ALIGN_LEFT,
     line_break_mode: int = LB_WORD_WRAP,
 ) -> tuple[float, float]:
-    ctx = _get_draw_ctx()
-    fb = ctx.backend
-    if fb is None:
+    backend = _get_draw_ctx().backend
+    if not backend:
         return (0.0, 0.0)
 
     font_name, font_size = font
     fid = _font_id(font_name)
 
-    return type(fb).measure_string_core_graphics(
+    return type(backend).measure_string_core_graphics(
         s, max_width, size=font_size, font_id=fid, line_break_mode=line_break_mode
     )
 
 
+@pytoui_desktop_only
 def _screen_origin(view) -> tuple[float, float]:
     """Compute view's content origin in screen coordinates.
 
@@ -811,8 +780,11 @@ class Path:
     """
 
     def __init__(self):
-        lib = _get_rust_lib()
-        self._handle: int = lib.CreatePath() if lib else 0
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
+        self._handle = type(backend).create_path()
         self._line_width: float = 1.0
         self._line_join_style: int = LINE_JOIN_MITER
         self._line_cap_style: int = LINE_CAP_BUTT
@@ -820,14 +792,15 @@ class Path:
         self._eo_fill_rule: bool = False
 
     def __del__(self):
+        backend = _get_draw_ctx().backend
+        if not backend:
+            return
+
         h = getattr(self, "_handle", 0)
-        if h > 0:
-            lib = _get_rust_lib()
-            if lib:
-                try:
-                    lib.DestroyPath(h)
-                except Exception:
-                    pass
+        try:
+            type(backend).destroy_path(h)
+        except Exception:
+            pass
 
     # -- line style properties ------------------------------------------------
 
@@ -837,13 +810,12 @@ class Path:
 
     @line_width.setter
     def line_width(self, value: float):
-        self._line_width = float(value)
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-                lib.PathSetLineWidth(self._handle, ctypes.c_float(value))
+        self._line_width = float(value)
+        type(backend).path_set_line_width(self._handle, value)
 
     @property
     def line_join_style(self) -> int:
@@ -851,11 +823,12 @@ class Path:
 
     @line_join_style.setter
     def line_join_style(self, value: int):
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
         self._line_join_style = int(value)
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                lib.PathSetLineJoin(self._handle, value)
+        type(backend).path_set_line_join_style(self._handle, value)
 
     @property
     def line_cap_style(self) -> int:
@@ -863,11 +836,12 @@ class Path:
 
     @line_cap_style.setter
     def line_cap_style(self, value: int):
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
         self._line_cap_style = int(value)
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                lib.PathSetLineCap(self._handle, value)
+        type(backend).path_set_line_cap_style(self._handle, value)
 
     @property
     def eo_fill_rule(self) -> bool:
@@ -876,110 +850,83 @@ class Path:
 
     @eo_fill_rule.setter
     def eo_fill_rule(self, value: bool):
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
         self._eo_fill_rule = bool(value)
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                lib.PathSetEoFillRule(self._handle, 1 if value else 0)
+        type(backend).path_set_eo_fill_rule(self._handle, value)
 
     @property
     def bounds(self):
         """(readonly) The path's bounding rectangle as a Rect(x, y, w, h)."""
-        if self._handle <= 0:
-            from pytoui.ui._types import Rect
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-            return Rect(0.0, 0.0, 0.0, 0.0)
-        lib = _get_rust_lib()
-        if not lib:
-            from pytoui.ui._types import Rect
-
-            return Rect(0.0, 0.0, 0.0, 0.0)
-        import ctypes
-
-        x = ctypes.c_float(0.0)
-        y = ctypes.c_float(0.0)
-        w = ctypes.c_float(0.0)
-        h = ctypes.c_float(0.0)
-        if lib.PathGetBounds(
-            self._handle,
-            ctypes.byref(x),
-            ctypes.byref(y),
-            ctypes.byref(w),
-            ctypes.byref(h),
-        ):
-            from pytoui.ui._types import Rect
-
-            return Rect(x.value, y.value, w.value, h.value)
-        from pytoui.ui._types import Rect
-
-        return Rect(0.0, 0.0, 0.0, 0.0)
+        return type(backend).path_get_bounds(self._handle)
 
     # -- Class method constructors --------------------------------------------
 
     @classmethod
     def rect(cls, x: float, y: float, w: float, h: float) -> "Path":
-        lib = _get_rust_lib()
-        p = cls.__new__(cls)
-        if lib:
-            p._handle = lib.PathRect(x, y, w, h)
-        else:
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
+        p = cls()
+        try:
+            p._handle = type(backend).path_rect(x, y, w, h)
+        except RuntimeError:
             p._handle = 0
-        p._line_width = 1.0
-        p._line_join_style = LINE_JOIN_MITER
-        p._line_cap_style = LINE_CAP_BUTT
         p._has_segments = True
-        p._eo_fill_rule = False
         return p
 
     @classmethod
     def oval(cls, x: float, y: float, w: float, h: float) -> "Path":
-        lib = _get_rust_lib()
-        p = cls.__new__(cls)
-        if lib:
-            p._handle = lib.PathOval(x, y, w, h)
-        else:
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
+        p = cls()
+        try:
+            p._handle = type(backend).path_oval(x, y, w, h)
+        except RuntimeError:
             p._handle = 0
-        p._line_width = 1.0
-        p._line_join_style = LINE_JOIN_MITER
-        p._line_cap_style = LINE_CAP_BUTT
         p._has_segments = True
-        p._eo_fill_rule = False
         return p
 
     @classmethod
     def rounded_rect(cls, x: float, y: float, w: float, h: float, r: float) -> "Path":
-        lib = _get_rust_lib()
-        p = cls.__new__(cls)
-        if lib:
-            p._handle = lib.PathRoundedRect(x, y, w, h, r)
-        else:
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
+        p = cls()
+        try:
+            p._handle = type(backend).path_rounded_rect(x, y, w, h, r)
+        except RuntimeError:
             p._handle = 0
-        p._line_width = 1.0
-        p._line_join_style = LINE_JOIN_MITER
-        p._line_cap_style = LINE_CAP_BUTT
         p._has_segments = True
-        p._eo_fill_rule = False
         return p
 
     # -- Instance path construction -------------------------------------------
 
     def move_to(self, x: float, y: float):
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-                lib.PathMoveTo(self._handle, ctypes.c_float(x), ctypes.c_float(y))
-                self._has_segments = True
+        type(backend).path_move_to(self._handle, x, y)
+        self._has_segments = True
 
     def line_to(self, x: float, y: float):
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-                lib.PathLineTo(self._handle, ctypes.c_float(x), ctypes.c_float(y))
-                self._has_segments = True
+        type(backend).path_line_to(self._handle, x, y)
+        self._has_segments = True
 
     def add_arc(
         self,
@@ -990,21 +937,12 @@ class Path:
         end: float,
         clockwise: bool = True,
     ):
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-                lib.PathAddArc(
-                    self._handle,
-                    ctypes.c_float(cx),
-                    ctypes.c_float(cy),
-                    ctypes.c_float(r),
-                    ctypes.c_float(start),
-                    ctypes.c_float(end),
-                    ctypes.c_int(1 if clockwise else 0),
-                )
-                self._has_segments = True
+        type(backend).path_add_arc(self._handle, cx, cy, r, start, end, clockwise)
+        self._has_segments = True
 
     def add_curve(
         self,
@@ -1017,78 +955,56 @@ class Path:
     ):
         """Append a cubic Bézier curve.  Argument order matches Pythonista:
         end point first, then the two control points."""
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-                lib.PathAddCurve(
-                    self._handle,
-                    ctypes.c_float(cp1_x),
-                    ctypes.c_float(cp1_y),
-                    ctypes.c_float(cp2_x),
-                    ctypes.c_float(cp2_y),
-                    ctypes.c_float(end_x),
-                    ctypes.c_float(end_y),
-                )
-                self._has_segments = True
+        type(backend).path_add_curve(
+            self._handle, end_x, end_y, cp1_x, cp1_y, cp2_x, cp2_y
+        )
+        self._has_segments = True
 
     def add_quad_curve(self, end_x: float, end_y: float, cp_x: float, cp_y: float):
         """Append a quadratic Bézier curve.  Argument order matches Pythonista:
         end point first, then the control point."""
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-                lib.PathAddQuadCurve(
-                    self._handle,
-                    ctypes.c_float(cp_x),
-                    ctypes.c_float(cp_y),
-                    ctypes.c_float(end_x),
-                    ctypes.c_float(end_y),
-                )
-                self._has_segments = True
+        type(backend).path_add_quad_curve(self._handle, end_x, end_y, cp_x, cp_y)
+        self._has_segments = True
 
     def close(self):
-        if self._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                lib.PathClose(self._handle)
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
+        type(backend).path_close(self._handle)
 
     def append_path(self, other: Path):
         """Append all segments of other into this path."""
-        if self._handle > 0 and other._handle > 0:
-            lib = _get_rust_lib()
-            if lib:
-                lib.PathAppend(self._handle, other._handle)
-                self._has_segments = True
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
+
+        type(backend).path_append_path(self._handle, other._handle)
+        self._has_segments = True
 
     def set_line_dash(self, sequence: Sequence[float], phase: float = 0.0):
         """Set dashed stroke pattern. Pass empty list to clear."""
-        if self._handle <= 0:
-            return
-        lib = _get_rust_lib()
-        if not lib:
-            return
-        import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-        if not sequence:
-            lib.PathSetLineDash(self._handle, None, 0, ctypes.c_float(0.0))
-        else:
-            arr = (ctypes.c_float * len(sequence))(*sequence)
-            lib.PathSetLineDash(self._handle, arr, len(sequence), ctypes.c_float(phase))
+        type(backend).path_set_line_dash(self._handle, sequence, phase)
 
     def hit_test(self, x: float, y: float) -> bool:
         """Return True if (x, y) is inside the filled path."""
-        if self._handle <= 0:
-            return False
-        lib = _get_rust_lib()
-        if not lib:
-            return False
-        import ctypes
+        backend = _get_draw_ctx().backend
+        if not backend:
+            raise RuntimeError("Invalid backend")
 
-        return lib.PathHitTest(self._handle, ctypes.c_float(x), ctypes.c_float(y)) != 0
+        return type(backend).path_hit_test(self._handle, x, y)
 
     # -- Drawing --------------------------------------------------------------
 
@@ -1173,6 +1089,7 @@ def cancel_delays() -> None:
     _get_anim_ctx().pending_delays.clear()
 
 
+@pytoui_desktop_only
 def _tick_delays(now: float) -> None:
     """Called by the runtime each frame to fire ready delays."""
     ctx = _get_anim_ctx()
@@ -1307,6 +1224,7 @@ class _Anim:
 # ---------------------------------------------------------------------------
 
 
+@pytoui_desktop_only
 def _record(view, attr: str, start, end) -> bool:
     """Called from animated View property setters.
 
@@ -1396,7 +1314,7 @@ def animate(
 # become no-ops since the desktop runtime is never started on iOS.
 # ---------------------------------------------------------------------------
 
-from pytoui._platform import IS_PYTHONISTA  # noqa: E402
+from pytoui._platform import IS_PYTHONISTA, pytoui_desktop_only  # noqa: E402
 
 if IS_PYTHONISTA:
     from ui import (  # type: ignore[import-not-found,no-redef,assignment]
@@ -1422,29 +1340,3 @@ if IS_PYTHONISTA:
         get_window_size,
         get_ui_style,
     )
-
-    # begin_path is not in Pythonista's ui — keep as no-op
-    def begin_path() -> None:  # type: ignore[misc]
-        pass
-
-    # Desktop-only internals — unused in Pythonista, stub out so imports don't break
-    def set_backend(fb) -> None:  # type: ignore[misc]
-        pass
-
-    def _set_origin(view) -> None:  # type: ignore[misc]
-        pass
-
-    def _screen_origin(view) -> tuple[float, float]:  # type: ignore[misc]
-        return (0.0, 0.0)
-
-    def _tick(now: float) -> None:  # type: ignore[misc]
-        pass
-
-    def _tick_delays(now: float) -> None:  # type: ignore[misc]
-        pass
-
-    def _record(*args, **kwargs) -> bool:  # type: ignore[misc]
-        return False
-
-    def _content_mode_transform(*args, **kwargs) -> None:  # type: ignore[misc]
-        pass

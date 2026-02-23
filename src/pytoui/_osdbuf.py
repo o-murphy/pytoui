@@ -2,7 +2,7 @@
 import ctypes
 from enum import IntEnum, IntFlag
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 
 _OSDBUF_PATH = str(Path(__file__).parent / "libosdbuf.so")
@@ -369,7 +369,7 @@ class FrameBuffer:
         L.CreateTransform.argtypes = _tf6
         L.CreateTransform.restype = ctypes.c_int
         L.DestroyTransform.argtypes = [ctypes.c_int]
-        L.DestroyTransform.restype = None
+        L.DestroyTransform.restype = ctypes.c_int
         L.TransformRotation.argtypes = [ctypes.c_float]
         L.TransformRotation.restype = ctypes.c_int
         L.TransformScale.argtypes = [ctypes.c_float, ctypes.c_float]
@@ -395,7 +395,7 @@ class FrameBuffer:
         L.CreatePath.argtypes = []
         L.CreatePath.restype = ctypes.c_int
         L.DestroyPath.argtypes = [ctypes.c_int]
-        L.DestroyPath.restype = None
+        L.DestroyPath.restype = ctypes.c_int
         L.PathMoveTo.argtypes = [ctypes.c_int, ctypes.c_float, ctypes.c_float]
         L.PathMoveTo.restype = None
         L.PathLineTo.argtypes = [ctypes.c_int, ctypes.c_float, ctypes.c_float]
@@ -518,10 +518,7 @@ class FrameBuffer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._handle > 0:
-            self.fill(0)
-            self._lib.DestroyFrameBuffer(self._handle)
-            self._handle = 0
+        self.destroy()
 
     def __del__(self):
         if self._handle > 0:
@@ -537,6 +534,12 @@ class FrameBuffer:
     @property
     def height(self) -> int:
         return self._height
+    
+    def destroy(self):
+        if self._handle > 0:
+            self.fill(0)
+            self._lib.DestroyFrameBuffer(self._handle)
+            self._handle = 0
 
     # ============= Font API (global, class-level) =============
 
@@ -553,8 +556,7 @@ class FrameBuffer:
     def unload_font(cls, font_id: int = 0) -> None:
         """Unload font by handle"""
         lib = cls._ensure_lib_loaded()
-        ret = lib.UnloadFont(font_id)
-        if ret == -1:
+        if lib.UnloadFont(font_id) < 0:
             raise ValueError(f"Invalid font handle: {font_id}")
 
     @classmethod
@@ -966,17 +968,203 @@ class FrameBuffer:
     # ============= Path (handle-based) =============
 
     def path_fill(
-        self, path_handle: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
+        self, pid: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
     ) -> None:
-        self._lib.PathFill(self._handle, int(path_handle), int(c), int(blend))
+        self._lib.PathFill(self._handle, int(pid), int(c), int(blend))
 
     def path_stroke(
-        self, path_handle: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
+        self, pid: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
     ) -> None:
-        self._lib.PathStroke(self._handle, int(path_handle), int(c), int(blend))
+        self._lib.PathStroke(self._handle, int(pid), int(c), int(blend))
 
-    def path_add_clip(self, path_handle: int) -> None:
-        self._lib.PathAddClip(self._handle, int(path_handle))
+    def path_add_clip(self, pid: int) -> None:
+        self._lib.PathAddClip(self._handle, int(pid))
+
+    @classmethod
+    def create_path(cls) -> int:
+        if lib := cls._ensure_lib_loaded():
+            pid = lib.CreatePath()
+            if pid > 0:
+                return pid
+        raise RuntimeError("Failed to create path")
+
+    @classmethod
+    def destroy_path(cls, pid: int) -> bool:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                return lib.DestroyPath(pid) == 0
+        return False
+
+    @classmethod
+    def path_rect(cls, x: float, y: float, w: float, h: float) -> int:
+        if lib := cls._ensure_lib_loaded():
+            pid = lib.PathRect(x, y, w, h)
+            if pid > 0:
+                return pid
+        raise RuntimeError("Failed to create path")
+
+    @classmethod
+    def path_oval(cls, x: float, y: float, w: float, h: float) -> int:
+        if lib := cls._ensure_lib_loaded():
+            pid = lib.PathOval(x, y, w, h)
+            if pid > 0:
+                return pid
+        raise RuntimeError("Failed to create path")
+
+    @classmethod
+    def path_rounded_rect(cls, x: float, y: float, w: float, h: float, r: float) -> int:
+        if lib := cls._ensure_lib_loaded():
+            pid = lib.PathRoundedRect(x, y, w, h, r)
+            if pid > 0:
+                return pid
+        raise RuntimeError("Failed to create path")
+
+    @classmethod
+    def path_set_line_width(cls, pid: int, value: float) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathSetLineWidth(pid, ctypes.c_float(value))
+
+    @classmethod
+    def path_set_line_join_style(cls, pid: int, value: int) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathSetLineJoin(pid, value)
+
+    @classmethod
+    def path_set_line_cap_style(cls, pid: int, value: int) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathSetLineCap(pid, value)
+
+    @classmethod
+    def path_set_eo_fill_rule(cls, pid: int, value: bool) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathSetEoFillRule(pid, 1 if value else 0)
+
+    @classmethod
+    def path_move_to(cls, pid: int, x: float, y: float) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathMoveTo(pid, ctypes.c_float(x), ctypes.c_float(y))
+
+    @classmethod
+    def path_line_to(cls, pid: int, x: float, y: float) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathLineTo(pid, ctypes.c_float(x), ctypes.c_float(y))
+
+    @classmethod
+    def path_add_arc(
+        cls,
+        pid: int,
+        cx: float,
+        cy: float,
+        r: float,
+        start: float,
+        end: float,
+        clockwise: bool = True,
+    ) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathAddArc(
+                    pid,
+                    ctypes.c_float(cx),
+                    ctypes.c_float(cy),
+                    ctypes.c_float(r),
+                    ctypes.c_float(start),
+                    ctypes.c_float(end),
+                    ctypes.c_int(1 if clockwise else 0),
+                )
+
+    @classmethod
+    def path_add_curve(
+        cls,
+        pid: int,
+        end_x: float,
+        end_y: float,
+        cp1_x: float,
+        cp1_y: float,
+        cp2_x: float,
+        cp2_y: float,
+    ) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathAddCurve(
+                    pid,
+                    ctypes.c_float(cp1_x),
+                    ctypes.c_float(cp1_y),
+                    ctypes.c_float(cp2_x),
+                    ctypes.c_float(cp2_y),
+                    ctypes.c_float(end_x),
+                    ctypes.c_float(end_y),
+                )
+
+    @classmethod
+    def path_add_quad_curve(
+        cls, pid: int, end_x: float, end_y: float, cp_x: float, cp_y: float
+    ) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathAddQuadCurve(
+                    pid,
+                    ctypes.c_float(cp_x),
+                    ctypes.c_float(cp_y),
+                    ctypes.c_float(end_x),
+                    ctypes.c_float(end_y),
+                )
+
+    @classmethod
+    def path_close(cls, pid: int) -> None:
+        if pid > 0:
+            lib = cls._ensure_lib_loaded()
+            lib.PathClose(pid)
+
+    @classmethod
+    def path_append_path(cls, pid: int, other_pid: int) -> None:
+        if pid > 0 and other_pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                lib.PathAppend(pid, other_pid)
+
+    @classmethod
+    def path_set_line_dash(
+        cls, pid: int, sequence: Sequence[float], phase: float = 0.0
+    ) -> None:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                if not sequence:
+                    lib.PathSetLineDash(pid, None, 0, ctypes.c_float(0.0))
+                else:
+                    arr = (ctypes.c_float * len(sequence))(*sequence)
+                    lib.PathSetLineDash(pid, arr, len(sequence), ctypes.c_float(phase))
+
+    @classmethod
+    def path_hit_test(cls, pid: int, x: float, y: float) -> bool:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                return lib.PathHitTest(pid, ctypes.c_float(x), ctypes.c_float(y)) != 0
+        return False
+
+    @classmethod
+    def path_get_bounds(cls, pid: int) -> tuple[float, float, float, float]:
+        if pid > 0:
+            if lib := cls._ensure_lib_loaded():
+                x = ctypes.c_float(0.0)
+                y = ctypes.c_float(0.0)
+                w = ctypes.c_float(0.0)
+                h = ctypes.c_float(0.0)
+                ret = lib.PathGetBounds(
+                    pid,
+                    ctypes.byref(x),
+                    ctypes.byref(y),
+                    ctypes.byref(w),
+                    ctypes.byref(h),
+                )
+                if ret == 0:
+                    return x.value, y.value, w.value, h.value
+        # FIXME: maybe should return None or identity, now it masks an error
+        return 0.0, 0.0, 0.0, 0.0
 
     # ============= DEBUG ONLY =============
     def draw_checkerboard(self, size: int = 8):
@@ -1064,3 +1252,84 @@ class FrameBuffer:
             raise ValueError(f"Invalid font handle: {font_id}")
 
         return (width.value, height.value)
+
+    # ============= Transform (handle-based) =============
+
+    @classmethod
+    def create_transform(
+        cls, a: float, b: float, c: float, d: float, tx: float, ty: float
+    ) -> int:
+        if lib := cls._ensure_lib_loaded():
+            tid = lib.CreateTransform(
+                ctypes.c_float(a),
+                ctypes.c_float(b),
+                ctypes.c_float(c),
+                ctypes.c_float(d),
+                ctypes.c_float(tx),
+                ctypes.c_float(ty),
+            )
+            if tid > 0:
+                return tid
+        raise RuntimeError(f"Failed to create transform: [{a, b, c, d, tx, ty}]")
+
+    @classmethod
+    def destroy_transform(cls, tid: int) -> bool:
+        if tid > 0:
+            if lib := cls._ensure_lib_loaded():
+                return lib.DestroyTransform(tid) == 0
+        return False
+
+    @classmethod
+    def transform_get(cls, tid: int) -> tuple[float, float, float, float, float, float]:
+        if tid > 0:
+            if lib := cls._ensure_lib_loaded():
+                a = ctypes.c_float()
+                b = ctypes.c_float()
+                c = ctypes.c_float()
+                d = ctypes.c_float()
+                tx = ctypes.c_float()
+                ty = ctypes.c_float()
+                ret = lib.TransformGet(
+                    tid,
+                    ctypes.byref(a),
+                    ctypes.byref(b),
+                    ctypes.byref(c),
+                    ctypes.byref(d),
+                    ctypes.byref(tx),
+                    ctypes.byref(ty),
+                )
+                if ret == 0:
+                    return a.value, b.value, c.value, d.value, tx.value, ty.value
+        # FIXME: maybe should return None or identity, now it masks an error
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+
+    @classmethod
+    def transform_rotation(cls, rad: float) -> int:
+        if lib := cls._ensure_lib_loaded():
+            return lib.TransformRotation(ctypes.c_float(rad))
+        return 0
+
+    @classmethod
+    def transform_scale(cls, sx: float, sy: float) -> int:
+        if lib := cls._ensure_lib_loaded():
+            return lib.TransformScale(ctypes.c_float(sx), ctypes.c_float(sy))
+        return 0
+
+    @classmethod
+    def transform_translation(cls, tx: float, ty: float) -> int:
+        if lib := cls._ensure_lib_loaded():
+            return lib.TransformTranslation(ctypes.c_float(tx), ctypes.c_float(ty))
+        return 0
+
+    @classmethod
+    def transform_concat(cls, tid_a: int, tid_b: int) -> int:
+        lib = cls._ensure_lib_loaded()
+        if tid_a > 0 and tid_b > 0:
+            return lib.TransformConcat(tid_a, tid_b)
+        return 0
+
+    @classmethod
+    def transform_invert(cls, tid: int) -> int:
+        if lib := cls._ensure_lib_loaded():
+            return lib.TransformInvert(tid)
+        return 0

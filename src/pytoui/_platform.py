@@ -16,6 +16,31 @@ except ImportError:
     IS_PYTHONISTA: bool = False  # type: ignore[no-redef]
 
 
+__all__ = (
+    "IS_PYTHONISTA",
+    "_pui",
+    "pytoui_desktop_only",
+    # Globals
+    "_UI_DISABLE_ANIMATIONS",
+    "_UI_RT",
+    "_UI_ANTIALIAS",
+    "_UI_RT_FPS",
+    "_UI_RT_SDL_DELAY",
+    "_UI_RT_SDL_MAX_DELAY",
+)
+
+
+def pytoui_desktop_only(func):
+    def wrapper(*args, **kwargs):
+        if IS_PYTHONISTA:
+            raise RuntimeError(
+                f"{func.__name__} can be used only on non-Pythonista runtime"
+            )
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 def _get_env_var(name: str, default: str):
     return os.environ.get(name, default).strip().strip().lower()
 
@@ -43,15 +68,3 @@ else:
     _UI_RT_SDL_DELAY = 4
 
 _UI_RT_SDL_MAX_DELAY = 16
-
-__all__ = (
-    "IS_PYTHONISTA",
-    "_pui",
-    # Globals
-    "_UI_DISABLE_ANIMATIONS",
-    "_UI_RT",
-    "_UI_ANTIALIAS",
-    "_UI_RT_FPS",
-    "_UI_RT_SDL_DELAY",
-    "_UI_RT_SDL_MAX_DELAY",
-)

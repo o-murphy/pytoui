@@ -7,10 +7,6 @@ Press ESC or close the window to exit.
 from pytoui import ui
 
 
-WIDTH = 540
-HEIGHT = 720
-
-
 def _make_test_image():
     from PIL import Image as PILImage
 
@@ -185,9 +181,6 @@ class MainView(ui.View):
         self.img_view.frame = (10, 340, 200, 160)
         self.sidebar.frame = (self.width - 60, 50, 50, self.height - 60)
 
-    def draw(self):
-        ui.draw_string("test\nmultiline\ntext", self.frame, alignment=ui.ALIGN_CENTER)
-
     def on_button2_click(self, sender: ui.Button):
         print(f"button clicked: {sender.name}")
         self.clicks_count += 1
@@ -218,7 +211,7 @@ class MainView(ui.View):
 def main():
     root = MainView()
     root.name = "Demo App"
-    root.frame = (0, 0, WIDTH, HEIGHT)
+    root.frame = (0, 0, 400, 600)
     root.present("fullscreen")
 
 

@@ -2075,3 +2075,510 @@ pub extern "C" fn DrawCheckerBoard(fb_handle: i32, size: i32) {
         fb.draw_checkerboard(size);
     });
 }
+
+// Add to lib.rs
+
+// --- Text alignment constants (match Pythonista) ---
+const ALIGN_LEFT: u32 = 0;
+const ALIGN_CENTER: u32 = 1;
+const ALIGN_RIGHT: u32 = 2;
+const ALIGN_JUSTIFIED: u32 = 3;
+const ALIGN_NATURAL: u32 = 4;
+
+// --- Line break modes ---
+const LB_WORD_WRAP: u32 = 0;
+const LB_CHAR_WRAP: u32 = 1;
+const LB_CLIP: u32 = 2;
+const LB_TRUNCATE_HEAD: u32 = 3;
+const LB_TRUNCATE_TAIL: u32 = 4;
+const LB_TRUNCATE_MIDDLE: u32 = 5;
+
+impl FrameBuffer {
+    /// CoreGraphics-compatible text drawing
+    fn draw_string_core_graphics(
+        &mut self,
+        font: &fontdue::Font,
+        text: &str,
+        rect: (f32, f32, f32, f32), // (x, y, width, height)
+        size: f32,
+        color: (u8, u8, u8, u8),
+        alignment: u32,
+        line_break_mode: u32,
+    ) {
+        let (r, g, b, a) = color;
+        let (rect_x, rect_y, rect_w, rect_h) = rect;
+
+        // Get font metrics
+        let line_metrics = match font.horizontal_line_metrics(size) {
+            Some(m) => m,
+            None => return,
+        };
+        let line_height = line_metrics.ascent - line_metrics.descent + line_metrics.line_gap;
+        let ascent = line_metrics.ascent;
+
+        // Split by \n first, then process each paragraph separately
+        let paragraphs: Vec<&str> = text.split('\n').collect();
+        let mut all_lines = Vec::new();
+
+        for paragraph in paragraphs {
+            if paragraph.is_empty() {
+                all_lines.push(String::new()); // Empty line for \n
+                continue;
+            }
+
+            // Split paragraph into lines according to width
+            let lines = self.layout_text(font, paragraph, rect_w, size, line_break_mode);
+            all_lines.extend(lines);
+        }
+
+        if all_lines.is_empty() {
+            return;
+        }
+
+        // Calculate total text height (unused but kept for potential future use)
+        let _total_height = line_height * all_lines.len() as f32;
+
+        // Clip text if it doesn't fit vertically
+        let max_lines = (rect_h / line_height).floor() as usize;
+        let visible_lines: Vec<String> = if all_lines.len() > max_lines && max_lines > 0 {
+            match line_break_mode {
+                LB_TRUNCATE_HEAD => {
+                    let mut result = Vec::new();
+                    result.push(self.truncate_head(
+                        font,
+                        &all_lines[all_lines.len() - 1],
+                        rect_w,
+                        size,
+                    ));
+                    result
+                }
+                LB_TRUNCATE_MIDDLE => {
+                    // Complex logic for middle truncation - simplified, just take last line with truncation
+                    vec![self.truncate_tail(font, &all_lines[max_lines - 1], rect_w, size)]
+                }
+                LB_TRUNCATE_TAIL | _ => {
+                    let mut result = all_lines[..max_lines].to_vec();
+                    if all_lines.len() > max_lines {
+                        result[max_lines - 1] =
+                            self.truncate_tail(font, &result[max_lines - 1], rect_w, size);
+                    }
+                    result
+                }
+            }
+        } else {
+            all_lines
+        };
+
+        // Vertical positioning - text at the top of rect (Pythonista style)
+        let start_y = rect_y + ascent; // baseline of first line
+
+        for (i, line) in visible_lines.iter().enumerate() {
+            if line.is_empty() {
+                continue; // Skip empty lines (they still take vertical space)
+            }
+
+            // Calculate line width
+            let mut line_width = 0.0;
+            for c in line.chars() {
+                if !c.is_control() {
+                    line_width += font.metrics(c, size).advance_width;
+                }
+            }
+
+            // Horizontal positioning based on alignment
+            let start_x = match alignment {
+                ALIGN_RIGHT => rect_x + rect_w - line_width,
+                ALIGN_CENTER => rect_x + (rect_w - line_width) / 2.0,
+                ALIGN_JUSTIFIED if i < visible_lines.len() - 1 => {
+                    // For JUSTIFIED we should stretch words to full width
+                    // This is complex logic, for now treat as LEFT
+                    rect_x
+                }
+                ALIGN_JUSTIFIED | ALIGN_NATURAL | ALIGN_LEFT => rect_x,
+                _ => rect_x,
+            };
+
+            // Draw the line
+            let mut curr_x = start_x;
+            for c in line.chars() {
+                if c.is_control() {
+                    continue;
+                }
+
+                let (metrics, bitmap) = font.rasterize(c, size);
+
+                // Glyph position
+                let draw_x = curr_x + metrics.xmin as f32;
+                let draw_y = start_y + (i as f32 * line_height)
+                    - metrics.height as f32
+                    - metrics.ymin as f32;
+
+                // Draw pixels
+                for row in 0..metrics.height {
+                    for col in 0..metrics.width {
+                        let coverage = bitmap[row * metrics.width + col];
+                        if coverage == 0 {
+                            continue;
+                        }
+
+                        let pixel_x = draw_x as i32 + col as i32;
+                        let pixel_y = draw_y as i32 + row as i32;
+
+                        if pixel_x >= 0 && pixel_x < self.w && pixel_y >= 0 && pixel_y < self.h {
+                            if self.antialias {
+                                let pixel_a = ((a as u16 * coverage as u16) / 255) as u8;
+                                self.set_pixel_over(pixel_x, pixel_y, r, g, b, pixel_a);
+                            } else if coverage >= 128 {
+                                self.set_pixel_over(pixel_x, pixel_y, r, g, b, a);
+                            }
+                        }
+                    }
+                }
+
+                curr_x += metrics.advance_width;
+            }
+        }
+    }
+
+    /// Split text into lines considering max width and \n
+    fn layout_text(
+        &self,
+        font: &fontdue::Font,
+        text: &str,
+        max_width: f32,
+        size: f32,
+        mode: u32,
+    ) -> Vec<String> {
+        if max_width <= 0.0 {
+            // If no width constraint, just split by \n
+            return text.split('\n').map(|s| s.to_string()).collect();
+        }
+
+        match mode {
+            LB_CHAR_WRAP => self.wrap_chars(font, text, max_width, size),
+            LB_WORD_WRAP => self.wrap_words(font, text, max_width, size),
+            LB_TRUNCATE_HEAD => vec![self.truncate_head(font, text, max_width, size)],
+            LB_TRUNCATE_TAIL => vec![self.truncate_tail(font, text, max_width, size)],
+            LB_TRUNCATE_MIDDLE => vec![self.truncate_middle(font, text, max_width, size)],
+            LB_CLIP => vec![self.clip_text(font, text, max_width, size)],
+            _ => text.split('\n').map(|s| s.to_string()).collect(), // Default
+        }
+    }
+
+    /// Measure text width
+    fn measure_text_width(&self, font: &fontdue::Font, text: &str, size: f32) -> f32 {
+        let mut width = 0.0;
+        for c in text.chars() {
+            if !c.is_control() {
+                width += font.metrics(c, size).advance_width;
+            }
+        }
+        width
+    }
+
+    /// Truncate text from the beginning (left side)
+    fn truncate_head(&self, font: &fontdue::Font, text: &str, max_width: f32, size: f32) -> String {
+        let ellipsis = "…";
+        let ellipsis_width = self.measure_text_width(font, ellipsis, size);
+
+        if self.measure_text_width(font, text, size) <= max_width {
+            return text.to_string();
+        }
+
+        for i in 0..text.len() {
+            let slice = &text[i..];
+            if self.measure_text_width(font, slice, size) + ellipsis_width <= max_width {
+                return format!("{}{}", ellipsis, slice);
+            }
+        }
+        ellipsis.to_string()
+    }
+
+    /// Truncate text from the end (right side)
+    fn truncate_tail(&self, font: &fontdue::Font, text: &str, max_width: f32, size: f32) -> String {
+        let ellipsis = "…";
+        let ellipsis_width = self.measure_text_width(font, ellipsis, size);
+
+        if self.measure_text_width(font, text, size) <= max_width {
+            return text.to_string();
+        }
+
+        for i in (0..=text.len()).rev() {
+            let slice = &text[..i];
+            if self.measure_text_width(font, slice, size) + ellipsis_width <= max_width {
+                return format!("{}{}", slice, ellipsis);
+            }
+        }
+        ellipsis.to_string()
+    }
+
+    /// Truncate text in the middle
+    fn truncate_middle(
+        &self,
+        font: &fontdue::Font,
+        text: &str,
+        max_width: f32,
+        size: f32,
+    ) -> String {
+        let ellipsis = "…";
+        let _ellipsis_width = self.measure_text_width(font, ellipsis, size);
+
+        if self.measure_text_width(font, text, size) <= max_width {
+            return text.to_string();
+        }
+
+        let len = text.len();
+        for cut in 1..len {
+            let left_len = (len / 2).saturating_sub((cut + 1) / 2);
+            let right_len = len / 2 + cut / 2;
+
+            if right_len > len {
+                continue;
+            }
+
+            let left = &text[..left_len];
+            let right = &text[right_len..];
+            let candidate = format!("{}{}{}", left, ellipsis, right);
+
+            if self.measure_text_width(font, &candidate, size) <= max_width {
+                return candidate;
+            }
+        }
+        ellipsis.to_string()
+    }
+    
+    /// Simply clip text by width
+    fn clip_text(&self, font: &fontdue::Font, text: &str, max_width: f32, size: f32) -> String {
+        let mut result = String::new();
+        let mut current_width = 0.0;
+
+        for c in text.chars() {
+            if c.is_control() {
+                continue;
+            }
+            let char_width = font.metrics(c, size).advance_width;
+            if current_width + char_width <= max_width {
+                result.push(c);
+                current_width += char_width;
+            } else {
+                break;
+            }
+        }
+        result
+    }
+
+    /// Word wrap with \n support
+    fn wrap_words(
+        &self,
+        font: &fontdue::Font,
+        text: &str,
+        max_width: f32,
+        size: f32,
+    ) -> Vec<String> {
+        let mut lines = Vec::new();
+        let mut current_line = String::new();
+        let mut current_width = 0.0;
+
+        // Split into words but preserve \n
+        let words: Vec<&str> = text
+            .split_inclusive('\n')
+            .flat_map(|part| {
+                if part.ends_with('\n') {
+                    vec![&part[..part.len() - 1], "\n"]
+                } else {
+                    vec![part]
+                }
+            })
+            .collect();
+
+        for word in words {
+            if word == "\n" {
+                // Force new line
+                if !current_line.is_empty() {
+                    lines.push(current_line);
+                    current_line = String::new();
+                    current_width = 0.0;
+                } else {
+                    lines.push(String::new()); // Empty line
+                }
+                continue;
+            }
+
+            let word_width = self.measure_text_width(font, word, size);
+
+            if current_line.is_empty() {
+                current_line = word.to_string();
+                current_width = word_width;
+            } else {
+                // Add space + word
+                let space_width = self.measure_text_width(font, " ", size);
+                let test_width = current_width + space_width + word_width;
+
+                if test_width <= max_width {
+                    current_line.push(' ');
+                    current_line.push_str(word);
+                    current_width = test_width;
+                } else {
+                    lines.push(current_line);
+                    current_line = word.to_string();
+                    current_width = word_width;
+                }
+            }
+        }
+
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+
+        lines
+    }
+
+    /// Character wrap with \n support
+    fn wrap_chars(
+        &self,
+        font: &fontdue::Font,
+        text: &str,
+        max_width: f32,
+        size: f32,
+    ) -> Vec<String> {
+        let mut lines = Vec::new();
+        let mut current_line = String::new();
+        let mut current_width = 0.0;
+
+        for c in text.chars() {
+            if c == '\n' {
+                // Force new line
+                if !current_line.is_empty() {
+                    lines.push(current_line);
+                    current_line = String::new();
+                    current_width = 0.0;
+                } else {
+                    lines.push(String::new()); // Empty line
+                }
+                continue;
+            }
+
+            if c.is_control() {
+                continue;
+            }
+
+            let char_width = font.metrics(c, size).advance_width;
+
+            if current_line.is_empty() || current_width + char_width <= max_width {
+                current_line.push(c);
+                current_width += char_width;
+            } else {
+                lines.push(current_line);
+                current_line = c.to_string();
+                current_width = char_width;
+            }
+        }
+
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+
+        lines
+    }
+}
+
+// C export for draw_string
+#[no_mangle]
+pub unsafe extern "C" fn DrawStringCoreGraphics(
+    fb_handle: i32,
+    font_handle: i32,
+    text: *const c_char,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    size: f32,
+    color: u32,
+    alignment: u32,
+    line_break_mode: u32,
+) -> i32 {
+    let input_text = match parse_c_str(text) {
+        Some(s) => s,
+        None => return 0,
+    };
+    let rgba = hex_to_rgba(color);
+
+    with_font(font_handle, |font| {
+        with_fb(fb_handle, |fb| {
+            fb.draw_string_core_graphics(
+                font,
+                input_text,
+                (x, y, w, h),
+                size,
+                rgba,
+                alignment,
+                line_break_mode,
+            );
+            0
+        })
+    })
+}
+
+// C export for measure_string
+#[no_mangle]
+pub unsafe extern "C" fn MeasureStringCoreGraphics(
+    font_handle: i32,
+    text: *const c_char,
+    max_width: f32,
+    size: f32,
+    line_break_mode: u32,
+    out_width: *mut f32,
+    out_height: *mut f32,
+) -> i32 {
+    let input_text = match parse_c_str(text) {
+        Some(s) => s,
+        None => return -1,
+    };
+
+    with_font(font_handle, |font| {
+        // Get font metrics
+        let line_metrics = match font.horizontal_line_metrics(size) {
+            Some(m) => m,
+            None => return -1,
+        };
+        let line_height = line_metrics.ascent - line_metrics.descent + line_metrics.line_gap;
+
+        // Temporary FrameBuffer for layout methods
+        // Create dummy FB with zero dimensions
+        let dummy_pixels: &mut [u8] = &mut [];
+        let dummy_fb = FrameBuffer {
+            pixels: dummy_pixels,
+            w: 0,
+            h: 0,
+            cx: 0,
+            cy: 0,
+            antialias: true,
+            ctm: Transform::identity(),
+            clip_mask: None,
+            gstate_stack: Vec::new(),
+        };
+
+        let lines = dummy_fb.layout_text(font, input_text, max_width, size, line_break_mode);
+
+        if lines.is_empty() {
+            *out_width = 0.0;
+            *out_height = 0.0;
+            return 0;
+        }
+
+        // Find maximum line width
+        let mut max_line_width = 0.0;
+        for line in &lines {
+            let line_width = dummy_fb.measure_text_width(font, line, size);
+            if line_width > max_line_width {
+                max_line_width = line_width;
+            }
+        }
+
+        let total_height = line_height * lines.len() as f32;
+
+        *out_width = max_line_width;
+        *out_height = total_height;
+        0
+    })
+}

@@ -8,8 +8,6 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* FIXME in SegmentedControl
-* draw_string have some different behaviour on pythonista
 * View
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.

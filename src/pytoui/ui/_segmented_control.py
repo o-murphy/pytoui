@@ -6,7 +6,7 @@ from typing import Sequence, TYPE_CHECKING
 from pytoui.ui._constants import ALIGN_CENTER
 from pytoui.ui._view import View
 from pytoui.ui._types import Touch, Rect
-from pytoui.ui._draw import Path, set_color, draw_string
+from pytoui.ui._draw import Path, set_color, draw_string, measure_string
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
@@ -32,9 +32,11 @@ class SegmentedControl(View):
     )
 
     _DEFAULT_MARGIN = 2.0
+    _TEXT_INSET = 4.0  # Horizontal inset for text within segment
     _IOS_GRAY_BG = (0.89, 0.89, 0.91, 1.0)
     _IOS_WHITE_SEL = (1.0, 1.0, 1.0, 1.0)
     _TEXT_COLOR = (0.0, 0.0, 0.0, 1.0)
+    _FONT_SIZE = 13.0
 
     def __init__(self):
         self._action: _Action | None = None
@@ -195,19 +197,44 @@ class SegmentedControl(View):
             radius - margin,
         ).fill()
 
-        # 3. Text labels
+        # Calculate vertical center of the pill
+        pill_center_y = h / 2
+
         for i, string in enumerate(segments):
             seg_x = i * segment_width
             r, g, b, a = self._TEXT_COLOR
             # Smoother text fading if disabled
             alpha = a if self.enabled else a * 0.3
 
+            # Measure text to get actual dimensions
+            max_text_width = segment_width - 2 * self._TEXT_INSET
+            try:
+                text_width, text_height = measure_string(
+                    string,
+                    max_width=max_text_width,
+                    font=("<system>", self._FONT_SIZE),
+                    alignment=ALIGN_CENTER,
+                    line_break_mode=1,  # LB_TRUNCATE_TAIL
+                )
+            except Exception:
+                text_width = max_text_width
+                text_height = self._FONT_SIZE
+
+            # Calculate horizontal position to center text within segment
+            text_x = seg_x + (segment_width - text_width) / 2
+
+            # Position text so that its center aligns with the pill's center
+            # Baseline is approximately at 2/3 of the text height from the top
+            baseline_y = pill_center_y - text_height / 2  # + self._FONT_SIZE * 0.7
+
+            # Draw text
             draw_string(
                 string,
-                rect=(seg_x, 0, segment_width, h),
-                font=("<system>", 13.0),
+                rect=(text_x, baseline_y, text_width, text_height),
+                font=("<system>", self._FONT_SIZE),
                 color=(r, g, b, alpha),
                 alignment=ALIGN_CENTER,
+                line_break_mode=1,  # LB_TRUNCATE_TAIL
             )
 
     def _get_index_at_location(self, x: float) -> int:

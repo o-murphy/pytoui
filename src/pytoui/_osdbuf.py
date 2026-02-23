@@ -464,6 +464,33 @@ class FrameBuffer:
         )
         L.DrawCheckerBoard.restype = None
 
+        # Core Graphics text methods
+        L.DrawStringCoreGraphics.argtypes = [
+            ctypes.c_int,  # fb_handle
+            ctypes.c_int,  # font_handle
+            ctypes.c_char_p,  # text
+            ctypes.c_float,  # x
+            ctypes.c_float,  # y
+            ctypes.c_float,  # w
+            ctypes.c_float,  # h
+            ctypes.c_float,  # size
+            ctypes.c_uint32,  # color
+            ctypes.c_uint32,  # alignment
+            ctypes.c_uint32,  # line_break_mode
+        ]
+        L.DrawStringCoreGraphics.restype = ctypes.c_int
+
+        L.MeasureStringCoreGraphics.argtypes = [
+            ctypes.c_int,  # font_handle
+            ctypes.c_char_p,  # text
+            ctypes.c_float,  # max_width
+            ctypes.c_float,  # size
+            ctypes.c_uint32,  # line_break_mode
+            ctypes.POINTER(ctypes.c_float),  # out_width
+            ctypes.POINTER(ctypes.c_float),  # out_height
+        ]
+        L.MeasureStringCoreGraphics.restype = ctypes.c_int
+
     def __init__(self, osd_ptr, width, height, lib_path=_OSDBUF_PATH):
         if not osd_ptr:
             raise ValueError("osd_ptr is NULL! Cannot create FrameBuffer.")
@@ -954,3 +981,86 @@ class FrameBuffer:
     # ============= DEBUG ONLY =============
     def draw_checkerboard(self, size: int = 8):
         self._lib.DrawCheckerBoard(self._handle, size)
+
+    # ============= CORE GRAPHICS =============
+    def draw_string_core_graphics(
+        self,
+        s: str,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        size: float = 17.0,
+        c: int = 0,
+        font_id: int = 0,
+        alignment: int = 0,  # ALIGN_LEFT
+        line_break_mode: int = 4,  # LB_TRUNCATE_TAIL
+    ) -> None:
+        """CoreGraphics-compatible text drawing.
+
+        Args:
+            s: text to draw
+            x, y, w, h: rectangle coordinates
+            size: font size in points
+            c: color as 0xRRGGBBAA
+            font_id: font handle ID
+            alignment: text alignment (0=LEFT, 1=CENTER, 2=RIGHT, 3=JUSTIFIED, 4=NATURAL)
+            line_break_mode: line break mode (0=WORD_WRAP, 1=CHAR_WRAP, 2=CLIP,
+                            3=TRUNCATE_HEAD, 4=TRUNCATE_TAIL, 5=TRUNCATE_MIDDLE)
+        """
+        if hasattr(self._lib, "DrawStringCoreGraphics"):
+            self._lib.DrawStringCoreGraphics(
+                self._handle,
+                font_id,
+                s.encode("utf-8"),
+                ctypes.c_float(x),
+                ctypes.c_float(y),
+                ctypes.c_float(w),
+                ctypes.c_float(h),
+                ctypes.c_float(size),
+                int(c),
+                alignment,
+                line_break_mode,
+            )
+
+    @classmethod
+    def measure_string_core_graphics(
+        cls,
+        s: str,
+        max_width: float,
+        size: float = 17.0,
+        font_id: int = 0,
+        line_break_mode: int = 4,
+    ) -> tuple[float, float]:
+        """Measure text dimensions.
+
+        Args:
+            s: text to measure
+            max_width: maximum width constraint (0 for unlimited)
+            size: font size in points
+            font_id: font handle ID
+            line_break_mode: line break mode (0=WORD_WRAP, 1=CHAR_WRAP, 2=CLIP,
+                            3=TRUNCATE_HEAD, 4=TRUNCATE_TAIL, 5=TRUNCATE_MIDDLE)
+
+        Returns:
+            (width, height) in pixels
+        """
+        lib = cls._ensure_lib_loaded()
+
+        width = ctypes.c_float()
+        height = ctypes.c_float()
+
+        ret = lib.MeasureStringCoreGraphics(
+            font_id,
+            s.encode("utf-8"),
+            ctypes.c_float(max_width),
+            ctypes.c_float(size),
+            line_break_mode,
+            ctypes.byref(width),
+            ctypes.byref(height),
+        )
+
+        if ret == -1:
+            raise ValueError(f"Invalid font handle: {font_id}")
+
+        return (width.value, height.value)

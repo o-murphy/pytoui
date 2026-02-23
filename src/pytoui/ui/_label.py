@@ -8,11 +8,9 @@ from pytoui.ui._constants import (
 from pytoui.ui._view import View
 from pytoui.ui._types import Rect
 from pytoui.ui._draw import (
-    draw_string,
-    measure_string,
     parse_color,
-    _layout_lines,
-    _font_id,
+    measure_string,
+    draw_string,
 )
 
 if TYPE_CHECKING:
@@ -96,7 +94,17 @@ class Label(View):
         self._alignment = value
         self.set_needs_display()
 
+    def _get_text_metrics(self, font_size: float) -> tuple[float, float, float]:
+        """Get font metrics for vertical centering using fallback values."""
+        # Since we can't access fb directly, use approximate values
+        # In a real implementation, these would come from the font metrics
+        ascent = font_size * 0.8  # Approximate ascent
+        descent = font_size * 0.2  # Approximate descent
+        text_height = font_size
+        return text_height, ascent, descent
+
     def draw(self):
+        """Draw the label."""
         if not self._text or self._text_color is None:
             return
 
@@ -107,38 +115,97 @@ class Label(View):
         if self._scales_font and self._number_of_lines == 1:
             min_scale = self._min_font_scale if self._min_font_scale > 0 else 0.5
             min_size = font_size * min_scale
-            while font_size > min_size:
-                tw, _ = measure_string(self._text, font=(font_name, font_size))
-                if tw <= w:
-                    break
-                font_size -= 0.5
-            font_size = max(font_size, min_size)
+            current_size = font_size
 
-        # To handle number_of_lines, we manually layout and then join with \n
-        # because draw_string doesn't have a max_lines parameter.
-        fid = _font_id(font_name)
-        lines = _layout_lines(
-            self._text, w, font_size, fid, self._line_break_mode, self._number_of_lines
-        )
-        text_to_draw = "\n".join(lines)
+            # Measure text width with current font size
+            try:
+                text_width, _ = measure_string(
+                    self._text,
+                    max_width=w,
+                    font=(font_name, current_size),
+                    alignment=self._alignment,
+                    line_break_mode=self._line_break_mode,
+                )
+            except Exception:
+                text_width = w
 
-        draw_string(
-            text_to_draw,
-            rect=(0, 0, w, h),
-            font=(font_name, font_size),
-            color=self._text_color,
-            alignment=self._alignment,
-            line_break_mode=self._line_break_mode,
-        )
+            # Reduce font size until it fits
+            while text_width > w and current_size > min_size:
+                current_size -= 0.5
+                try:
+                    text_width, _ = measure_string(
+                        self._text,
+                        max_width=w,
+                        font=(font_name, current_size),
+                        alignment=self._alignment,
+                        line_break_mode=self._line_break_mode,
+                    )
+                except Exception:
+                    text_width = w
+
+            font_size = max(current_size, min_size)
+
+        # Measure text to get actual dimensions with current font
+        try:
+            text_width, text_height = measure_string(
+                self._text,
+                max_width=w,
+                font=(font_name, font_size),
+                alignment=self._alignment,
+                line_break_mode=self._line_break_mode,
+            )
+        except Exception:
+            text_width = w
+            text_height = font_size
+
+        # Calculate vertical center of the label
+        center_y = h / 2
+
+        # Position text so that its center aligns with the label's center
+        # Baseline is approximately at 2/3 of the text height from the top
+        baseline_y = center_y - text_height / 2  # + font_size * 0.7
+
+        # Calculate horizontal position based on alignment
+        if self._alignment == ALIGN_NATURAL or self._alignment == 0:  # LEFT
+            text_x = 0
+            rect_width = text_width
+        elif self._alignment == 2:  # RIGHT
+            text_x = w - text_width
+            rect_width = text_width
+        else:  # CENTER
+            text_x = (w - text_width) / 2
+            rect_width = text_width
+
+        # Draw text
+        try:
+            draw_string(
+                self._text,
+                rect=(text_x, baseline_y, rect_width, text_height),
+                font=(font_name, font_size),
+                color=self._text_color,
+                alignment=self._alignment,
+                line_break_mode=self._line_break_mode,
+            )
+        except Exception:
+            pass  # Silently fail if drawing fails
 
     def size_to_fit(self):
-        """Resizes the label to perfectly fit its text content."""
+        """Resize the label to perfectly fit its text content."""
         if not self._text:
             return
 
-        tw, th = measure_string(
-            self._text,
-            font=self._font,
-            max_width=self._frame.w if self._number_of_lines != 1 else 0,
-        )
-        self.frame = Rect(self._frame.x, self._frame.y, tw, th)
+        # If number_of_lines == 1, max_width = 0 (unlimited)
+        # If multiline, use current width as constraint
+        max_width = 0.0 if self._number_of_lines == 1 else self._frame.w
+
+        try:
+            tw, th = measure_string(
+                self._text,
+                max_width=max_width,
+                font=self._font,
+                alignment=self._alignment,
+                line_break_mode=self._line_break_mode,
+            )
+            self.frame = Rect(self._frame.x, self._frame.y, tw, th)
+        except Exception:
+            pass  # Silently fail if measurement fails

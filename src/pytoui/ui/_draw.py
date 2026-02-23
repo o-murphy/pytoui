@@ -37,10 +37,8 @@ import time
 from typing import Any, Callable, Sequence, cast, TYPE_CHECKING
 
 from pytoui.ui._constants import (
-    ALIGN_CENTER,
     ALIGN_LEFT,
     ALIGN_NATURAL,
-    ALIGN_RIGHT,
     BLEND_NORMAL,
     CONTENT_BOTTOM,
     CONTENT_BOTTOM_LEFT,
@@ -54,10 +52,6 @@ from pytoui.ui._constants import (
     CONTENT_TOP,
     CONTENT_TOP_LEFT,
     CONTENT_TOP_RIGHT,
-    LB_CHAR_WRAP,
-    LB_CLIP,
-    LB_TRUNCATE_HEAD,
-    LB_TRUNCATE_MIDDLE,
     LB_TRUNCATE_TAIL,
     LB_WORD_WRAP,
     LINE_CAP_BUTT,
@@ -687,194 +681,14 @@ def _font_id(font_name: str) -> int:
 # -- Text measurement and layout helpers ---------------------------------------
 
 
-def measure_string(
-    s: str,
-    max_width: float = 0,
-    font: tuple[str, float] = ("<system>", 12.0),
-    alignment: int = ALIGN_LEFT,
-    line_break_mode: int = LB_WORD_WRAP,
-) -> tuple[float, float]:
-    """Return the dimensions (width, height) of a string as if drawn with draw_string().
-
-    When max_width is 0, the text is not constrained (single line).
-    """
-    ctx = _get_draw_ctx()
-    fb = ctx.backend
-    if fb is None:
-        return (0.0, 0.0)
-    font_name, font_size = font
-    fid = _font_id(font_name)
-    line_h = type(fb).get_text_height(size=font_size, font_id=fid)
-
-    fb_cls = type(fb)
-    if max_width <= 0:
-        # Single line, unconstrained width
-        w = _measure(fb_cls, s, font_size, fid)  # type: ignore[arg-type]
-        return (float(w), float(line_h))
-
-    # Multi-line: layout with max_width constraint
-    lines = _layout_lines(s, int(max_width), font_size, fid, line_break_mode, 0)
-    total_h = line_h * len(lines)
-    max_w = 0.0
-    for line in lines:
-        lw = _measure(fb_cls, line, font_size, fid)  # type: ignore[arg-type]
-        if lw > max_w:
-            max_w = lw
-    return (float(max_w), float(total_h))
-
-
-@lru_cache(maxsize=2048)
-def _measure(fb_cls, text: str, size: float, font_id: int) -> int:
-    """Measure text width via fb class method. Cached — result is deterministic for given inputs."""
-    return fb_cls.measure_text(text, size=size, font_id=font_id)
-
-
-def _truncate_tail(fb_cls, text: str, max_w: float, size: float, font_id: int) -> str:
-    if _measure(fb_cls, text, size, font_id) <= max_w:
-        return text
-    ellipsis = "..."
-    ew = _measure(fb_cls, ellipsis, size, font_id)
-    for i in range(len(text), 0, -1):
-        if _measure(fb_cls, text[:i], size, font_id) + ew <= max_w:
-            return text[:i] + ellipsis
-    return ellipsis
-
-
-def _truncate_head(fb_cls, text: str, max_w: float, size: float, font_id: int) -> str:
-    if _measure(fb_cls, text, size, font_id) <= max_w:
-        return text
-    ellipsis = "\u2026"
-    ew = _measure(fb_cls, ellipsis, size, font_id)
-    for i in range(len(text)):
-        if _measure(fb_cls, text[i:], size, font_id) + ew <= max_w:
-            return ellipsis + text[i:]
-    return ellipsis
-
-
-def _truncate_middle(fb_cls, text: str, max_w: float, size: float, font_id: int) -> str:
-    if _measure(fb_cls, text, size, font_id) <= max_w:
-        return text
-    ellipsis = "\u2026"
-    n = len(text)
-    for cut in range(1, n):
-        left = n // 2 - (cut + 1) // 2
-        right = n // 2 + cut // 2
-        if left < 0:
-            break
-        candidate = text[:left] + ellipsis + text[right:]
-        if _measure(fb_cls, candidate, size, font_id) <= max_w:
-            return candidate
-    return ellipsis
-
-
-def _wrap_word(fb_cls, text: str, max_w: float, size: float, font_id: int) -> list[str]:
-    words = text.split(" ")
-    lines: list[str] = []
-    current = ""
-    for word in words:
-        trial = word if not current else current + " " + word
-        if _measure(fb_cls, trial, size, font_id) <= max_w or not current:
-            current = trial
-        else:
-            lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    return lines or [""]
-
-
-def _wrap_char(fb_cls, text: str, max_w: float, size: float, font_id: int) -> list[str]:
-    lines: list[str] = []
-    current = ""
-    for ch in text:
-        trial = current + ch
-        if _measure(fb_cls, trial, size, font_id) <= max_w or not current:
-            current = trial
-        else:
-            lines.append(current)
-            current = ch
-    if current:
-        lines.append(current)
-    return lines or [""]
-
-
-def _alignment_to_anchor(alignment: int) -> int:
-    """Map TextAlignment to osdbuf TextAnchor bit flags."""
-    CENTER = 0
-    LEFT = 4
-    RIGHT = 8  # noqa: E702
-    if alignment in (ALIGN_LEFT, ALIGN_NATURAL):
-        return LEFT
-    elif alignment == ALIGN_RIGHT:
-        return RIGHT
-    elif alignment == ALIGN_CENTER:
-        return CENTER
-    return LEFT
-
-
-def _layout_lines(
-    text: str,
-    w: float,
-    font_size: float,
-    font_id: int,
-    mode: int,
-    max_lines: int,
-) -> list[str]:
-    """Break text into lines respecting line_break_mode and number_of_lines.
-    Now supports explicit newline characters (\\n).
-    """
-    fb = _get_draw_ctx().backend
-    if fb is None:
-        return [""]
-    fb_cls = type(fb)
-
-    # Split by explicit newlines first
-    paragraphs = text.splitlines()
-    if not paragraphs:
-        return [""]
-
-    all_lines = []
-
-    for p in paragraphs:
-        # For each paragraph, apply the wrapping logic
-        if mode in (LB_TRUNCATE_TAIL, LB_TRUNCATE_HEAD, LB_TRUNCATE_MIDDLE, LB_CLIP):
-            # These modes usually imply a single line per paragraph logic in layout
-            if mode == LB_TRUNCATE_TAIL:
-                p_lines = [_truncate_tail(fb_cls, p, w, font_size, font_id)]
-            elif mode == LB_TRUNCATE_HEAD:
-                p_lines = [_truncate_head(fb_cls, p, w, font_size, font_id)]
-            elif mode == LB_TRUNCATE_MIDDLE:
-                p_lines = [_truncate_middle(fb_cls, p, w, font_size, font_id)]
-            else:
-                p_lines = [p]
-        elif mode == LB_CHAR_WRAP:
-            p_lines = _wrap_char(fb_cls, p, w, font_size, font_id)
-        else:
-            # Default to word wrap
-            p_lines = _wrap_word(fb_cls, p, w, font_size, font_id)
-
-        all_lines.extend(p_lines)
-
-    # Apply global max_lines constraint if set
-    if max_lines > 0 and len(all_lines) > max_lines:
-        all_lines = all_lines[:max_lines]
-        if mode != LB_CLIP:
-            all_lines[-1] = _truncate_tail(fb_cls, all_lines[-1], w, font_size, font_id)
-
-    return all_lines
-
-
 def draw_string(
     s: str,
     rect: _RectLike = (0, 0, 0, 0),
     font: tuple[str, float] = ("<system>", 17.0),
-    color: _ColorLike | None = "black",
+    color: _ColorLike | None = (0.0, 0.0, 0.0, 1.0),
     alignment: int = ALIGN_NATURAL,
     line_break_mode: int = LB_TRUNCATE_TAIL,
 ):
-    """Draw a string in the given rectangle.
-    Now supports multiline text with \\n and vertical centering.
-    """
     ctx = _get_draw_ctx()
     fb = ctx.backend
     if fb is None:
@@ -885,6 +699,7 @@ def draw_string(
     if not isinstance(rect, Rect):
         rect = Rect(*rect)
 
+    # Transform coords
     x = m.a * rect.x + m.c * rect.y + m.tx + ox
     y = m.b * rect.x + m.d * rect.y + m.ty + oy
     w, h = rect.w, rect.h
@@ -893,45 +708,44 @@ def draw_string(
     fid = _font_id(font_name)
 
     _color = parse_color(color)
-    _color = _color if _color is not None else ctx.color
+    if _color is None:
+        _color = ctx.color
     if ctx.alpha != 1.0:
         _color = (_color[0], _color[1], _color[2], _color[3] * ctx.alpha)
     c = _rgba_to_uint32(_color)
 
-    # If line_break_mode is word/char wrap, we don't limit to 1 line.
-    # If it's truncate, we might still want to support multiple lines if \n is present,
-    # but usually Pythonista's draw_string with TRUNCATE_TAIL limits to the rect.
-    # We set max_lines to 0 (unlimited) here, and _layout_lines will handle the logic.
-    max_lines = 0 if line_break_mode in (LB_WORD_WRAP, LB_CHAR_WRAP) else 100
+    fb.draw_string_core_graphics(
+        s,
+        x,
+        y,
+        w,
+        h,
+        size=font_size,
+        c=c,
+        font_id=fid,
+        alignment=alignment,
+        line_break_mode=line_break_mode,
+    )
 
-    lines = _layout_lines(s, w, font_size, fid, line_break_mode, max_lines)
 
-    line_h = type(fb).get_text_height(size=font_size, font_id=fid)
-    total_h = line_h * len(lines)
+def measure_string(
+    s: str,
+    max_width: float = 0,
+    font: tuple[str, float] = ("<system>", 12.0),
+    alignment: int = ALIGN_LEFT,
+    line_break_mode: int = LB_WORD_WRAP,
+) -> tuple[float, float]:
+    ctx = _get_draw_ctx()
+    fb = ctx.backend
+    if fb is None:
+        return (0.0, 0.0)
 
-    # Calculate starting Y to center the whole block of text vertically in the rect
-    start_y = y + (h - total_h) / 2
+    font_name, font_size = font
+    fid = _font_id(font_name)
 
-    anchor = _alignment_to_anchor(alignment)
-
-    for i, line in enumerate(lines):
-        if alignment in (ALIGN_LEFT, ALIGN_NATURAL):
-            tx = x
-        elif alignment == ALIGN_RIGHT:
-            tx = x + w
-        elif alignment == ALIGN_CENTER:
-            tx = x + w / 2
-        else:
-            tx = x
-
-        # ty is the vertical center of the specific line
-        ty = start_y + i * line_h + line_h / 2
-
-        # Simple clipping check: if the line center is outside the rect height, skip
-        if ty < y or ty >= y + h:
-            continue
-
-        fb.text(line, tx, ty, c=c, size=font_size, font_id=fid, anchor=anchor)
+    return type(fb).measure_string_core_graphics(
+        s, max_width, size=font_size, font_id=fid, line_break_mode=line_break_mode
+    )
 
 
 def _screen_origin(view) -> tuple[float, float]:

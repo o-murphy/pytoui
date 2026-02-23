@@ -9,14 +9,13 @@ from pytoui.ui._types import (
     Size,
     Touch,
 )
-from pytoui.ui._label import Label
 from pytoui.ui._image import Image
-from pytoui.ui._draw import draw_string
+from pytoui.ui._draw import draw_string, measure_string
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import _Action, _RGBA
+    from pytoui.ui._types import _Action, _RGBA, _Font
 
 __all__ = ("Button",)
 
@@ -29,7 +28,9 @@ class Button(View):
         "_enabled",
         "_background_image",
         "_image",
-        "_title_label",
+        "_title",
+        "_font",
+        "_text_color",
         "_anim_alpha",
         "_target_alpha",
         "_tracked",
@@ -46,6 +47,9 @@ class Button(View):
         self._enabled: bool = True
         self._background_image: Image | None = None
         self._image: Image | None = None
+        self._title: str | None = None
+        self._font: _Font = ("<system>", 17.0)
+        self._text_color: _RGBA | None = None  # None means auto-detect
 
         # Opacity animation state
         self._anim_alpha = 1.0
@@ -57,17 +61,6 @@ class Button(View):
         self._content_insets: Size = Size(8.0, 8.0)
 
         self._frame = Rect(0.0, 0.0, 80.0, 44.0)
-
-        lbl = Label.__new__(Label)
-        Label.__init__(lbl)
-        lbl._font = ("<system>", 17)
-        lbl._alignment = ALIGN_CENTER
-        lbl._line_break_mode = LB_TRUNCATE_TAIL
-        lbl._number_of_lines = 1
-        # We don't set a hard text_color here to allow dynamic switching
-        lbl._text_color = None
-
-        self._title_label: Label = lbl
 
     def _get_contrast_text_color(self) -> _RGBA:
         """Determines the best text color based on background brightness."""
@@ -83,7 +76,7 @@ class Button(View):
         luminance = (0.299 * r) + (0.587 * g) + (0.114 * b)
 
         # If background is dark, text should be white.
-        # If light, use system blue (or black/dark blue for even better contrast)
+        # If light, use system blue
         return self._WHITE if luminance < 0.6 else self._IOS_BLUE
 
     @property
@@ -111,11 +104,11 @@ class Button(View):
 
     @property
     def title(self) -> str | None:
-        return self._title_label._text
+        return self._title
 
     @title.setter
     def title(self, value: str | None):
-        self._title_label._text = value
+        self._title = value
         self.set_needs_display()
 
     def update(self):
@@ -144,28 +137,57 @@ class Button(View):
             self.set_needs_display()
 
     def draw(self):
-        lbl = self._title_label
-        if not lbl._text:
+        if not self._title:
             return
 
         # --- AUTOMATIC TEXT COLOR SELECTION ---
         if not self.enabled:
             base_color = (0.7, 0.7, 0.7, 1.0)  # disabled gray
         else:
-            # If user manually set label color, use it. Otherwise, adapt.
-            base_color = lbl._text_color or self._get_contrast_text_color()
+            # If user manually set text color, use it. Otherwise, adapt.
+            base_color = self._text_color or self._get_contrast_text_color()
 
         # Apply animated opacity
         r, g, b, a = base_color
         current_color = (r, g, b, a * self._anim_alpha)
 
+        # Apply content insets to get the drawing rectangle
+        inset_rect = self.bounds.inset(self._content_insets.x, self._content_insets.y)
+
+        font_name, font_size = self._font
+
+        # Measure text to get actual dimensions
+        try:
+            text_width, text_height = measure_string(
+                self._title,
+                max_width=inset_rect.w,
+                font=self._font,
+                alignment=ALIGN_CENTER,
+                line_break_mode=LB_TRUNCATE_TAIL,
+            )
+        except Exception:
+            text_width = inset_rect.w
+            text_height = font_size
+
+        # Calculate vertical center of the inset rectangle
+        center_y = inset_rect.y + inset_rect.h / 2
+
+        # Position text so that its center aligns with the button's center
+        # The draw_string function uses baseline, so we need to adjust
+        # Baseline is approximately at 2/3 of the text height from the top
+        baseline_y = center_y - text_height / 2  # + font_size * 0.7
+
+        # Calculate horizontal position for centering
+        text_x = inset_rect.x + (inset_rect.w - text_width) / 2
+
+        # Draw text centered
         draw_string(
-            lbl.text,
-            rect=self.bounds.inset(self._content_insets.x, self._content_insets.y),
-            font=lbl.font,
+            self._title,
+            rect=(text_x, baseline_y, text_width, text_height),
+            font=self._font,
             color=current_color,
-            alignment=lbl._alignment,
-            line_break_mode=lbl._line_break_mode,
+            alignment=ALIGN_CENTER,
+            line_break_mode=LB_TRUNCATE_TAIL,
         )
 
     def touch_began(self, touch: Touch):

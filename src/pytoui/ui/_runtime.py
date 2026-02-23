@@ -34,9 +34,26 @@ if TYPE_CHECKING:
 
 # --- LOAD DEFAULT FONTS ---
 _DEFAULT_FONTS_PATH = Path(__file__).parent.parent
-FrameBuffer.load_font(str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans.ttf"))
-FrameBuffer.load_font(str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans-Bold.ttf"))
 
+
+def _load_default_fonts():
+    def _try_with_fallback(font, fallback):
+        try:
+            FrameBuffer.load_font(font)
+        except RuntimeError:
+            FrameBuffer.load_font(fallback)
+
+    _try_with_fallback(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans.ttf"),
+    )
+    _try_with_fallback(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans-Bold.ttf"),
+    )
+
+
+_load_default_fonts()
 
 # ---------------------------------------------------------------------------
 # RawFrameBufferRuntime (headless / testing)

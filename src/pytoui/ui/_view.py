@@ -1,5 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Sequence, cast, NoReturn
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generic,
+    Sequence,
+    Type,
+    TypeVar,
+    cast,
+    NoReturn,
+    overload,
+)
 
 import time
 from uuid import uuid4
@@ -45,20 +56,34 @@ if TYPE_CHECKING:
 
 __all__ = ("View",)
 
+__ClassT = TypeVar("__ClassT")
+__GetT = TypeVar("__GetT")
+__SetT = TypeVar("__SetT")
 
-class getset_descriptor:
-    def __init__(self, name: str, default_value=1.0):
-        self.public_name = name
-        self.default_value = default_value
-        self.mangled_name = None  # Обчислимо пізніше
-        self._getter = None
-        self._setter = None
 
-    def __set_name__(self, owner, name):
+class getset_descriptor(Generic[__ClassT, __GetT, __SetT]):
+    def __init__(self, name: str, default_value: __GetT | None = None):
+        self.public_name: str | None = name
+        self.default_value: __GetT = default_value
+        self.mangled_name: str | None = None
+        self._getter: Callable[[__ClassT], __GetT] | None = None
+        self._setter: Callable[[__ClassT, __SetT], None] | None = None
+
+    def __set_name__(self, owner: Type[__ClassT], name: str):
         class_name = owner.__name__.lstrip("_")
         self.mangled_name = f"_{class_name}__{name}"
 
-    def __get__(self, obj, objtype=None):
+    @overload
+    def __get__(
+        self, obj: None, objtype: Type[__ClassT]
+    ) -> getset_descriptor[__ClassT, __GetT, __SetT]: ...
+
+    @overload
+    def __get__(self, obj: __ClassT, objtype: Type[__ClassT]) -> __GetT: ...
+
+    def __get__(
+        self, obj: __ClassT | None, objtype: Type[__ClassT] | None = None
+    ) -> __GetT:
         if obj is None:
             return self
         if self._getter is not None:
@@ -66,28 +91,28 @@ class getset_descriptor:
 
         return getattr(obj, self.mangled_name, self.default_value)
 
-    def __set__(self, obj, value):
+    def __set__(self, obj: __ClassT, value: __SetT):
         if self._setter is not None:
             self._setter(obj, value)
         else:
             raise AttributeError(f"property '{self.public_name}' has no setter")
 
-    def __delete__(self, obj):
+    def __delete__(self, obj: __ClassT):
         raise AttributeError(f"Can't delete {self.public_name} attribute")
 
-    def _get_raw(self, obj):
+    def _get_raw(self, obj: __ClassT) -> __GetT:
+        """Повертає 'сире' значення зі слота або default_value типу V_get."""
         return getattr(obj, self.mangled_name, self.default_value)
 
-    def _set_raw(self, obj, value):
+    def _set_raw(self, obj: __ClassT, value: __GetT):
+        """Записує значення безпосередньо в слот. Очікує тип V_get."""
         setattr(obj, self.mangled_name, value)
 
-    def getter(self, func):
+    def getter(self, func: Callable[[__ClassT], __GetT]) -> None:
         self._getter = func
-        return None  # self
 
-    def setter(self, func):
+    def setter(self, func: Callable[[__ClassT, __SetT], None]) -> None:
         self._setter = func
-        return None  # self
 
 
 class _ViewMeta(type):
@@ -97,6 +122,8 @@ class _ViewMeta(type):
                 raise TypeError(f"{base.__name__} cannot be subclassed")
         return super().__new__(mcls, name, bases, namespace, **kwargs)
 
+
+_GD = getset_descriptor
 
 class _view(metaclass=_ViewMeta):
     __final__ = False
@@ -122,28 +149,44 @@ class _view(metaclass=_ViewMeta):
         "__pytoui_animations_disabled",
     )
 
-    alpha: getset_descriptor = getset_descriptor("alpha", 1.0)
-    background_color: getset_descriptor = getset_descriptor(
+    alpha: _GD[_view, float, float] = _GD("alpha", 1.0)
+    background_color: _GD[_view, _ColorLike, _RGBA] = _GD(
         "background_color", (0.0, 0.0, 0.0, 0.0)
     )
-    border_color: getset_descriptor = getset_descriptor(
+    border_color: _GD[_view, _ColorLike, _RGBA] = _GD(
         "border_color", (0.0, 0.0, 0.0, 1.0)
     )
-    border_width: getset_descriptor = getset_descriptor("border_width", 0.0)
-    content_mode: getset_descriptor = getset_descriptor("content_mode", CONTENT_REDRAW)
-    corner_radius: getset_descriptor = getset_descriptor("corner_radius", 0.0)
-    flex: getset_descriptor = getset_descriptor("flex", "")
-    hidden: getset_descriptor = getset_descriptor("hidden", False)
-    name: getset_descriptor = getset_descriptor("name", "")
-    tint_color: getset_descriptor = getset_descriptor("tint_color", None)
-    touch_enabled: getset_descriptor = getset_descriptor("touch_enabled", True)
-    multitouch_enabled: getset_descriptor = getset_descriptor(
+    border_width: _GD[_view, float, float] = _GD(
+        "border_width", 0.0
+    )
+    content_mode: _GD[_view, int, int] = _GD(
+        "content_mode", CONTENT_REDRAW
+    )
+    corner_radius: _GD[_view, float, float] = _GD(
+        "corner_radius", 0.0
+    )
+    flex: _GD[_view, _ViewFlex, _ViewFlex] = _GD("flex", "")
+    hidden: _GD[_view, bool, bool] = _GD("hidden", False)
+    name: _GD[_view, str, str] = _GD("name", "")
+    tint_color: _GD[_view, _ColorLike, _RGBA] = _GD(
+        "tint_color", None
+    )
+    touch_enabled: _GD[_view, bool, bool] = _GD(
+        "touch_enabled", True
+    )
+    multitouch_enabled: _GD[_view, bool, bool] = _GD(
         "multitouch_enabled", False
     )
-    transform: getset_descriptor = getset_descriptor("transform", None)
-    update_interval: getset_descriptor = getset_descriptor("update_interval", 0.0)
+    transform: _GD[_view, Transform | None, Transform | None] = (
+        _GD("transform", None)
+    )
+    update_interval: _GD[_view, float, float] = _GD(
+        "update_interval", 0.0
+    )
 
-    on_screen: getset_descriptor = getset_descriptor("on_screen", False)
+    on_screen: _GD[_view, bool, bool] = _GD(
+        "on_screen", False
+    )
 
     _SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
 
@@ -151,15 +194,15 @@ class _view(metaclass=_ViewMeta):
         self.alpha = 1.0
         self.background_color = (0.0, 0.0, 0.0, 0.0)
         self.border_color = (0.0, 0.0, 0.0, 1.0)
-        self.border_width: float = 0.0
-        self._bounds: Rect = Rect(0.0, 0.0, 100.0, 100.0)
-        self.content_mode: int = (
+        self.border_width = 0.0
+        self._bounds = Rect(0.0, 0.0, 100.0, 100.0)
+        self.content_mode = (
             CONTENT_REDRAW if type(self) is not View else CONTENT_SCALE_TO_FILL
         )
         self.corner_radius: float = 0.0
         self.flex: _ViewFlex = ""
         self._frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
-        self.hidden: bool = False
+        self.hidden = False
         self.name: str = str(uuid4())
         self._subviews: list[View] = []
         self._superview: View | None = None

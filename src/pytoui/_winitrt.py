@@ -129,7 +129,7 @@ class WinitRuntime(BaseRuntime):
             rf = self.root.frame
             self.root.frame = (rf.x, rf.y, float(w), float(h))
 
-        if not self.root.state.pytoui_presented:
+        if not self.root._pytoui_st.pytoui_presented:
             return 1
 
         fb.draw_checkerboard(CHECKER_SIZE)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
-    Callable,
     Generic,
     Sequence,
     Type,
@@ -53,66 +52,49 @@ if TYPE_CHECKING:
 __all__ = ("View",)
 
 __ClassT = TypeVar("__ClassT")
-__GetT = TypeVar("__GetT")
-__SetT = TypeVar("__SetT")
+__PropT = TypeVar("__PropT")
 
 
-class _getset_descriptor(Generic[__ClassT, __GetT, __SetT]):
-    def __init__(self, name: str, default_value: __GetT | None = None):
-        self._public_name: str | None = name
-        self._default_value: __GetT = default_value
-        self._mangled_name: str | None = None
-        self._getter: Callable[[__ClassT], __GetT] | None = None
-        self._setter: Callable[[__ClassT, __SetT], None] | None = None
+class _getset_descriptor(Generic[__ClassT, __PropT]):
+    def __init__(self, name: str):
+        self._public_name = name
+        self._mangled_name: str = f"__{name}"
 
     def __set_name__(self, owner: Type[__ClassT], name: str):
-        class_name = owner.__name__.lstrip("_")
-        self._mangled_name = f"_{class_name}__{name}"
+        self._mangled_name = f"_{owner.__name__.lstrip('_')}__{name.lstrip('_')}"
 
     @overload
     def __get__(
         self, obj: None, objtype: Type[__ClassT]
-    ) -> _getset_descriptor[__ClassT, __GetT, __SetT]: ...
+    ) -> _getset_descriptor[__ClassT, __PropT]: ...
 
     @overload
-    def __get__(self, obj: __ClassT, objtype: Type[__ClassT]) -> __GetT: ...
+    def __get__(self, obj: __ClassT, objtype: Type[__ClassT]) -> __PropT: ...
 
     def __get__(
         self, obj: __ClassT | None, objtype: Type[__ClassT] | None = None
-    ) -> __GetT:
+    ) -> __PropT:
         if obj is None:
             return self
-        if self._getter is not None:
-            return self._getter(obj)
+        val = getattr(obj, self._mangled_name, None)
+        if val is None:
+            objtype_name = objtype.__name__ if objtype is not None else None
+            raise AttributeError(
+                f"State not initialized for {objtype_name}. "
+                "Did you forget to call super().__new__ or use the metaclass?"
+            )
+        return val
 
-        return getattr(obj, self._mangled_name, self._default_value)
-
-    def __set__(self, obj: __ClassT, value: __SetT):
-        if self._setter is not None:
-            self._setter(obj, value)
-        else:
-            raise AttributeError(f"property '{self._public_name}' has no setter")
+    def __set__(self, obj: __ClassT, value: __PropT):
+        setattr(obj, self._mangled_name, value)
 
     def __delete__(self, obj: __ClassT):
         raise AttributeError(f"Can't delete {self._public_name} attribute")
 
-    def _get_raw(self, obj: __ClassT) -> __GetT:
-        return getattr(obj, self._mangled_name, self._default_value)
 
-    def _set_raw(self, obj: __ClassT, value: __GetT):
-        setattr(obj, self._mangled_name, value)
+class _view_state:
+    SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
 
-    def getter(self, func: Callable[[__ClassT], __GetT]) -> None:
-        self._getter = func
-
-    def setter(self, func: Callable[[__ClassT, __SetT], None]) -> None:
-        self._setter = func
-
-
-_GD = _getset_descriptor
-
-
-class _ViewState:
     __slots__ = (
         "alpha",
         "background_color",
@@ -141,7 +123,7 @@ class _ViewState:
         "pytoui_needs_display",
         "pytoui_last_update_t",
         "pytoui_content_draw_size",
-        "_pytoui_animations_disabled",
+        "pytoui_animations_disabled",
     )
 
     def __init__(self):
@@ -171,10 +153,10 @@ class _ViewState:
         self.pytoui_needs_display: bool = True
         self.pytoui_last_update_t: float = 0.0
         self.pytoui_content_draw_size: Size = Size(0.0, 0.0)
-        self._pytoui_animations_disabled: bool = False
+        self.pytoui_animations_disabled: bool = False
 
 
-class _ViewMeta(type):
+class _view_meta(type):
     def __new__(mcls, name, bases, namespace, **kwargs):
         for base in bases:
             if getattr(base, "__final__", False):
@@ -182,80 +164,60 @@ class _ViewMeta(type):
         return super().__new__(mcls, name, bases, namespace, **kwargs)
 
     def __call__(cls, *args, **kwargs):
-        """Викликається, коли ви робите View()"""
-        # 1. Створюємо екземпляр (викликає __new__ по всьому MRO)
         instance = cls.__new__(cls, *args, **kwargs)
 
-        # 2. Якщо це нащадок _view, примусово ініціалізуємо state
-        # Перевіряємо наявність дескриптора state у класі
-        if hasattr(cls, "state") and isinstance(instance, _view):
-            state = _ViewState()
-            # Важливо: використовуємо саме дескриптор базового класу для запису
-            _view.state._set_raw(instance, state)
+        if hasattr(cls, "_pytoui_st") and isinstance(instance, _view):
+            state = _view_state()
+            _view._pytoui_st.__set__(instance, state)
 
-            # Встановлюємо content_mode залежно від того, чи це чистий View
             state.content_mode = (
-                CONTENT_REDRAW if cls is not View else CONTENT_SCALE_TO_FILL
+                CONTENT_REDRAW if cls is not _view else CONTENT_SCALE_TO_FILL
             )
 
-        # 3. Тільки тепер викликаємо __init__
         if isinstance(instance, cls):
             instance.__init__(*args, **kwargs)
 
         return instance
 
 
-class _view(metaclass=_ViewMeta):
+class _view(metaclass=_view_meta):
     __final__ = False
 
-    __slots__ = ("__state",)
+    __slots__ = ("__pytoui_st",)
 
-    _SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
-
-    state: _GD[_view, _ViewState] = _GD("state", None)
-
-    # def __new__(cls, *args, **kwargs):
-    #     instance = super().__new__(cls)
-    #     state = _ViewState()
-    #     _view.state._set_raw(instance, state)
-    #     state.content_mode = (
-    #         CONTENT_REDRAW if type(cls) is not _view else CONTENT_SCALE_TO_FILL
-    #     )
-    #     return instance
+    _pytoui_st: _getset_descriptor[_view, _view_state] = _getset_descriptor("pytoui_st")
 
     # ── descriptor ────────────────────────────────────────────────────────────
     def __init__(self):
         pass
-
-    @state.getter
-    def _get_state(self) -> _ViewFlex:
-        return _view.state._get_raw(self)
 
     # ── properties ────────────────────────────────────────────────────────────
 
     @property
     def alpha(self) -> float:
         """The view's alpha value as a float in the range 0.0 to 1.0."""
-        return self.state.alpha
+        return self._pytoui_st.alpha
 
     @alpha.setter
     def alpha(self, value: float):
-        if _record(self, "alpha", self.state.alpha, value):
+        st = self._pytoui_st
+        if _record(self, "alpha", st.alpha, value):
             return
-        self.state.alpha = float(value)
+        st.alpha = float(value)
         self.set_needs_display()
 
     @property
     def background_color(self) -> _RGBA | None:
         """The view's background color, defaults to None (transparent)."""
-        return parse_color(self.state.background_color)
+        return parse_color(self._pytoui_st.background_color)
 
     @background_color.setter
     def background_color(self, value: _ColorLike):
         parsed = parse_color(value)
-        if _record(self, "background_color", self.state.background_color, parsed):
+        st = self._pytoui_st
+        if _record(self, "background_color", st.background_color, parsed):
             return
-        self.state.background_color = parsed
+        st.background_color = parsed
         self.set_needs_display()
 
     # bg_color as alias
@@ -264,122 +226,123 @@ class _view(metaclass=_ViewMeta):
     @property
     def border_color(self) -> _RGBA | None:
         """The view's border color (only has effect if border_width > 0)."""
-        return parse_color(self.state.border_color)
+        return parse_color(self._pytoui_st.border_color)
 
     @border_color.setter
     def border_color(self, value: _ColorLike):
-        self.state.border_color = parse_color(value)
+        self._pytoui_st.border_color = parse_color(value)
         self.set_needs_display()
 
     @property
     def border_width(self) -> float:
         """The view's border width, defaults to zero (no border)."""
-        return self.state.border_width
+        return self._pytoui_st.border_width
 
     @border_width.setter
     def border_width(self, value: float):
-        self.state.border_width = float(value)
+        self._pytoui_st.border_width = float(value)
         self.set_needs_display()
 
     @property
     def bounds(self) -> Rect:
         """The view's location and size in its own coordinate system."""
-        return self.state.bounds
+        return self._pytoui_st.bounds
 
     @bounds.setter
     def bounds(self, value: _RectLike):
         new_bounds = Rect(*value)
-        old_w, old_h = self.state.bounds.size
-        self.state.bounds = new_bounds
+        st = self._pytoui_st
+        old_w, old_h = st.bounds.size
+        st.bounds = new_bounds
         new_w, new_h = new_bounds.size
         if new_w != old_w or new_h != old_h:
-            self.state.frame = Rect(
-                self.state.frame.x, self.state.frame.y, new_w, new_h
-            )
+            st.frame = Rect(st.frame.x, st.frame.y, new_w, new_h)
             self._pytoui_apply_autoresizing(old_w, old_h)
-            self.layout()
+            if hasattr(self, "layout"):
+                self.layout()
         self.set_needs_display()
 
     @property
     def center(self) -> Point:
         """The center of the view's frame as a Point."""
-        return self.state.frame.center()
+        return self._pytoui_st.frame.center()
 
     @center.setter
     def center(self, value: _PointLike):
         cx, cy = value
-        w, h = self.state.frame.size
+        w, h = self._pytoui_st.frame.size
         self.frame = Rect(cx - w / 2, cy - h / 2, w, h)
 
     @property
     def x(self) -> float:
         """Shortcut for the x component of the view's frame."""
-        return self.state.frame.x
+        return self._pytoui_st.frame.x
 
     @x.setter
     def x(self, value: float):
-        f = self.state.frame
+        f = self._pytoui_st.frame
         self.frame = Rect(value, f.y, f.w, f.h)
 
     @property
     def y(self) -> float:
         """Shortcut for the y component of the view's frame."""
-        return self.state.frame.y
+        return self._pytoui_st.frame.y
 
     @y.setter
     def y(self, value: float):
-        f = self.state.frame
+        f = self._pytoui_st.frame
         self.frame = Rect(f.x, value, f.w, f.h)
 
     @property
     def width(self) -> float:
         """Shortcut for the width component of the view's frame."""
-        return self.state.frame.w
+        return self._pytoui_st.frame.w
 
     @width.setter
     def width(self, value: float):
-        f = self.state.frame
+        f = self._pytoui_st.frame
         self.frame = Rect(f.x, f.y, value, f.h)
 
     @property
     def height(self) -> float:
         """Shortcut for the height component of the view's frame."""
-        return self.state.frame.h
+        return self._pytoui_st.frame.h
 
     @height.setter
     def height(self, value: float):
-        f = self.state.frame
+        f = self._pytoui_st.frame
         self.frame = Rect(f.x, f.y, f.w, value)
 
     @property
     def content_mode(self) -> int:
         """Determines how a view lays out its content when its bounds change."""
-        return self.state.content_mode
+        return self._pytoui_st.content_mode
 
     @content_mode.setter
     def content_mode(self, value: int):
-        self.state.content_mode = value
-        self.state.pytoui_content_draw_size = Size(0.0, 0.0)
+        st = self._pytoui_st
+        st.content_mode = value
+        st.pytoui_content_draw_size = Size(0.0, 0.0)
         self.set_needs_display()
 
     @property
     def corner_radius(self) -> float:
         """The view's corner radius."""
-        return self.state.corner_radius
+        return self._pytoui_st.corner_radius
 
     @corner_radius.setter
     def corner_radius(self, value: float):
-        self.state.corner_radius = float(value)
+        self._pytoui_st.corner_radius = float(value)
         self.set_needs_display()
 
     @property
     def flex(self) -> _ViewFlex:
         """The autoresizing behavior of the view."""
-        return self.state.flex
+        return self._pytoui_st.flex
 
     @flex.setter
     def flex(self, value: _ViewFlex):
-        self.state.flex = value
+        self._pytoui_st.flex = value
         self.set_needs_display()
 
     autoresizing = flex
@@ -387,20 +350,20 @@ class _view(metaclass=_ViewMeta):
     @property
     def frame(self) -> Rect:
         """The view's position and size in the coordinate system of its superview."""
-        return self.state.frame
+        return self._pytoui_st.frame
 
     @frame.setter
     def frame(self, value: _RectLike):
         new_frame = Rect(*value)
-        if _record(self, "frame", self.state.frame, new_frame):
+        st = self._pytoui_st
+        old_frame = st.frame
+        if _record(self, "frame", old_frame, new_frame):
             return
-        old_w, old_h = self.state.frame.size
-        self.state.frame = new_frame
+        old_w, old_h = old_frame.size
+        st.frame = new_frame
         new_w, new_h = new_frame.size
         if new_w != old_w or new_h != old_h:
-            self.state.bounds = Rect(
-                self.state.bounds.x, self.state.bounds.y, new_w, new_h
-            )
+            st.bounds = Rect(st.bounds.x, st.bounds.y, new_w, new_h)
             self._pytoui_apply_autoresizing(old_w, old_h)
             if hasattr(self, "layout"):
                 self.layout()
@@ -409,129 +372,135 @@ class _view(metaclass=_ViewMeta):
     @property
     def hidden(self) -> bool:
         """Determines if the view is hidden."""
-        return self.state.hidden
+        return self._pytoui_st.hidden
 
     @hidden.setter
     def hidden(self, value: bool):
-        self.state.hidden = value
+        self._pytoui_st.hidden = value
         self.set_needs_display()
 
     @property
     def name(self) -> str:
         """A string that identifies the view."""
-        return self.state.name
+        return self._pytoui_st.name
 
     @name.setter
     def name(self, value: str):
-        self.state.name = value
+        self._pytoui_st.name = value
 
     @property
     def on_screen(self) -> bool:
         """(readonly) Whether the view is part of a view hierarchy currently on screen."""
-        return self.state.on_screen
+        return self._pytoui_st.on_screen
 
     @property
-    def subviews(self) -> tuple[View, ...]:
+    def subviews(self) -> tuple[_view, ...]:
         """(readonly) A tuple of the view's children."""
-        return tuple(self.state.subviews)
+        return tuple(self._pytoui_st.subviews)
 
     @property
-    def superview(self) -> View | None:
+    def superview(self) -> _view | None:
         """(readonly) The view's parent view."""
-        return self.state.superview
+        return self._pytoui_st.superview
 
     @property
     def tint_color(self) -> _RGBA:
         """The view's tint color, inherited from superview if None."""
-        v: View | None = self
+        v: _view | None = self
         while v is not None:
-            if v.state.tint_color is not None:
-                return v.state.tint_color
-            v = v.state.superview
-        return self._SYSTEM_TINT
+            st = v._pytoui_st
+            if st.tint_color is not None:
+                return st.tint_color
+            v = st.superview
+        return st.SYSTEM_TINT
 
     @tint_color.setter
     def tint_color(self, value: _ColorLike):
-        self.state.tint_color = parse_color(value)
+        self._pytoui_st.tint_color = parse_color(value)
         self.set_needs_display()
 
     @property
     def touch_enabled(self) -> bool:
-        return self.state.touch_enabled
+        return self._pytoui_st.touch_enabled
 
     @touch_enabled.setter
     def touch_enabled(self, value: bool):
-        self.state.touch_enabled = value
+        self._pytoui_st.touch_enabled = value
 
     @property
     def multitouch_enabled(self) -> bool:
         """If True, the view receives all simultaneous touches. If False (default), only the first touch is tracked."""
-        return self.state.multitouch_enabled
+        return self._pytoui_st.multitouch_enabled
 
     @multitouch_enabled.setter
     def multitouch_enabled(self, value: bool):
-        self.state.multitouch_enabled = bool(value)
+        self._pytoui_st.multitouch_enabled = bool(value)
 
     @property
     def transform(self) -> Transform | None:
         """The transform applied to the view relative to the center of its bounds."""
-        return self.state.transform
+        return self._pytoui_st.transform
 
     @transform.setter
     def transform(self, value: Transform | None):
-        if _record(self, "transform", self.state.transform, value):
+        st = self._pytoui_st
+        if _record(self, "transform", st.transform, value):
             return
-        self.state.transform = value
+        st.transform = value
         self.set_needs_display()
 
     @property
     def update_interval(self) -> float:
         """Interval between update() calls in seconds. 0 disables updates."""
-        return self.state.update_interval
+        return self._pytoui_st.update_interval
 
     @update_interval.setter
     def update_interval(self, value: float):
-        self.state.update_interval = float(value)
+        st = self._pytoui_st
+        st.update_interval = float(value)
         if value > 0.0:
-            self.state.pytoui_last_update_t = time.time()
+            st.pytoui_last_update_t = time.time()
 
     # ── subview management ────────────────────────────────────────────────────
 
-    def __getitem__(self, name: str) -> View:
-        for view in self.state.subviews:
+    def __getitem__(self, name: str) -> _view:
+        for view in self._pytoui_st.subviews:
             if view.name == name:
                 return view
         raise KeyError(name)
 
-    def add_subview(self, view: View):
+    def add_subview(self, view: _view):
         """Add another view as a child of this view."""
-        if view.state.superview is self:
+        vst = view._pytoui_st
+        if vst.superview is self:
             return
-        if view.state.superview is not None:
-            view.state.superview.remove_subview(view)
-        self.state.subviews.append(view)
-        view.state.superview = self
+        if vst.superview is not None:
+            vst.superview.remove_subview(view)
+        self._pytoui_st.subviews.append(view)
+        vst.superview = self
 
-    def remove_subview(self, view: View):
+    def remove_subview(self, view: _view):
         """Remove a child view."""
-        self.state.subviews.remove(view)
-        view.state.superview = None
+        self._pytoui_st.subviews.remove(view)
+        view._pytoui_st.superview = None
 
     def bring_to_front(self):
         """Show the view on top of its sibling views."""
-        sv = self.state.superview
+        st = self._pytoui_st
+        sv = st.superview
         if sv is None:
             return
-        siblings = sv.state.subviews
+        siblings = st.subviews
         siblings.remove(self)
         siblings.append(self)
 
     def send_to_back(self):
         """Put the view behind its sibling views."""
-        sv = self.state.superview
+        st = self._pytoui_st
+        sv = st.superview
         if sv is None:
             return
-        siblings = sv.state.subviews
+        siblings = st.subviews
         siblings.remove(self)
         siblings.insert(0, self)
 
@@ -539,15 +508,17 @@ class _view(metaclass=_ViewMeta):
 
     def _pytoui_apply_autoresizing(self, old_w: float, old_h: float):
         """Resize subviews based on their flex flags after this view's size changed."""
-        dw = self.state.bounds.w - old_w
-        dh = self.state.bounds.h - old_h
+        st = self._pytoui_st
+        bw, bh = st.bounds.size
+        dw = bw - old_w
+        dh = bh - old_h
         if dw == 0.0 and dh == 0.0:
             return
-        for sv in self.state.subviews:
-            flex = sv.state.flex
+        for sv in st.subviews:
+            flex = sv._pytoui_st.flex
             if not flex:
                 continue
-            f = sv.state.frame
+            f = sv._pytoui_st.frame
             h_flexible = sum(c in flex for c in "LWR")
             if h_flexible:
                 share = dw / h_flexible
@@ -566,15 +537,16 @@ class _view(metaclass=_ViewMeta):
 
     def set_needs_display(self):
         """Mark the view as needing to be redrawn."""
-        self.state.pytoui_needs_display = True
+        self._pytoui_st.pytoui_needs_display = True
 
     def size_to_fit(self):
         """Resize to enclose all subviews."""
-        if not self.state.subviews:
+        st = self._pytoui_st
+        if not st.subviews:
             return
-        max_w = max(sv.state.frame.x + sv.state.frame.w for sv in self.state.subviews)
-        max_h = max(sv.state.frame.y + sv.state.frame.h for sv in self.state.subviews)
-        self.frame = Rect(self.state.frame.x, self.state.frame.y, max_w, max_h)
+        max_w = max(sv._pytoui_st.frame.x + sv._pytoui_st.frame.w for sv in st.subviews)
+        max_h = max(sv._pytoui_st.frame.y + sv._pytoui_st.frame.h for sv in st.subviews)
+        self.frame = Rect(st.frame.x, st.frame.y, max_w, max_h)
 
     # ── presentation ──────────────────────────────────────────────────────────
 
@@ -590,17 +562,18 @@ class _view(metaclass=_ViewMeta):
         hide_close_button: bool = False,
     ):
         """Present the view on screen."""
-        if self.state.pytoui_presented:
+        st = self._pytoui_st
+        if st.pytoui_presented:
             raise RuntimeError("View is already presented")
-        self.state.pytoui_presented = True
-        self.state.on_screen = True
-        self.state.pytoui_close_event.clear()
-        self.state.pytoui_needs_display = True
+        st.pytoui_presented = True
+        st.on_screen = True
+        st.pytoui_close_event.clear()
+        st.pytoui_needs_display = True
 
         from pytoui.ui._runtime import launch_runtime
 
         if animated and not _UI_DISABLE_ANIMATIONS:
-            self.state.alpha = 0.0
+            st.alpha = 0.0
             _ANIM_DUR = 0.25
             _start: list[float | None] = [None]
 
@@ -613,14 +586,14 @@ class _view(metaclass=_ViewMeta):
                 if animating:
                     p = elapsed / _ANIM_DUR
                     p = p * p * (3.0 - 2.0 * p)  # smoothstep
-                    self.state.alpha = p
-                elif self.state.alpha < 1.0:
-                    self.state.alpha = 1.0
+                    st.alpha = p
+                elif st.alpha < 1.0:
+                    st.alpha = 1.0
                 set_backend(fb)
                 self._pytoui_render()
                 set_backend(None)
                 if animating:
-                    self.state.pytoui_needs_display = (
+                    st.pytoui_needs_display = (
                         True  # after _render() so it's not cleared
                     )
         else:
@@ -634,19 +607,21 @@ class _view(metaclass=_ViewMeta):
 
     def close(self):
         """Close a view that was presented via View.present()."""
-        if not self.state.pytoui_presented:
+        st = self._pytoui_st
+        if not st.pytoui_presented:
             return
         if hasattr(self, "will_close"):
             self.will_close()
-        self.state.on_screen = False
-        self.state.pytoui_presented = False
-        self.state.pytoui_close_event.set()
+        st.on_screen = False
+        st.pytoui_presented = False
+        st.pytoui_close_event.set()
 
     def wait_modal(self):
         """Block until the view is dismissed."""
-        if not self.state.on_screen:
+        st = self._pytoui_st
+        if not st.on_screen:
             return
-        self.state.pytoui_close_event.wait()
+        st.pytoui_close_event.wait()
 
     def become_first_responder(self) -> bool:
         """Ask the owning window to make this view the first responder.
@@ -682,13 +657,15 @@ class _view(metaclass=_ViewMeta):
 
     @property
     def _pytoui_animations_disabled(self) -> bool:
-        return bool(self.state._pytoui_animations_disabled or _UI_DISABLE_ANIMATIONS)
+        return bool(
+            self._pytoui_st.pytoui_animations_disabled or _UI_DISABLE_ANIMATIONS
+        )
 
     @_pytoui_animations_disabled.setter
     def _pytoui_animations_disabled(self, value: bool):
-        self.state._pytoui_animations_disabled = value
+        self._pytoui_st.pytoui_animations_disabled = value
 
-    def _pytoui_hit_test(self, x: float, y: float) -> View | None:
+    def _pytoui_hit_test(self, x: float, y: float) -> _view | None:
         """
         Recursively searches for the highest Z-index View
         that supports touch at the specified coordinates.
@@ -711,19 +688,20 @@ class _view(metaclass=_ViewMeta):
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def _pytoui_render(self):
-        self._pytoui_needs_display = False
-        if self.state.hidden:
+        st = self._pytoui_st
+        st.pytoui_needs_display = False
+        if st.hidden:
             return
 
         ox, oy = _screen_origin(self)
-        fw, fh = self.state.frame.w, self.state.frame.h
-        cr = self.state.corner_radius
+        fw, fh = st.frame.size
+        cr = st.corner_radius
 
         with GState():
             _set_origin(ox, oy)
-            set_alpha(self.state.alpha)
+            set_alpha(st.alpha)
 
-            bg = self.state.background_color
+            bg = st.background_color
             if bg and bg[3] > 0:
                 set_color(bg)
                 if cr > 0:
@@ -731,32 +709,32 @@ class _view(metaclass=_ViewMeta):
                 else:
                     fill_rect(0, 0, fw, fh)
 
-            if self.state.border_width > 0 and self.state.border_color is not None:
-                set_color(self.state.border_color)
+            if st.border_width > 0 and st.border_color is not None:
+                set_color(st.border_color)
                 p = (
                     Path.rounded_rect(0, 0, fw, fh, cr)
                     if cr > 0
                     else Path.rect(0, 0, fw, fh)
                 )
-                p.line_width = self.state.border_width
+                p.line_width = st.border_width
                 p.stroke()
 
-            cm = self.state.content_mode
+            cm = st.content_mode
             draw = getattr(self, "draw", lambda: False)
             if cm == CONTENT_REDRAW:
                 draw()
             else:
-                cw, ch = self.state.pytoui_content_draw_size.as_tuple()
+                cw, ch = st.pytoui_content_draw_size.as_tuple()
                 if cw <= 0.0 or ch <= 0.0:
                     # First render — record the size draw() was called at
-                    self.state.pytoui_content_draw_size = Size(fw, fh)
+                    st.pytoui_content_draw_size = Size(fw, fh)
                     draw()
                 else:
                     with GState():
                         _content_mode_transform(cm, cw, ch, fw, fh)
                         draw()
 
-        for sv in self.state.subviews:
+        for sv in st.subviews:
             sv._pytoui_render()
 
 
@@ -767,10 +745,20 @@ class View(_view):
 if IS_PYTHONISTA:
     import ui  # type: ignore[import-not-found]  # noqa: F811
 
-    class View(ui.View, metaclass=_ViewMeta):  # type: ignore[no-redef]
+    class View(ui.View):  # type: ignore[no-redef]
         # Proxy to the native properties so that subclass
         # __init__ assignments (e.g. self.frame = Rect(...)) immediately update
         # the native frame and reads always reflect the current geometry.
+
+        @property
+        @pytoui_desktop_only
+        def _pytoui_st(self) -> _view_state:
+            raise NotImplementedError
+        
+        @_pytoui_st.setter
+        @pytoui_desktop_only
+        def _pytoui_st(self, value: _view_state):
+            raise NotImplementedError
 
         @property
         def _pytoui_animations_disabled(self) -> bool:

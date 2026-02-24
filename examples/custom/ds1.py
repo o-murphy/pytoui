@@ -11,8 +11,6 @@ from examples.custom.controls import (
 
 
 class LedIndicator(BaseControl):
-    """LED індикатор — світиться коли активний"""
-
     preferred_height = 16
 
     def __init__(
@@ -38,19 +36,16 @@ class LedIndicator(BaseControl):
         cx, cy = self.width / 2, self.height / 2
         radius = min(cx, cy) - 2
 
-        # Корпус LED
         housing = ui.Path.oval(
             cx - radius - 1, cy - radius - 1, (radius + 1) * 2, (radius + 1) * 2
         )
         ui.set_color("#222222")
         housing.fill()
 
-        # Основний LED
         led = ui.Path.oval(cx - radius, cy - radius, radius * 2, radius * 2)
         ui.set_color(self.on_color if self._is_on() else self.off_color)
         led.fill()
 
-        # Яскравіший центр коли активний
         if self._is_on():
             bright_radius = radius * 0.5
             bright = ui.Path.oval(
@@ -62,7 +57,6 @@ class LedIndicator(BaseControl):
             ui.set_color("#FF6666")
             bright.fill()
 
-        # Відблиск
         highlight_radius = radius * 0.25
         highlight = ui.Path.oval(
             cx - radius * 0.3,
@@ -75,8 +69,6 @@ class LedIndicator(BaseControl):
 
 
 class FootswitchButton(BaseControl, ThresholdMixin):
-    """Гумова кнопка-футсвіч BOSS"""
-
     def __init__(
         self,
         on_input: Callable[[float], None] = None,
@@ -94,12 +86,10 @@ class FootswitchButton(BaseControl, ThresholdMixin):
         w, h = self.width, self.height
         padding = 4
 
-        # Металева рамка
         frame_rect = ui.Path.rounded_rect(0, 0, w, h, 4)
         ui.set_color("#444444")
         frame_rect.fill()
 
-        # Гумова поверхня
         press_offset = 3 if self._is_pressed else 0
         rubber_rect = ui.Path.rounded_rect(
             padding, padding, w - padding * 2, h - padding * 2 - press_offset, 3
@@ -107,7 +97,6 @@ class FootswitchButton(BaseControl, ThresholdMixin):
         ui.set_color("#1a1a1a" if not self._is_pressed else "#111111")
         rubber_rect.fill()
 
-        # Текстура (горизонтальні лінії)
         line_area_x = padding + 20
         line_area_w = w - padding * 2 - 40
         line_area_y = padding + 20
@@ -140,8 +129,6 @@ class FootswitchButton(BaseControl, ThresholdMixin):
 
 
 class DS1KnobView(KnobView):
-    """Кноб в стилі BOSS з кружечками замість рисок"""
-
     def __init__(
         self,
         on_input: Callable[[float], None] = None,
@@ -153,7 +140,6 @@ class DS1KnobView(KnobView):
         indicator_color: str = "#f1f1f1",
         **kwargs,
     ):
-        # Викликаємо батьківський конструктор з style="ticks"
         super().__init__(
             on_input=on_input,
             style="ticks",
@@ -172,9 +158,8 @@ class DS1KnobView(KnobView):
 
     def _draw_boss_style(self, cx, cy):
         outer_radius = min(cx, cy) - 4
-        knob_radius = outer_radius - 8  # Більший кноб
+        knob_radius = outer_radius - 8
 
-        # Кружечки замість рисок
         dot_radius_major = 3
         dot_radius_minor = 2
         dot_distance = outer_radius - 2
@@ -193,14 +178,12 @@ class DS1KnobView(KnobView):
             ui.set_color(self.dot_color)
             dot.fill()
 
-        # Основа кноба
         knob_bg = ui.Path.oval(
             cx - knob_radius, cy - knob_radius, knob_radius * 2, knob_radius * 2
         )
         ui.set_color(self.knob_color)
         knob_bg.fill()
 
-        # Центральна частина
         center_radius = knob_radius * 0.55
         center = ui.Path.oval(
             cx - center_radius, cy - center_radius, center_radius * 2, center_radius * 2
@@ -208,7 +191,6 @@ class DS1KnobView(KnobView):
         ui.set_color("#D8D8D8")
         center.fill()
 
-        # Обідок
         ring = ui.Path.oval(
             cx - knob_radius, cy - knob_radius, knob_radius * 2, knob_radius * 2
         )
@@ -216,13 +198,11 @@ class DS1KnobView(KnobView):
         ui.set_color("#999999")
         ring.stroke()
 
-        # Індикатор позиції
         self._draw_boss_indicator(cx, cy, knob_radius)
 
     def _draw_boss_indicator(self, cx, cy, knob_radius):
         angle = self._value_to_angle(self._display_value)
 
-        # Лінія від центру до краю
         inner_r = knob_radius * 0.6
         outer_r = knob_radius * 0.9
 
@@ -241,8 +221,6 @@ class DS1KnobView(KnobView):
 
 
 class DS1PedalKnob(ui.View):
-    """Кноб з лейблом та значенням для педалі"""
-
     def __init__(
         self,
         store: ValueStore,
@@ -264,7 +242,6 @@ class DS1PedalKnob(ui.View):
         self.value_format = value_format or (lambda v: f"{int(v * 100)}")
         self.background_color = "transparent"
 
-        # Кноб — використовуємо BossKnobView
         self.knob = DS1KnobView(
             num_ticks=num_ticks,
             major_every=major_every,
@@ -288,7 +265,6 @@ class DS1PedalKnob(ui.View):
         self.value_label.alignment = ui.ALIGN_CENTER
         self.add_subview(self.value_label)
 
-        # Підписка на store
         store.subscribe(key, self._on_value_changed)
 
     def _on_input(self, value: float):
@@ -358,7 +334,6 @@ class DS1Pedal(ui.View):
         self.check_label.alignment = ui.ALIGN_CENTER
         self.add_subview(self.check_label)
 
-        # === Кноби ===
         self.tone_knob = DS1PedalKnob(
             self.store,
             "tone",
@@ -432,19 +407,15 @@ class DS1Pedal(ui.View):
         self.led.frame = ((w - led_size) / 2, 30, led_size, led_size)
         self.check_label.frame = ((w - 100) / 2, 15, 100, 12)
 
-        # Кноб big
         knob_w = w * 0.4
         knob_h = knob_w + 32  # knob + label + value
         top_knob_y = 10
         bottom_knob_y = top_knob_y + knob_w * 0.6
 
-        # TONE - зверху зліва
         self.tone_knob.frame = (w * 0.05, top_knob_y, knob_w, knob_h)
 
-        # DIST - зверху справа
         self.dist_knob.frame = (w * 0.95 - knob_w, top_knob_y, knob_w, knob_h)
 
-        # LEVEL - знизу по центру
         small_knob_w = knob_w - w * 0.1
         small_knob_h = knob_h - w * 0.1
         self.level_knob.frame = (
@@ -478,23 +449,19 @@ class DS1Pedal(ui.View):
     def draw(self):
         w, h = self.width, self.height
 
-        # Корпус
         body = ui.Path.rounded_rect(0, 0, w, h, 16)
         ui.set_color(self.ORANGE)
         body.fill()
 
-        # Світліша верхня частина
         top_highlight = ui.Path.rounded_rect(2, 2, w - 4, h * 0.35, 14)
         ui.set_color("#FF7A20")
         top_highlight.fill()
 
-        # Рамка
         border = ui.Path.rounded_rect(2, 2, w - 4, h - 4, 14)
         border.line_width = 3
         ui.set_color(self.DARK_ORANGE)
         border.stroke()
 
-        # Внутрішня рамка
         inner = ui.Path.rounded_rect(6, 6, w - 12, h - 12, 10)
         inner.line_width = 1
         ui.set_color("#CC5500")

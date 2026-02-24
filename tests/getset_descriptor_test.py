@@ -5,7 +5,7 @@ class getset_descriptor:
     def __init__(self, name: str, default_value=1.0):
         self.public_name = name
         self.default_value = default_value
-        self.mangled_name = None  # Обчислимо пізніше
+        self.mangled_name = None
         self._getter = None
         self._setter = None
 
@@ -56,7 +56,6 @@ class _view(object):
 
     @alpha.setter
     def __set_alpha(self, value):
-        # Тепер setattr спрацює, бо ми вказуємо точне спотворене ім'я
         setattr(self, _view.alpha.mangled_name, value)
 
 
@@ -114,37 +113,27 @@ except AttributeError as e:
     print("AttributeError", e)
 
 
-# --- Код класів (GetSetAttribute, View, тощо) залишається без змін ---
-# Припустимо, вони імпортовані або знаходяться вище
-
-
 def test_view_base_alpha():
-    """Перевірка базового встановлення та отримання alpha"""
     v = _view()
     v.alpha = 5
     assert v.alpha == 5
-    assert hasattr(v, "_view__alpha")  # Перевірка mangling у slots
+    assert hasattr(v, "_view__alpha")
 
 
 def test_view2_inheritance_and_mangling():
-    """Перевірка, що View2 правильно працює з атрибутами базового класу"""
     v2 = View2()
     v2.alpha = 10
-    # Перевіряємо, що значення повернулося 10, а не дефолтне 1.0
     assert v2.alpha == 10
-    # Перевіряємо кастомну логіку beta (Bar -> BarBar)
     assert v2.beta == "BarBar"
 
 
 def test_encapsulation_privacy():
-    """Перевірка, що прямий доступ до __beta заборонений"""
     v2 = View2()
     with pytest.raises(AttributeError):
         _ = v2.__beta
 
 
 def test_final_class_violation():
-    """Перевірка метакласу: заборона наслідування від фінального класу"""
     with pytest.raises(TypeError, match="View2 cannot be subclassed"):
 
         class View3(View2):
@@ -152,9 +141,6 @@ def test_final_class_violation():
 
 
 def test_no_setter_error():
-    """Перевірка викидання AttributeError, якщо сеттер не визначено"""
-
-    # Створимо тимчасовий клас без сеттера для тесту
     class ReadOnlyView(_view, metaclass=_ViewMeta):
         gamma = getset_descriptor("gamma", 1.0)
 
@@ -164,19 +150,16 @@ def test_no_setter_error():
 
 
 def test_delete_prohibited():
-    """Перевірка заборони видалення атрибута"""
     v = _view()
     with pytest.raises(AttributeError, match="Can't delete alpha attribute"):
         del v.alpha
 
 
 def test_mixin_integration():
-    """Перевірка, що Mixin працює разом із нашою ієрархією"""
     v2 = View2()
     assert v2.help() == "HELP"
 
 
 def test_slots_efficiency():
-    """Перевірка, що __dict__ відсутній (економія пам'яті через slots)"""
     v = _view()
     assert not hasattr(v, "__dict__")

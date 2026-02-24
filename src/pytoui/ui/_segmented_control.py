@@ -54,7 +54,7 @@ class SegmentedControl(View):
         self._last_time = time.time()
         self._tracked = False
 
-        self._frame = Rect(0.00, 0.00, 120.0, 32.0)
+        self.frame = Rect(0.00, 0.00, 120.0, 32.0)
 
     @property
     def action(self) -> _Action | None:

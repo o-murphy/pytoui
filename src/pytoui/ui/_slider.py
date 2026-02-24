@@ -44,7 +44,7 @@ class Slider(View):
         self._last_time = time.time()
 
         # Standard iOS slider size
-        self._frame = Rect(0, 0, 200, 31)
+        self.frame = Rect(0, 0, 200, 31)
 
     @property
     def action(self) -> _Action | None:

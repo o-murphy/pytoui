@@ -1684,8 +1684,8 @@ pub unsafe extern "C" fn CreatePath() -> i32 {
 #[no_mangle]
 pub extern "C" fn DestroyPath(handle: i32) -> i32 {
     match PATH_MAP.write().remove(&handle) {
-        Some(_) => 0,   // успішно
-        None => -1,     // помилка - не знайдено
+        Some(_) => 0,
+        None => -1,
     }
 }
 
@@ -2352,7 +2352,7 @@ impl FrameBuffer {
         }
         ellipsis.to_string()
     }
-    
+
     /// Simply clip text by width
     fn clip_text(&self, font: &fontdue::Font, text: &str, max_width: f32, size: f32) -> String {
         let mut result = String::new();

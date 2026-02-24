@@ -16,13 +16,13 @@ def main():
         sender.title = f"Clicks: {counter}"
 
     button = ui.Button()
-    button.title=f"Clicks: {counter}"
-    button.frame=(0, 0, 300, 100)
-    button.center=(200, 300)
-    button.action=action
-    button.flex="WH"
-    button.background_color="blue"
-    button.corner_radius=16
+    button.title = f"Clicks: {counter}"
+    button.frame = (0, 0, 300, 100)
+    button.center = (200, 300)
+    button.action = action
+    button.flex = "WH"
+    button.background_color = "blue"
+    button.corner_radius = 16
 
     root = ui.View()
     root.frame = (0, 0, 400, 600)

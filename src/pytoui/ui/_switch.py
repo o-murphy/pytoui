@@ -53,7 +53,7 @@ class Switch(View):
         self._current_stretch = 0.0
         self._last_time = time.time()
 
-        self._frame = Rect(0, 0, 51, 31)
+        self.frame = Rect(0, 0, 51, 31)
 
     @property
     def action(self) -> _Action | None:

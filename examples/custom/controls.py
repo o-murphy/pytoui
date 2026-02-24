@@ -15,8 +15,6 @@ if not hasattr(ui, "ScrollView"):
 
 
 class ValueStore:
-    """Простий observable store для значень"""
-
     def __init__(self, defaults: dict[str, float] = None):
         self._values: dict[str, float] = dict(defaults or {})
         self._listeners: dict[str, list[Callable[[float], None]]] = {}
@@ -46,8 +44,6 @@ class ValueStore:
 
 
 class MockServer:
-    """Імітує сервер з затримкою"""
-
     def __init__(self, store: ValueStore):
         self.store = store
 
@@ -66,14 +62,12 @@ class MockServer:
 
 
 class ScrollAwareMixin:
-    """Міксин для контролів що працюють всередині ScrollView"""
-
     def _find_scroll_view(self):
-        view = self.superview
-        while view:
-            if isinstance(view, ui.ScrollView):
-                return view
-            view = view.superview
+        # view = self.superview
+        # while view:
+        #     if isinstance(view, ui.ScrollView):
+        #         return view
+        #     view = view.superview
         return None
 
     def _disable_scroll(self):
@@ -88,8 +82,6 @@ class ScrollAwareMixin:
 
 
 class DraggableMixin(ScrollAwareMixin):
-    """Міксин для контролів з вертикальним drag-жестом"""
-
     DRAG_SENSITIVITY = 200
 
     def _init_draggable(self, steps: int | None = None):
@@ -104,13 +96,11 @@ class DraggableMixin(ScrollAwareMixin):
         return max(0, min(1, snapped))
 
     def touch_began(self, touch: ui.Touch):
-        print(touch.phase)
         self._drag_start_y = touch.location[1]
         self._drag_start_value = self._display_value
         self._disable_scroll()
 
     def touch_moved(self, touch: ui.Touch):
-        print(touch.phase)
         delta_y = self._drag_start_y - touch.location[1]
         delta_value = delta_y / self.DRAG_SENSITIVITY
         new_value = max(0, min(1, self._drag_start_value + delta_value))
@@ -119,13 +109,10 @@ class DraggableMixin(ScrollAwareMixin):
             self.on_input(new_value)
 
     def touch_ended(self, touch: ui.Touch):
-        print(touch.phase)
         self._enable_scroll()
 
 
 class OptionsMixin:
-    """Міксин для контролів з дискретними опціями"""
-
     def _init_options(
         self,
         options: list[str] = None,
@@ -160,8 +147,6 @@ class OptionsMixin:
 
 
 class ThresholdMixin:
-    """Міксин для контролів з порогом on/off"""
-
     def _init_threshold(
         self,
         threshold: float = 0.5,
@@ -188,8 +173,6 @@ class ThresholdMixin:
 
 
 class BaseControl(ui.View):
-    """Базовий клас для всіх контролів"""
-
     preferred_height: float | None = None
 
     def __init__(self, on_input: Callable[[float], None] = None, **kwargs):
@@ -199,12 +182,10 @@ class BaseControl(ui.View):
         self.background_color = "transparent"
 
     def set_display_value(self, value: float):
-        """Встановлює відображуване значення (викликається ззовні)"""
         self._display_value = max(0, min(1, value))
         self.set_needs_display()
 
     def _emit(self, value: float):
-        """Відправляє значення через on_input"""
         if self.on_input:
             self.on_input(value)
 
@@ -213,8 +194,6 @@ class BaseControl(ui.View):
 
 
 class KnobView(BaseControl, DraggableMixin):
-    """Універсальний кноб з опціональними тіками та прогрес-дугою"""
-
     DRAG_SENSITIVITY = 200
 
     def __init__(
@@ -367,8 +346,6 @@ class KnobView(BaseControl, DraggableMixin):
 
 
 class _SliderView(BaseControl, ScrollAwareMixin):
-    """Абстрактний базовий клас для слайдерів"""
-
     DRAG_SENSITIVITY = 200
 
     def __init__(
@@ -400,12 +377,10 @@ class _SliderView(BaseControl, ScrollAwareMixin):
 
     @abstractmethod
     def _get_drag_pos(self, touch) -> float:
-        """Повертає позицію для drag"""
         pass
 
     @abstractmethod
     def _get_drag_direction(self) -> int:
-        """Повертає напрямок: 1 або -1"""
         pass
 
     @abstractmethod
@@ -441,13 +416,11 @@ class _SliderView(BaseControl, ScrollAwareMixin):
 
 
 class VSliderView(_SliderView):
-    """Вертикальний слайдер"""
-
     def _get_drag_pos(self, touch) -> float:
         return touch.location[1]
 
     def _get_drag_direction(self) -> int:
-        return -1  # Вгору = більше
+        return -1
 
     def _draw_default_style(self):
         padding = 8
@@ -482,7 +455,6 @@ class VSliderView(_SliderView):
         track_y = padding
         corner_radius = track_width / 2
 
-        # Тіки зліва
         tick_right = track_x - 4
         tick_left_major = tick_right - 12
         tick_left_minor = tick_right - 8
@@ -521,15 +493,13 @@ class VSliderView(_SliderView):
 
 
 class HSliderView(_SliderView):
-    """Горизонтальний слайдер"""
-
     preferred_height = 50
 
     def _get_drag_pos(self, touch) -> float:
         return touch.location[0]
 
     def _get_drag_direction(self) -> int:
-        return 1  # Вправо = більше
+        return 1
 
     def _draw_default_style(self):
         padding = 8
@@ -563,7 +533,6 @@ class HSliderView(_SliderView):
         track_y = (self.height - track_height) / 2 - 8
         corner_radius = track_height / 2
 
-        # Тіки знизу
         tick_top = track_y + track_height + 4
         tick_bottom_major = tick_top + 12
         tick_bottom_minor = tick_top + 8
@@ -601,8 +570,6 @@ class HSliderView(_SliderView):
 
 
 class SwitchView(BaseControl, ThresholdMixin):
-    """Свіч на базі ui.Switch"""
-
     preferred_height = 31
 
     def __init__(
@@ -640,8 +607,6 @@ class SwitchView(BaseControl, ThresholdMixin):
 
 
 class SegmentView(BaseControl, OptionsMixin):
-    """Сегментований контрол"""
-
     preferred_height = 32
 
     def __init__(
@@ -681,8 +646,6 @@ class SegmentView(BaseControl, OptionsMixin):
 
 
 class PickerView(BaseControl, OptionsMixin):
-    """Пікер з діалогом вибору"""
-
     preferred_height = 44
 
     def __init__(
@@ -749,8 +712,6 @@ class PickerView(BaseControl, OptionsMixin):
 
 
 class LabeledControl(ui.View):
-    """Універсальний композитний віджет з flex-лейаутом"""
-
     def __init__(
         self,
         store: ValueStore,
@@ -896,7 +857,6 @@ def main():
     )
     server = MockServer(store)
 
-    # Головний контейнер
     v = ui.View()
     v.background_color = "#1c1c1c"
     v.frame = (0, 0, 400, 600)
@@ -909,14 +869,11 @@ def main():
     scroll.flex = "WH"
     v.add_subview(scroll)
 
-    # Контент
     content = ui.View()
     content.background_color = "transparent"
     scroll.add_subview(content)
 
-    # Ряди контролів
     rows = [
-        # Кноби
         make_row(
             LabeledControl(store, "volume", server, label="Volume"),
             LabeledControl(
@@ -936,7 +893,6 @@ def main():
                 format_func=lambda v: f"{int(v * 5)}",
             ),
         ),
-        # Слайдери
         make_row(
             LabeledControl(
                 store, "volume", server, label="Volume", control=VSliderView()
@@ -969,7 +925,6 @@ def main():
             ),
             height=110,
         ),
-        # Свічі
         make_row(
             LabeledControl(
                 store,
@@ -997,7 +952,6 @@ def main():
             ),
             height=110,
         ),
-        # Сегменти
         make_row(
             LabeledControl(
                 store,
@@ -1051,7 +1005,6 @@ def main():
             ),
             height=90,
         ),
-        # Пікери
         make_row(
             LabeledControl(
                 store,

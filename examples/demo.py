@@ -96,7 +96,6 @@ class MainView(ui.View):
         self.add_subview(self.button2)
 
         self.switch = ui.Switch()
-        print(self.switch.__class__)
         self.switch.action = self.on_switch_toggle
         self.switch.value = True
         self.add_subview(self.switch)

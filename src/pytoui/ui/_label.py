@@ -51,7 +51,7 @@ class Label(View):
         self._scales_font: bool = False
         self._min_font_scale: float = 0.0  # 0.0 means use system default
 
-        self._frame = Rect(0.0, 0.0, 100.0, 20.0)
+        self.frame = Rect(0.0, 0.0, 100.0, 20.0)
 
     @property
     def text(self) -> str | None:
@@ -206,7 +206,7 @@ class Label(View):
 
         # If number_of_lines == 1, max_width = 0 (unlimited)
         # If multiline, use current width as constraint
-        max_width = 0.0 if self._number_of_lines == 1 else self._frame.w
+        max_width = 0.0 if self._number_of_lines == 1 else self.frame.w
 
         try:
             tw, th = measure_string(
@@ -216,6 +216,6 @@ class Label(View):
                 alignment=self._alignment,
                 line_break_mode=self._line_break_mode,
             )
-            self.frame = Rect(self._frame.x, self._frame.y, tw, th)
+            self.frame = Rect(self.frame.x, self.frame.y, tw, th)
         except Exception:
             pass  # Silently fail if measurement fails

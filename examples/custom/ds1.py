@@ -489,7 +489,7 @@ class DS1Pedal(ui.View):
         top_highlight.fill()
 
         # Рамка
-        border = ui.Path.rounded_rect(2, 2, w-4, h-4, 14)
+        border = ui.Path.rounded_rect(2, 2, w - 4, h - 4, 14)
         border.line_width = 3
         ui.set_color(self.DARK_ORANGE)
         border.stroke()
@@ -513,7 +513,7 @@ def main():
     server = MockServer(store)
 
     v = ui.View()
-    v.background_color="#2a2a2a"
+    v.background_color = "#2a2a2a"
     v.frame = (0, 0, 400, 700)
 
     pedal_w = 290
@@ -535,4 +535,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

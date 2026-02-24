@@ -69,11 +69,11 @@ class ScrollAwareMixin:
     """Міксин для контролів що працюють всередині ScrollView"""
 
     def _find_scroll_view(self):
-        view = self.superview
-        while view:
-            if isinstance(view, ui.ScrollView):
-                return view
-            view = view.superview
+        # view = self.superview
+        # while view:
+        #     if isinstance(view, ui.ScrollView):
+        #         return view
+        #     view = view.superview
         return None
 
     def _disable_scroll(self):
@@ -104,13 +104,11 @@ class DraggableMixin(ScrollAwareMixin):
         return max(0, min(1, snapped))
 
     def touch_began(self, touch: ui.Touch):
-        print(touch.phase)
         self._drag_start_y = touch.location[1]
         self._drag_start_value = self._display_value
         self._disable_scroll()
 
     def touch_moved(self, touch: ui.Touch):
-        print(touch.phase)
         delta_y = self._drag_start_y - touch.location[1]
         delta_value = delta_y / self.DRAG_SENSITIVITY
         new_value = max(0, min(1, self._drag_start_value + delta_value))
@@ -119,7 +117,6 @@ class DraggableMixin(ScrollAwareMixin):
             self.on_input(new_value)
 
     def touch_ended(self, touch: ui.Touch):
-        print(touch.phase)
         self._enable_scroll()
 
 

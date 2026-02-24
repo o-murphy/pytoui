@@ -30,8 +30,8 @@ class ActivityIndicator(View):
 
         # default size for standard style; frame is user-settable and must not
         # change automatically when style changes
-        self._frame = Rect(0.0, 0.0, 20.0, 20.0)
-        self._bounds = Rect(0.0, 0.0, 20.0, 20.0)
+        self.frame = Rect(0.0, 0.0, 20.0, 20.0)
+        self.bounds = Rect(0.0, 0.0, 20.0, 20.0)
 
     @property
     def style(self) -> int:

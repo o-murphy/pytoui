@@ -60,7 +60,7 @@ class Button(View):
         # Default iOS content insets (top, left, bottom, right)
         self._content_insets: Size = Size(8.0, 8.0)
 
-        self._frame = Rect(0.0, 0.0, 80.0, 44.0)
+        self.frame = Rect(0.0, 0.0, 80.0, 44.0)
 
     def _get_contrast_text_color(self) -> _RGBA:
         """Determines the best text color based on background brightness."""

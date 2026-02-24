@@ -39,7 +39,7 @@ def _get_runtime_for_view(view: View) -> "BaseRuntime | None":
 
 def _any_dirty(view: View) -> bool:
     """Return True if view or any descendant needs redrawing."""
-    if view._pytoui_needs_display:
+    if view.state.pytoui_needs_display:
         return True
     for sv in view._subviews:
         if _any_dirty(sv):
@@ -112,21 +112,25 @@ class BaseRuntime:
     def _touch_down(self, x, y, touch_id):
         self._last_pos[touch_id] = (x, y)
         target = self.root._pytoui_hit_test(x, y)
-        if target:
-            if not target.multitouch_enabled and any(
-                v is target for v in self._tracked.values()
-            ):
-                return
-            self._tracked[touch_id] = target
-            target.touch_began(
-                self._create_touch(target, x, y, "began", touch_id, (x, y))
-            )
+        if not target:
+            return
+        if not hasattr(target, "touch_began"):
+            return
+
+        if not target.multitouch_enabled and any(
+            v is target for v in self._tracked.values()
+        ):
+            return
+        self._tracked[touch_id] = target
+        target.touch_began(self._create_touch(target, x, y, "began", touch_id, (x, y)))
 
     def _touch_move(self, x, y, touch_id):
         prev = self._last_pos.get(touch_id, (x, y))
         self._last_pos[touch_id] = (x, y)
         target = self._tracked.get(touch_id)
         if not target:
+            return
+        if not hasattr(target, "touch_moved"):
             return
         phase = "moved" if (x, y) != prev else "stationary"
         target.touch_moved(self._create_touch(target, x, y, phase, touch_id, prev))
@@ -136,6 +140,8 @@ class BaseRuntime:
         target = self._tracked.pop(touch_id, None)
         if not target:
             return
+        if not hasattr(target, "touch_ended"):
+            return
         current = self.root._pytoui_hit_test(x, y)
         phase = "ended" if current is target else "cancelled"
         target.touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
@@ -143,10 +149,13 @@ class BaseRuntime:
     def _touch_cancel(self, touch_id):
         x, y = self._last_pos.pop(touch_id, (0.0, 0.0))
         target = self._tracked.pop(touch_id, None)
-        if target:
-            target.touch_ended(
-                self._create_touch(target, x, y, "cancelled", touch_id, (x, y))
-            )
+        if not target:
+            return
+        if not hasattr(target, "touch_ended"):
+            return
+        target.touch_ended(
+            self._create_touch(target, x, y, "cancelled", touch_id, (x, y))
+        )
 
     # ------------------------------------------------------------------
     # Update loop
@@ -154,8 +163,8 @@ class BaseRuntime:
 
     def _update_hierarchy(self, view: "View", now: float):
         if view.update_interval > 0:
-            if now - view._pytoui_last_update_t >= view.update_interval:
+            if now - view.state.pytoui_last_update_t >= view.update_interval:
                 view.update()
-                view._pytoui_last_update_t = now
+                view.state.pytoui_last_update_t = now
         for sv in view.subviews:
             self._update_hierarchy(sv, now)

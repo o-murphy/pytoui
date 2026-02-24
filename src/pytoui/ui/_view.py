@@ -205,9 +205,7 @@ class _view(metaclass=_ViewMeta):
 
     @alpha.setter
     def __alpha(self, value: float):
-        current_value = getattr(
-            self, _view.alpha.mangled_name, _view.alpha.default_value
-        )
+        current_value = _view.alpha._get_raw(self)
 
         if _record(self, "alpha", current_value, value):
             return
@@ -219,23 +217,14 @@ class _view(metaclass=_ViewMeta):
     @background_color.getter
     def __background_color(self) -> _RGBA | None:
         """The view's background color, defaults to None (transparent)."""
-        # Отримуємо сире значення зі слотів базового класу
-        raw_val = getattr(
-            self,
-            _view.background_color.mangled_name,
-            _view.background_color.default_value,
-        )
+        raw_val = _view.background_color._get_raw(self)
         return parse_color(raw_val)
 
     @background_color.setter
     def __background_color(self, value: _ColorLike):
         parsed = parse_color(value)
 
-        current = getattr(
-            self,
-            _view.background_color.mangled_name,
-            _view.background_color.default_value,
-        )
+        current = _view.background_color._get_raw(self)
 
         if _record(self, "background_color", current, parsed):
             return
@@ -251,25 +240,7 @@ class _view(metaclass=_ViewMeta):
     def __border_color(self) -> _RGBA | None:
         """The view's background color, defaults to None (transparent)."""
         # Отримуємо сире значення зі слотів базового класу
-        raw_val = getattr(
-            self,
-            _view.border_color.mangled_name,
-            _view.border_color.default_value,
-        )
-        return parse_color(raw_val)
-
-    @border_color.setter
-    def __border_color(self, value: _ColorLike):
-        parsed = parse_color(value)
-        _view.border_color._set_raw(self, parsed)
-        self.set_needs_display()
-
-    @border_color.getter
-    def __border_color(self) -> _RGBA | None:
-        """The view's border color (only has effect if border_width > 0)."""
-        raw_val = getattr(
-            self, _view.border_color.mangled_name, _view.border_color.default_value
-        )
+        raw_val = _view.border_color._get_raw(self)
         return parse_color(raw_val)
 
     @border_color.setter
@@ -281,9 +252,7 @@ class _view(metaclass=_ViewMeta):
     @border_width.getter
     def __border_width(self) -> float:
         """The view's border width, defaults to zero (no border)."""
-        return getattr(
-            self, _view.border_width.mangled_name, _view.border_width.default_value
-        )
+        return _view.border_width._get_raw(self)
 
     @border_width.setter
     def __border_width(self, value: float):
@@ -311,12 +280,12 @@ class _view(metaclass=_ViewMeta):
     @property
     def center(self) -> Point:
         """The center of the view's frame as a Point."""
-        return self._frame.center()
+        return self.frame.center()
 
     @center.setter
     def center(self, value: _PointLike):
         cx, cy = value
-        w, h = self.frame.w, self.frame.h
+        w, h = self.frame.size
         self.frame = Rect(cx - w / 2, cy - h / 2, w, h)
 
     @property
@@ -362,9 +331,7 @@ class _view(metaclass=_ViewMeta):
     @content_mode.getter
     def __content_mode(self) -> int:
         """Determines how a view lays out its content when its bounds change."""
-        return getattr(
-            self, _view.content_mode.mangled_name, _view.content_mode.default_value
-        )
+        return _view.content_mode._get_raw(self)
 
     @content_mode.setter
     def __content_mode(self, value: int):
@@ -375,9 +342,7 @@ class _view(metaclass=_ViewMeta):
     @corner_radius.getter
     def __corner_radius(self) -> float:
         """The view's corner radius."""
-        return getattr(
-            self, _view.corner_radius.mangled_name, _view.corner_radius.default_value
-        )
+        return _view.corner_radius._get_raw(self)
 
     @corner_radius.setter
     def __corner_radius(self, value: float):
@@ -387,7 +352,7 @@ class _view(metaclass=_ViewMeta):
     @flex.getter
     def __flex(self) -> _ViewFlex:
         """The autoresizing behavior of the view."""
-        return getattr(self, _view.flex.mangled_name, _view.flex.default_value)
+        return _view.flex._get_raw(self)
 
     @flex.setter
     def __flex(self, value: _ViewFlex):
@@ -430,7 +395,7 @@ class _view(metaclass=_ViewMeta):
 
     @name.getter
     def __name(self) -> str:
-        return str(getattr(self, _view.name.mangled_name, _view.name.default_value))
+        return str(_view.name._get_raw(self))
 
     @name.setter
     def __name(self, value: str):
@@ -439,9 +404,7 @@ class _view(metaclass=_ViewMeta):
     @on_screen.getter
     def __on_screen(self) -> bool:
         """(readonly) Whether the view is part of a view hierarchy currently on screen."""
-        return bool(
-            getattr(self, _view.on_screen.mangled_name, _view.on_screen.default_value)
-        )
+        return bool(_view.on_screen._get_raw(self))
 
     @property
     def subviews(self) -> tuple[View, ...]:
@@ -459,9 +422,7 @@ class _view(metaclass=_ViewMeta):
         v: View | None = self
 
         while v is not None:
-            val = getattr(
-                v, _view.tint_color.mangled_name, _view.tint_color.default_value
-            )
+            val = _view.tint_color._get_raw(self)
 
             if val is not None:
                 return val
@@ -477,13 +438,7 @@ class _view(metaclass=_ViewMeta):
     @touch_enabled.getter
     def __touch_enabled(self) -> bool:
         """Determines if the view responds to touch events."""
-        return bool(
-            getattr(
-                self,
-                _view.touch_enabled.mangled_name,
-                _view.touch_enabled.default_value,
-            )
-        )
+        return bool(_view.touch_enabled._get_raw(self))
 
     @touch_enabled.setter
     def __touch_enabled(self, value: bool):
@@ -492,13 +447,7 @@ class _view(metaclass=_ViewMeta):
     @multitouch_enabled.getter
     def __multitouch_enabled(self) -> bool:
         """If True, the view receives all simultaneous touches. If False, only the first is tracked."""
-        return bool(
-            getattr(
-                self,
-                _view.multitouch_enabled.mangled_name,
-                _view.multitouch_enabled.default_value,
-            )
-        )
+        return bool(_view.multitouch_enabled._get_raw(self))
 
     @multitouch_enabled.setter
     def __multitouch_enabled(self, value: bool):
@@ -507,15 +456,11 @@ class _view(metaclass=_ViewMeta):
     @transform.getter
     def __transform(self) -> Transform | None:
         """The transform applied to the view relative to the center of its bounds."""
-        return getattr(
-            self, _view.transform.mangled_name, _view.transform.default_value
-        )
+        return _view.transform._get_raw(self)
 
     @transform.setter
     def __transform(self, value: Transform | None):
-        current = getattr(
-            self, _view.transform.mangled_name, _view.transform.default_value
-        )
+        current = _view.transform._get_raw(self)
 
         if _record(self, "transform", current, value):
             return
@@ -527,11 +472,7 @@ class _view(metaclass=_ViewMeta):
     @update_interval.getter
     def __update_interval(self) -> float:
         """Interval between update() calls in seconds. 0 disables updates."""
-        return getattr(
-            self,
-            _view.update_interval.mangled_name,
-            _view.update_interval.default_value,
-        )
+        return _view.update_interval._get_raw(self)
 
     @update_interval.setter
     def __update_interval(self, value: float):

@@ -88,7 +88,7 @@ class getset_descriptor(Generic[__ClassT, __GetT, __SetT]):
             return self
         if self._getter is not None:
             return self._getter(obj)
-
+        
         return getattr(obj, self.mangled_name, self.default_value)
 
     def __set__(self, obj: __ClassT, value: __SetT):
@@ -130,15 +130,9 @@ class _view(metaclass=_ViewMeta):
 
     __slots__ = (
         "_bounds",
-        "_frame",
         "_on_screen",
         "_subviews",
         "_superview",
-        "_tint_color",
-        "_transform",
-        "_update_interval",
-        "_touch_enabled",
-        "_multitouch_enabled",
         # INTERNALS
         "_pytoui_needs_display",
         "_pytoui_presented",
@@ -187,6 +181,7 @@ class _view(metaclass=_ViewMeta):
     on_screen: _GD[_view, bool, bool] = _GD(
         "on_screen", False
     )
+    frame: _GD[_view, _RectLike, Rect] = _GD("frame", Rect(0.0, 0.0, 100.0, 100.0))
 
     _SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
 
@@ -201,7 +196,7 @@ class _view(metaclass=_ViewMeta):
         )
         self.corner_radius: float = 0.0
         self.flex: _ViewFlex = ""
-        self._frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
+        self.frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
         self.hidden = False
         self.name: str = str(uuid4())
         self._subviews: list[View] = []
@@ -315,7 +310,7 @@ class _view(metaclass=_ViewMeta):
         self._bounds = new_bounds
         new_w, new_h = new_bounds.w, new_bounds.h
         if new_w != old_w or new_h != old_h:
-            self._frame = Rect(self._frame.x, self._frame.y, new_w, new_h)
+            self.frame = Rect(self.frame.x, self.frame.y, new_w, new_h)
             self._pytoui_apply_autoresizing(old_w, old_h)
             self.layout()
         self.set_needs_display()
@@ -404,24 +399,45 @@ class _view(metaclass=_ViewMeta):
 
     autoresizing = flex
 
-    @property
-    def frame(self) -> Rect:
+    @frame.getter
+    def __frame(self) -> Rect:
         """The view's position and size in the coordinate system of its superview."""
-        return self._frame
+        return _view.frame._get_raw(self)
 
     @frame.setter
-    def frame(self, value: _RectLike):
+    def __frame(self, value: _RectLike):
         new_frame = Rect(*value)
-        if _record(self, "frame", self._frame, new_frame):
+        if _record(self, "frame", self.frame, new_frame):
             return
-        old_w, old_h = self._frame.w, self._frame.h
-        self._frame = new_frame
+        print(_view.frame.default_value, _view.frame._get_raw(self))
+        old_frame = _view.frame._get_raw(self)
+        old_w, old_h = old_frame.size
+        _view.frame._set_raw(self, new_frame)
         new_w, new_h = new_frame.w, new_frame.h
         if new_w != old_w or new_h != old_h:
             self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
             self._pytoui_apply_autoresizing(old_w, old_h)
             self.layout()
         self.set_needs_display()
+
+    # @property
+    # def frame(self) -> Rect:
+    #     """The view's position and size in the coordinate system of its superview."""
+    #     return self.frame
+
+    # @frame.setter
+    # def frame(self, value: _RectLike):
+    #     new_frame = Rect(*value)
+    #     if _record(self, "frame", self.frame, new_frame):
+    #         return
+    #     old_w, old_h = self.frame.w, self.frame.h
+    #     self.frame = new_frame
+    #     new_w, new_h = new_frame.w, new_frame.h
+    #     if new_w != old_w or new_h != old_h:
+    #         self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
+    #         self._pytoui_apply_autoresizing(old_w, old_h)
+    #         self.layout()
+    #     self.set_needs_display()
 
     @hidden.getter
     def __hidden(self) -> bool:

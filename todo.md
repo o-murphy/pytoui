@@ -9,6 +9,7 @@ NOTE:
 
 HOT:
 * View
+  * View.update is not in Pythonista signature
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.
     * View.present("fullscreen") - fullscreen

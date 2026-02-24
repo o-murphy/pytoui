@@ -127,7 +127,7 @@ def _get_runtime():
 
 def launch_runtime(root_view: View, render_fn) -> None:
     """Pick and run the appropriate runtime based on _UI_RUNTIME."""
-    w = int(root_view._frame.w)
-    h = int(root_view._frame.h)
+    w = int(root_view.frame.w)
+    h = int(root_view.frame.h)
     runtime = _get_runtime()
     runtime(root_view, w, h, render_fn).run()

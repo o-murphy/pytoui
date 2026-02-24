@@ -81,7 +81,7 @@ class ImageView(View):
 
         iw = int(img._size.w * img._scale)
         ih = int(img._size.h * img._scale)
-        fw, fh = self._frame.w, self._frame.h
+        fw, fh = self.frame.w, self.frame.h
 
         if iw <= 0 or ih <= 0 or fw <= 0 or fh <= 0:
             return

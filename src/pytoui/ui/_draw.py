@@ -722,13 +722,13 @@ def _screen_origin(view) -> tuple[float, float]:
 
     Walks the superview chain: each ancestor contributes frame.xy - bounds.xy.
     """
-    x = view._frame.x
-    y = view._frame.y
-    sv = view._superview
+    x = view.frame.x
+    y = view.frame.y
+    sv = view.superview
     while sv is not None:
-        x += sv._frame.x - sv._bounds.x
-        y += sv._frame.y - sv._bounds.y
-        sv = sv._superview
+        x += sv.frame.x - sv.bounds.x
+        y += sv.frame.y - sv.bounds.y
+        sv = sv.superview
     return x, y
 
 

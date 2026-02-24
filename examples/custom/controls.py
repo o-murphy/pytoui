@@ -6,6 +6,14 @@ from abc import abstractmethod
 # --- Store / Model ---
 
 
+class MockScrollView(ui.View):
+    pass
+
+
+if not hasattr(ui, "ScrollView"):
+    setattr(ui, "ScrollView", MockScrollView)
+
+
 class ValueStore:
     """Простий observable store для значень"""
 
@@ -95,12 +103,14 @@ class DraggableMixin(ScrollAwareMixin):
         snapped = round(value * self.steps) / self.steps
         return max(0, min(1, snapped))
 
-    def touch_began(self, touch):
+    def touch_began(self, touch: ui.Touch):
+        print(touch.phase)
         self._drag_start_y = touch.location[1]
         self._drag_start_value = self._display_value
         self._disable_scroll()
 
-    def touch_moved(self, touch):
+    def touch_moved(self, touch: ui.Touch):
+        print(touch.phase)
         delta_y = self._drag_start_y - touch.location[1]
         delta_value = delta_y / self.DRAG_SENSITIVITY
         new_value = max(0, min(1, self._drag_start_value + delta_value))
@@ -108,7 +118,8 @@ class DraggableMixin(ScrollAwareMixin):
         if self.on_input:
             self.on_input(new_value)
 
-    def touch_ended(self, touch):
+    def touch_ended(self, touch: ui.Touch):
+        print(touch.phase)
         self._enable_scroll()
 
 
@@ -887,7 +898,7 @@ def main():
 
     # Головний контейнер
     v = ui.View()
-    v.background_color="#1c1c1c"
+    v.background_color = "#1c1c1c"
     v.frame = (0, 0, 400, 600)
 
     # ScrollView
@@ -1100,4 +1111,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

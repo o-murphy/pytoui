@@ -149,7 +149,7 @@ __SizeLike = Size | tuple[float, float]
 __TouchPhase = Literal["began", "ended", "moved", "stationary", "cancelled"]
 __ColorLike = __RGB | __RGBA | __HEX | None
 __ViewFlex = Literal["", "W", "H", "L", "R", "T", "B"]
-__PresentStyle = Literal["full_screen", "sheet", "popover", "panel"]
+__PresentStyle = Literal["default", "full_screen", "sheet", "popover", "panel"]
 __PresentOrientation = Literal[
     "portrait", "portrait-upside-down", "landscape", "landscape-left", "landscape-right"
 ]

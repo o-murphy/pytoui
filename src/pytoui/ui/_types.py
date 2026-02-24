@@ -34,7 +34,7 @@ _Action = Callable[[Any], None] | Callable[[], None]
 _Font = tuple[str, float]
 _ViewFlex = Literal["", "W", "H", "L", "R", "T", "B"]
 _TouchPhase = Literal["began", "ended", "moved", "stationary", "cancelled"]
-_PresentStyle = Literal["full_screen", "sheet", "popover", "panel"]
+_PresentStyle = Literal["default", "full_screen", "sheet", "popover", "panel"]
 _PresentOrientation = Literal[
     "portrait", "portrait-upside-down", "landscape", "landscape-left", "landscape-right"
 ]

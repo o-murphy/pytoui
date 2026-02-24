@@ -10,7 +10,7 @@ from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
 )
-from pytoui.ui._types import _PresentOrientation, _SizeLike, Rect, Point, Size, Touch
+from pytoui.ui._types import _PresentOrientation, _SizeLike, Rect, Point, Size, Touch, _ColorLike
 from pytoui.ui._draw import (
     GState,
     Path,
@@ -32,7 +32,6 @@ if TYPE_CHECKING:
         _RectLike,
         _RGBA,
         _PresentStyle,
-        _ColorLike,
         _PointLike,
     )
 
@@ -465,7 +464,7 @@ class View:
 
     def present(
         self,
-        style: _PresentStyle = "sheet",
+        style: _PresentStyle = "default",
         animated: bool = True,
         popover_location: _PointLike | None = None,
         hide_title_bar: bool = False,

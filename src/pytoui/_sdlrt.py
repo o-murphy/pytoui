@@ -10,16 +10,15 @@ per-window queues via _window_map. Each SDLRuntime drains its own queue.
 
 from __future__ import annotations
 
-import os
 import ctypes
+import os
 import queue
-import time
 import threading
+import time
 from typing import TYPE_CHECKING
 
+from pytoui._base_runtime import CHECKER_SIZE, BaseRuntime, _any_dirty
 from pytoui._osdbuf import FrameBuffer
-
-from pytoui._base_runtime import BaseRuntime, _any_dirty, CHECKER_SIZE
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
@@ -40,23 +39,26 @@ __all__ = ("SDLRuntime",)
 # ---------------------------------------------------------------------------
 
 # window_id → SDLRuntime; all access protected by _wmap_lock
-_window_map: dict[int, "SDLRuntime"] = {}
+_window_map: dict[int, SDLRuntime] = {}
 _wmap_lock = threading.Lock()
 _pump_thread: threading.Thread | None = None
 
 
-def _register_runtime(rt: "SDLRuntime") -> None:
+def _register_runtime(rt: SDLRuntime) -> None:
     global _pump_thread
     with _wmap_lock:
         _window_map[rt.window_id] = rt
         if _pump_thread is None or not _pump_thread.is_alive():
             _pump_thread = threading.Thread(
-                target=_pump_loop, args=(rt._sdl2,), daemon=True, name="sdl-pump"
+                target=_pump_loop,
+                args=(rt._sdl2,),
+                daemon=True,
+                name="sdl-pump",
             )
             _pump_thread.start()
 
 
-def _unregister_sdl_runtime(rt: "SDLRuntime") -> None:
+def _unregister_sdl_runtime(rt: SDLRuntime) -> None:
     with _wmap_lock:
         _window_map.pop(rt.window_id, None)
 
@@ -83,7 +85,7 @@ def _route_event(sdl2, event) -> None:
             rt._event_queue.put(("quit",))
         return
 
-    elif t == sdl2.SDL_WINDOWEVENT:
+    if t == sdl2.SDL_WINDOWEVENT:
         wid = event.window.windowID
         if event.window.event == sdl2.SDL_WINDOWEVENT_CLOSE:
             _send(wid, ("window_close",))
@@ -154,7 +156,7 @@ class SDLRuntime(BaseRuntime):
     _sdl_ref_count = 0
     _sdl_lock = threading.Lock()
 
-    def __init__(self, root_view: "View", width: int, height: int, render_fn):
+    def __init__(self, root_view: View, width: int, height: int, render_fn):
         super().__init__(root_view, width, height, render_fn)
 
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
@@ -186,7 +188,9 @@ class SDLRuntime(BaseRuntime):
         )
         self.window_id = sdl2.SDL_GetWindowID(self.window)
         self.renderer = sdl2.SDL_CreateRenderer(
-            self.window, -1, sdl2.SDL_RENDERER_ACCELERATED
+            self.window,
+            -1,
+            sdl2.SDL_RENDERER_ACCELERATED,
         )
         self.texture = sdl2.SDL_CreateTexture(
             self.renderer,

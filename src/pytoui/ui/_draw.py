@@ -1,5 +1,4 @@
-"""
-Pythonista-compatible drawing API.
+"""Pythonista-compatible drawing API.
 
 These functions are meant to be called inside a View's draw() method.
 A backend (e.g. osdbuf FrameBuffer) should set the active context
@@ -30,12 +29,14 @@ NOTE: If needed we should delegate some operations to rust (osdbuf/src/lib.rs)
 from __future__ import annotations
 
 import math
+import time
+from collections.abc import Callable, Sequence
 from functools import lru_cache
 from re import fullmatch
 from threading import local
-import time
-from typing import Callable, Sequence, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
+from pytoui._platform import pytoui_desktop_only
 from pytoui.ui._constants import (
     ALIGN_LEFT,
     ALIGN_NATURAL,
@@ -62,40 +63,39 @@ from pytoui.ui._types import (
     Rect,
     Size,
 )
-from pytoui._platform import pytoui_desktop_only
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import _RGBA, _RectLike, _ColorLike
     from pytoui._osdbuf import FrameBuffer
+    from pytoui.ui._types import _RGBA, _ColorLike, _RectLike
 
 
 __all__ = (
     "GState",
     "ImageContext",
-    "parse_color",
-    "set_color",
-    "set_blend_mode",
-    "set_shadow",
-    "fill_rect",
-    "concat_ctm",
-    "draw_string",
-    "measure_string",
-    "convert_point",
-    "convert_rect",
-    "animate",
-    "delay",
-    "cancel_delays",
-    "in_background",
     "Path",
     "Transform",
-    "get_screen_size",
-    "get_window_size",
-    "get_ui_style",
-    "_set_origin",
     "_content_mode_transform",
+    "_record",
+    "_set_origin",
     "_tick",
     "_tick_delays",
-    "_record",
+    "animate",
+    "cancel_delays",
+    "concat_ctm",
+    "convert_point",
+    "convert_rect",
+    "delay",
+    "draw_string",
+    "fill_rect",
+    "get_screen_size",
+    "get_ui_style",
+    "get_window_size",
+    "in_background",
+    "measure_string",
+    "parse_color",
+    "set_blend_mode",
+    "set_color",
+    "set_shadow",
 )
 
 
@@ -108,7 +108,7 @@ class ImageContext:
     Usage::
 
         with ui.ImageContext(100, 100) as ctx:
-            ui.set_color('red')
+            ui.set_color("red")
             ui.Path.oval(0, 0, 100, 100).fill()
             img = ctx.get_image()
     """
@@ -170,7 +170,10 @@ class ImageContext:
         # FrameBuffer fills pixels as RGBA8888 (same order as BlitRGBA expects),
         # so no byte-swap is needed here.
         return Image(
-            width=self.width, height=self.height, scale=self.scale, data=bytes(raw)
+            width=self.width,
+            height=self.height,
+            scale=self.scale,
+            data=bytes(raw),
         )
 
 
@@ -182,7 +185,7 @@ class Transform:
     The Rust handle is created lazily on first use.
     """
 
-    __slots__ = ("a", "b", "c", "d", "tx", "ty", "_handle")
+    __slots__ = ("_handle", "a", "b", "c", "d", "tx", "ty")
 
     def __init__(self, a=1.0, b=0.0, c=0.0, d=1.0, tx=0.0, ty=0.0):
         self.a = float(a)
@@ -212,12 +215,17 @@ class Transform:
 
         if self._handle <= 0:
             self._handle = type(backend).create_transform(
-                self.a, self.b, self.c, self.d, self.tx, self.ty
+                self.a,
+                self.b,
+                self.c,
+                self.d,
+                self.tx,
+                self.ty,
             )
         return self._handle
 
     @classmethod
-    def _from_handle(cls, handle: int) -> "Transform":
+    def _from_handle(cls, handle: int) -> Transform:
         """Wrap an existing Rust handle; reads values back via TransformGet."""
         backend = _get_draw_ctx().backend
         if not backend:
@@ -332,7 +340,7 @@ class _DrawingContext:
     _stack: list[dict]
 
 
-_draw_ctx = cast(_DrawingContext, local())
+_draw_ctx = cast("_DrawingContext", local())
 
 
 def _get_draw_ctx() -> _DrawingContext:
@@ -362,7 +370,7 @@ def _save_gstate():
             "shadow": ctx.shadow,
             "ctm": ctm_copy,
             "alpha": ctx.alpha,
-        }
+        },
     )
 
 
@@ -390,7 +398,7 @@ class GState:
     Usage::
 
         with ui.GState():
-            ui.set_color('red')
+            ui.set_color("red")
             ui.concat_ctm(ui.Transform.rotation(0.5))
             # ... draw ...
         # state is restored here
@@ -404,7 +412,8 @@ class GState:
 
 
 def _sync_ctm_to_rust(ctx) -> None:
-    """Push the current Python CTM (composed with origin translation) to the Rust backend.
+    """Push the current Python CTM
+    (composed with origin translation) to the Rust backend.
 
     Full transform sent to Rust = T(origin) * ctx.ctm, which means:
       - All Path coordinates are passed as view-local (without origin offset)
@@ -423,7 +432,8 @@ def _sync_ctm_to_rust(ctx) -> None:
 @pytoui_desktop_only
 def set_backend(backend):
     """Set the active drawing backend (e.g. osdbuf.FrameBuffer instance).
-    Called by the render loop before View.draw()."""
+    Called by the render loop before View.draw().
+    """
     ctx = _get_draw_ctx()
     ctx.backend = backend
     _sync_ctm_to_rust(ctx)
@@ -433,7 +443,8 @@ def set_backend(backend):
 def _set_origin(x: float, y: float):
     """Set the coordinate origin for subsequent draw calls.
     Called by the render loop to translate to the view's absolute position.
-    Internal only — not part of the Pythonista public API."""
+    Internal only — not part of the Pythonista public API.
+    """
     ctx = _get_draw_ctx()
     ctx.origin = (x, y)
     _sync_ctm_to_rust(ctx)
@@ -442,7 +453,8 @@ def _set_origin(x: float, y: float):
 def set_alpha(alpha: float):
     """Set a global alpha multiplier applied to all subsequent drawing operations.
     Internal only — not part of the Pythonista public API.
-    Used by View._render() to apply view.alpha to the entire view's drawing."""
+    Used by View._render() to apply view.alpha to the entire view's drawing.
+    """
     ctx = _get_draw_ctx()
     ctx.alpha = max(0.0, min(1.0, float(alpha)))
 
@@ -509,11 +521,10 @@ def parse_color(c: _ColorLike) -> _RGBA | None:
             b = (c >> 8) & 0xFF
             a = c & 0xFF
             return (r / 255, g / 255, b / 255, a / 255)
-        else:
-            r = (c >> 16) & 0xFF
-            g = (c >> 8) & 0xFF
-            b = c & 0xFF
-            return (r / 255, g / 255, b / 255, 1.0)
+        r = (c >> 16) & 0xFF
+        g = (c >> 8) & 0xFF
+        b = c & 0xFF
+        return (r / 255, g / 255, b / 255, 1.0)
 
     if isinstance(c, str):
         # CSS color name lookup
@@ -536,20 +547,21 @@ def parse_color(c: _ColorLike) -> _RGBA | None:
 
 def set_color(c: _ColorLike):
     """Set the current fill and stroke color.
-    Accepts any Color format (RGBA tuple, RGB tuple, hex string, hex int)."""
+    Accepts any Color format (RGBA tuple, RGB tuple, hex string, hex int).
+    """
     ctx = _get_draw_ctx()
     ctx.color = parse_color(c) or (0.0, 0.0, 0.0, 1.0)
 
 
 def set_blend_mode(mode: int):
-    """Set the current blend mode (BlendMode.NORMAL = alpha-over, BlendMode.COPY = direct)."""
+    """Set the current blend mode
+    (BlendMode.NORMAL = alpha-over, BlendMode.COPY = direct)."""
     ctx = _get_draw_ctx()
     ctx.blend_mode = mode
 
 
 def concat_ctm(transform: Transform):
-    """
-    Adds a new transformation to the current state of the graphics context.
+    """Adds a new transformation to the current state of the graphics context.
     Mathematically this is: NewCTM = CurrentCTM * IncomingTransform
     """
     ctx = _get_draw_ctx()
@@ -567,7 +579,11 @@ def fill_rect(x: float, y: float, w: float, h: float):
 
 @pytoui_desktop_only
 def _content_mode_transform(
-    mode: int, cw: float, ch: float, fw: float, fh: float
+    mode: int,
+    cw: float,
+    ch: float,
+    fw: float,
+    fh: float,
 ) -> None:
     """Apply a CTM pre-transform so content originally drawn at (cw, ch) appears
     scaled/positioned within (fw, fh) according to *mode* (a CONTENT_* constant).
@@ -712,7 +728,11 @@ def measure_string(
     fid = _font_id(font_name)
 
     return type(backend).measure_string_core_graphics(
-        s, max_width, size=font_size, font_id=fid, line_break_mode=line_break_mode
+        s,
+        max_width,
+        size=font_size,
+        font_id=fid,
+        line_break_mode=line_break_mode,
     )
 
 
@@ -845,7 +865,8 @@ class Path:
 
     @property
     def eo_fill_rule(self) -> bool:
-        """If True, uses even-odd fill rule; if False (default), uses non-zero (winding) rule."""
+        """If True, uses even-odd fill rule;
+        if False (default), uses non-zero (winding) rule."""
         return self._eo_fill_rule
 
     @eo_fill_rule.setter
@@ -869,7 +890,7 @@ class Path:
     # -- Class method constructors --------------------------------------------
 
     @classmethod
-    def rect(cls, x: float, y: float, w: float, h: float) -> "Path":
+    def rect(cls, x: float, y: float, w: float, h: float) -> Path:
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
@@ -883,7 +904,7 @@ class Path:
         return p
 
     @classmethod
-    def oval(cls, x: float, y: float, w: float, h: float) -> "Path":
+    def oval(cls, x: float, y: float, w: float, h: float) -> Path:
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
@@ -897,7 +918,7 @@ class Path:
         return p
 
     @classmethod
-    def rounded_rect(cls, x: float, y: float, w: float, h: float, r: float) -> "Path":
+    def rounded_rect(cls, x: float, y: float, w: float, h: float, r: float) -> Path:
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
@@ -954,19 +975,27 @@ class Path:
         cp2_y: float,
     ):
         """Append a cubic Bézier curve.  Argument order matches Pythonista:
-        end point first, then the two control points."""
+        end point first, then the two control points.
+        """
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
 
         type(backend).path_add_curve(
-            self._handle, end_x, end_y, cp1_x, cp1_y, cp2_x, cp2_y
+            self._handle,
+            end_x,
+            end_y,
+            cp1_x,
+            cp1_y,
+            cp2_x,
+            cp2_y,
         )
         self._has_segments = True
 
     def add_quad_curve(self, end_x: float, end_y: float, cp_x: float, cp_y: float):
         """Append a quadratic Bézier curve.  Argument order matches Pythonista:
-        end point first, then the control point."""
+        end point first, then the control point.
+        """
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
@@ -1033,7 +1062,8 @@ class Path:
         fb.path_stroke(self._handle, c, ctx.blend_mode)
 
     def add_clip(self):
-        """Constrain the clipping region of the current graphics context to this path."""
+        """Constrain the clipping region of the
+        current graphics context to this path."""
         ctx = _get_draw_ctx()
         fb = ctx.backend
         if fb is None or self._handle <= 0:
@@ -1049,6 +1079,24 @@ class Path:
         return f"<Path handle={self._handle}>"
 
 
+def get_screen_size() -> tuple[int, int]:
+    from pytoui.ui._runtime import get_screen_size as _gss
+
+    return _gss()
+
+
+def get_window_size() -> tuple[int, int]:
+    from pytoui.ui._runtime import get_window_size as _gws
+
+    return _gws()
+
+
+def get_ui_style() -> str:
+    from pytoui.ui._runtime import get_ui_style as _gus
+
+    return _gus()
+
+
 # ---------------------------------------------------------------------------
 # Per-window animation context (thread-local)
 # ---------------------------------------------------------------------------
@@ -1061,7 +1109,7 @@ class _AnimatingContext:
     records: list
 
 
-_anim_local = cast(_AnimatingContext, local())
+_anim_local = cast("_AnimatingContext", local())
 
 
 def _get_anim_ctx() -> _AnimatingContext:
@@ -1109,33 +1157,16 @@ def in_background(fn: Callable) -> Callable:
             # long-running work here; UI stays responsive
             ...
     """
-    import threading
     import functools
+    import threading
 
     def new_fn(*args, **kwargs):
         threading.Thread(
-            target=functools.partial(fn, *args, **kwargs), daemon=True
+            target=functools.partial(fn, *args, **kwargs),
+            daemon=True,
         ).start()
 
     return new_fn
-
-
-def get_screen_size() -> tuple[int, int]:
-    from pytoui.ui._runtime import get_screen_size as _gss
-
-    return _gss()
-
-
-def get_window_size() -> tuple[int, int]:
-    from pytoui.ui._runtime import get_window_size as _gws
-
-    return _gws()
-
-
-def get_ui_style() -> str:
-    from pytoui.ui._runtime import get_ui_style as _gus
-
-    return _gus()
 
 
 # (animation state is now per-thread — see _get_anim_ctx())
@@ -1154,16 +1185,16 @@ def _ease_in_out(t: float) -> float:
 def _lerp(a, b, t: float):
     if isinstance(a, (int, float)) and isinstance(b, (int, float)):
         return a + (b - a) * t
-    elif isinstance(a, tuple) and isinstance(b, tuple):
+    if isinstance(a, tuple) and isinstance(b, tuple):
         return tuple(ai + (bi - ai) * t for ai, bi in zip(a, b))
-    elif isinstance(a, Rect) and isinstance(b, Rect):
+    if isinstance(a, Rect) and isinstance(b, Rect):
         return Rect(
             a.x + (b.x - a.x) * t,
             a.y + (b.y - a.y) * t,
             a.w + (b.w - a.w) * t,
             a.h + (b.h - a.h) * t,
         )
-    elif isinstance(a, (Point, Size)) and type(a) is type(b):
+    if isinstance(a, (Point, Size)) and type(a) is type(b):
         return type(a)(
             a.x + (b.x - a.x) * t,
             a.y + (b.y - a.y) * t,
@@ -1178,18 +1209,25 @@ def _lerp(a, b, t: float):
 
 class _Anim:
     __slots__ = (
-        "view",
         "attr",
-        "start",
-        "end",
-        "start_t",
-        "duration",
         "completion",
         "done",
+        "duration",
+        "end",
+        "start",
+        "start_t",
+        "view",
     )
 
     def __init__(
-        self, view, attr: str, start, end, start_t: float, duration: float, completion
+        self,
+        view,
+        attr: str,
+        start,
+        end,
+        start_t: float,
+        duration: float,
+        completion,
     ):
         self.view = view
         self.attr = attr
@@ -1268,6 +1306,8 @@ def animate(
 
         def anim():
             v.alpha = 0.0
+
+
         ui.animate(anim, duration=0.5, completion=lambda: print("done"))
     """
     ctx = _get_anim_ctx()
@@ -1314,29 +1354,29 @@ def animate(
 # become no-ops since the desktop runtime is never started on iOS.
 # ---------------------------------------------------------------------------
 
-from pytoui._platform import IS_PYTHONISTA, pytoui_desktop_only  # noqa: E402
+from pytoui._platform import IS_PYTHONISTA, pytoui_desktop_only
 
 if IS_PYTHONISTA:
     from ui import (  # type: ignore[import-not-found,no-redef,assignment]
-        set_color,
-        fill_rect,
+        GState,
+        ImageContext,
+        Path,
+        Transform,
+        animate,
+        cancel_delays,
+        concat_ctm,
+        convert_point,
+        convert_rect,
+        delay,
         draw_string,
+        fill_rect,
+        get_screen_size,
+        get_ui_style,
+        get_window_size,
+        in_background,
         measure_string,
         parse_color,
         set_blend_mode,
-        concat_ctm,
+        set_color,
         set_shadow,
-        GState,
-        Path,
-        Transform,
-        ImageContext,
-        animate,
-        delay,
-        cancel_delays,
-        in_background,
-        convert_point,
-        convert_rect,
-        get_screen_size,
-        get_window_size,
-        get_ui_style,
     )

@@ -20,16 +20,15 @@ import ctypes
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pytoui._osdbuf import FrameBuffer
 from pytoui._base_runtime import BaseRuntime
-
+from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT,
 )
 
 if TYPE_CHECKING:
-    from pytoui.ui._view import View
+    from pytoui.ui._view import _view
 
 
 # --- LOAD DEFAULT FONTS ---
@@ -125,7 +124,7 @@ def _get_runtime():
             return SDLRuntime
 
 
-def launch_runtime(root_view: View, render_fn) -> None:
+def launch_runtime(root_view: _view, render_fn) -> None:
     """Pick and run the appropriate runtime based on _UI_RUNTIME."""
     w = int(root_view.frame.w)
     h = int(root_view.frame.h)

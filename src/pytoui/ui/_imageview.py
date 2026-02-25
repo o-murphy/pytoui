@@ -58,6 +58,7 @@ class ImageView(View):
         def _fetch():
             try:
                 from urllib.request import urlopen
+
                 from pytoui.ui._image import Image
 
                 data = urlopen(url).read()

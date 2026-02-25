@@ -1,5 +1,4 @@
-"""
-Demo3: multitouch visualizer.
+"""Demo3: multitouch visualizer.
 
 Shows touch points as colored circles; each finger gets a unique color.
 Panels are named sub-views — the header shows which view each finger is on.
@@ -22,7 +21,7 @@ RADIUS = 26
 
 
 class _TouchInfo:
-    __slots__ = ("x", "y", "color", "view_name", "touch_id")
+    __slots__ = ("color", "touch_id", "view_name", "x", "y")
 
     def __init__(self, x, y, color, view_name, touch_id):
         self.x = x

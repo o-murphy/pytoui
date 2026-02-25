@@ -4,11 +4,12 @@
 #     "requests>=2.32.5",
 # ]
 # ///
-import requests
-import zipfile
 import io
 import os
 import shutil
+import zipfile
+
+import requests
 
 
 def fetch_and_move_pytoui(user, repo, branch="main"):
@@ -45,7 +46,8 @@ def fetch_and_move_pytoui(user, repo, branch="main"):
                         shutil.copy2(s, d)
 
             print(
-                f"✅ Success! Folder copied to: {dest_path} and examples files placed in {dest_path2}"
+                f"✅ Success! Folder copied to: {dest_path}"
+                f" and examples files placed in {dest_path2}",
             )
 
         finally:

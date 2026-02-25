@@ -1,6 +1,5 @@
 from pytoui import ui
 
-
 root = ui.View()  # frame=(0, 0, 400, 400))
 root.frame = (0, 0, 400, 400)
 root.background_color = "white"

@@ -1,55 +1,53 @@
 from __future__ import annotations
+
+import time
+from collections.abc import Sequence
+from threading import Event
 from typing import (
     TYPE_CHECKING,
     Generic,
-    Sequence,
-    Type,
     TypeVar,
     cast,
-    overload,
 )
-
-import time
 from uuid import uuid4
-from threading import Event
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA, pytoui_desktop_only
 from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
 )
-from pytoui.ui._types import (
-    _PresentOrientation,
-    Rect,
-    Point,
-    Size,
-    _ColorLike,
-)
 from pytoui.ui._draw import (
     GState,
     Path,
     Transform,
-    _screen_origin,
     _content_mode_transform,
     _record,
+    _screen_origin,
+    _set_origin,
     fill_rect,
     parse_color,
-    set_color,
-    set_backend,
-    _set_origin,
     set_alpha,
+    set_backend,
+    set_color,
+)
+from pytoui.ui._types import (
+    Point,
+    Rect,
+    Size,
+    _ColorLike,
+    _PresentOrientation,
 )
 
 if TYPE_CHECKING:
     from pytoui.ui._types import (
-        _ViewFlex,
-        _RectLike,
         _RGBA,
-        _PresentStyle,
         _PointLike,
+        _PresentStyle,
+        _RectLike,
+        _ViewFlex,
     )
 
-__all__ = ("View",)
+__all__ = ("View", "_getset_descriptor", "_view", "_view_meta", "_view_state")
 
 __ClassT = TypeVar("__ClassT")
 __PropT = TypeVar("__PropT")
@@ -60,19 +58,19 @@ class _getset_descriptor(Generic[__ClassT, __PropT]):
         self._public_name = name
         self._mangled_name: str = f"__{name}"
 
-    def __set_name__(self, owner: Type[__ClassT], name: str):
+    def __set_name__(self, owner: type[__ClassT], name: str):
         self._mangled_name = f"_{owner.__name__.lstrip('_')}__{name.lstrip('_')}"
 
-    @overload
-    def __get__(
-        self, obj: None, objtype: Type[__ClassT]
-    ) -> _getset_descriptor[__ClassT, __PropT]: ...
+    # @overload
+    # def __get__(
+    #     self, obj: None, objtype: Type[__ClassT]
+    # ) -> _getset_descriptor[__ClassT, __PropT]: ...
 
-    @overload
-    def __get__(self, obj: __ClassT, objtype: Type[__ClassT]) -> __PropT: ...
+    # @overload
+    # def __get__(self, obj: __ClassT, objtype: Type[__ClassT]) -> __PropT: ...
 
     def __get__(
-        self, obj: __ClassT | None, objtype: Type[__ClassT] | None = None
+        self, obj: __ClassT | None, objtype: type[__ClassT] | None = None
     ) -> __PropT:
         if obj is None:
             return self
@@ -81,7 +79,7 @@ class _getset_descriptor(Generic[__ClassT, __PropT]):
             objtype_name = objtype.__name__ if objtype is not None else None
             raise AttributeError(
                 f"State not initialized for {objtype_name}. "
-                "Did you forget to call super().__new__ or use the metaclass?"
+                "Did you forget to call super().__new__ or use the metaclass?",
             )
         return val
 
@@ -96,6 +94,9 @@ class _view_state:
     SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
 
     __slots__ = (
+        # view ref
+        "view_ref",
+        # attributes
         "alpha",
         "background_color",
         "bg_color",
@@ -117,16 +118,16 @@ class _view_state:
         "on_screen",
         "subviews",
         "superview",
-        # pytoui
+        # pytoui internal attributes
         "pytoui_presented",
         "pytoui_close_event",
         "pytoui_needs_display",
         "pytoui_last_update_t",
         "pytoui_content_draw_size",
-        "pytoui_animations_disabled",
     )
 
-    def __init__(self):
+    def __init__(self, view: _view):
+        self.view_ref: _view = view
         self.alpha: float = 1.0
         self.background_color: _RGBA | None = (0.0, 0.0, 0.0, 0.0)
         self.border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
@@ -153,7 +154,155 @@ class _view_state:
         self.pytoui_needs_display: bool = True
         self.pytoui_last_update_t: float = 0.0
         self.pytoui_content_draw_size: Size = Size(0.0, 0.0)
-        self.pytoui_animations_disabled: bool = False
+
+    def pytoui_apply_autoresizing(self, old_w: float, old_h: float):
+        """Resize subviews based on their flex flags after this view's size changed."""
+        bw, bh = self.bounds.size
+        dw = bw - old_w
+        dh = bh - old_h
+        if dw == 0.0 and dh == 0.0:
+            return
+        for sv in self.subviews:
+            flex = sv._pytoui_st.flex
+            if not flex:
+                continue
+            f = sv._pytoui_st.frame
+            h_flexible = sum(c in flex for c in "LWR")
+            if h_flexible:
+                share = dw / h_flexible
+                x = f.x + (share if "L" in flex else 0.0)
+                w = f.w + (share if "W" in flex else 0.0)
+            else:
+                x, w = f.x, f.w
+            v_flexible = sum(c in flex for c in "THB")
+            if v_flexible:
+                share = dh / v_flexible
+                y = f.y + (share if "T" in flex else 0.0)
+                h = f.h + (share if "H" in flex else 0.0)
+            else:
+                y, h = f.y, f.h
+            sv.frame = Rect(x, y, w, h)  # bypass setter to avoid recursion
+
+    def pytoui_hit_test(self, x: float, y: float) -> _view | None:
+        """Recursively searches for the highest Z-index View
+        that supports touch at the specified coordinates.
+        """
+        if self.hidden:
+            return None
+        ox, oy = _screen_origin(self.view_ref)
+        fw, fh = self.frame.size
+        if not (ox <= x < ox + fw and oy <= y < oy + fh):
+            return None
+        for child in reversed(self.subviews):
+            target = child._pytoui_st.pytoui_hit_test(x, y)
+            if target is not None and target.touch_enabled:
+                return target
+        return self.view_ref if self.touch_enabled else None
+
+    # ── rendering ─────────────────────────────────────────────────────────────
+
+    def pytoui_render(self):
+        self.pytoui_needs_display = False
+        if self.hidden:
+            return
+
+        ox, oy = _screen_origin(self)
+        fw, fh = self.frame.size
+        cr = self.corner_radius
+
+        with GState():
+            _set_origin(ox, oy)
+            set_alpha(self.alpha)
+
+            bg = self.background_color
+            if bg and bg[3] > 0:
+                set_color(bg)
+                if cr > 0:
+                    Path.rounded_rect(0, 0, fw, fh, cr).fill()
+                else:
+                    fill_rect(0, 0, fw, fh)
+
+            if self.border_width > 0 and self.border_color is not None:
+                set_color(self.border_color)
+                p = (
+                    Path.rounded_rect(0, 0, fw, fh, cr)
+                    if cr > 0
+                    else Path.rect(0, 0, fw, fh)
+                )
+                p.line_width = self.border_width
+                p.stroke()
+
+            cm = self.content_mode
+            draw = getattr(self.view_ref, "draw", lambda: False)
+            if cm == CONTENT_REDRAW:
+                draw()
+            else:
+                cw, ch = self.pytoui_content_draw_size.as_tuple()
+                if cw <= 0.0 or ch <= 0.0:
+                    # First render — record the size draw() was called at
+                    self.pytoui_content_draw_size = Size(fw, fh)
+                    draw()
+                else:
+                    with GState():
+                        _content_mode_transform(cm, cw, ch, fw, fh)
+                        draw()
+
+        for sv in self.subviews:
+            sv._pytoui_st.pytoui_render()
+
+    def present(
+        self,
+        style: _PresentStyle = "default",
+        animated: bool = True,
+        popover_location: _PointLike | None = None,
+        hide_title_bar: bool = False,
+        title_bar_color: _ColorLike = None,
+        title_color: _ColorLike = None,
+        orientations: Sequence[_PresentOrientation] | None = None,
+        hide_close_button: bool = False,
+    ):
+        """Present the view on screen."""
+        if self.pytoui_presented:
+            raise RuntimeError("View is already presented")
+        self.pytoui_presented = True
+        self.on_screen = True
+        self.pytoui_close_event.clear()
+        self.pytoui_needs_display = True
+
+        from pytoui.ui._runtime import launch_runtime
+
+        if animated and not _UI_DISABLE_ANIMATIONS:
+            self.alpha = 0.0
+            _ANIM_DUR = 0.25
+            _start: list[float | None] = [None]
+
+            def _render_frame(fb) -> None:
+                t = time.time()
+                if _start[0] is None:
+                    _start[0] = t
+                elapsed = t - cast("float", _start[0])
+                animating = elapsed < _ANIM_DUR
+                if animating:
+                    p = elapsed / _ANIM_DUR
+                    p = p * p * (3.0 - 2.0 * p)  # smoothstep
+                    self.alpha = p
+                elif self.alpha < 1.0:
+                    self.alpha = 1.0
+                set_backend(fb)
+                self.pytoui_render()
+                set_backend(None)
+                if animating:
+                    self.pytoui_needs_display = (
+                        True  # after _render() so it's not cleared
+                    )
+        else:
+
+            def _render_frame(fb) -> None:
+                set_backend(fb)
+                self.pytoui_render()
+                set_backend(None)
+
+        launch_runtime(self.view_ref, _render_frame)
 
 
 class _view_meta(type):
@@ -167,7 +316,7 @@ class _view_meta(type):
         instance = cls.__new__(cls, *args, **kwargs)
 
         if hasattr(cls, "_pytoui_st") and isinstance(instance, _view):
-            state = _view_state()
+            state = _view_state(instance)
             _view._pytoui_st.__set__(instance, state)
 
             state.content_mode = (
@@ -257,7 +406,7 @@ class _view(metaclass=_view_meta):
         new_w, new_h = new_bounds.size
         if new_w != old_w or new_h != old_h:
             st.frame = Rect(st.frame.x, st.frame.y, new_w, new_h)
-            self._pytoui_apply_autoresizing(old_w, old_h)
+            st.pytoui_apply_autoresizing(old_w, old_h)
             if hasattr(self, "layout"):
                 self.layout()
         self.set_needs_display()
@@ -364,7 +513,7 @@ class _view(metaclass=_view_meta):
         new_w, new_h = new_frame.size
         if new_w != old_w or new_h != old_h:
             st.bounds = Rect(st.bounds.x, st.bounds.y, new_w, new_h)
-            self._pytoui_apply_autoresizing(old_w, old_h)
+            st.pytoui_apply_autoresizing(old_w, old_h)
             if hasattr(self, "layout"):
                 self.layout()
         self.set_needs_display()
@@ -390,7 +539,8 @@ class _view(metaclass=_view_meta):
 
     @property
     def on_screen(self) -> bool:
-        """(readonly) Whether the view is part of a view hierarchy currently on screen."""
+        """(readonly) Whether the view is part of
+        a view hierarchy currently on screen."""
         return self._pytoui_st.on_screen
 
     @property
@@ -429,7 +579,8 @@ class _view(metaclass=_view_meta):
 
     @property
     def multitouch_enabled(self) -> bool:
-        """If True, the view receives all simultaneous touches. If False (default), only the first touch is tracked."""
+        """If True, the view receives all simultaneous touches.
+        If False (default), only the first touch is tracked."""
         return self._pytoui_st.multitouch_enabled
 
     @multitouch_enabled.setter
@@ -506,35 +657,6 @@ class _view(metaclass=_view_meta):
 
     # ── layout ────────────────────────────────────────────────────────────────
 
-    def _pytoui_apply_autoresizing(self, old_w: float, old_h: float):
-        """Resize subviews based on their flex flags after this view's size changed."""
-        st = self._pytoui_st
-        bw, bh = st.bounds.size
-        dw = bw - old_w
-        dh = bh - old_h
-        if dw == 0.0 and dh == 0.0:
-            return
-        for sv in st.subviews:
-            flex = sv._pytoui_st.flex
-            if not flex:
-                continue
-            f = sv._pytoui_st.frame
-            h_flexible = sum(c in flex for c in "LWR")
-            if h_flexible:
-                share = dw / h_flexible
-                x = f.x + (share if "L" in flex else 0.0)
-                w = f.w + (share if "W" in flex else 0.0)
-            else:
-                x, w = f.x, f.w
-            v_flexible = sum(c in flex for c in "THB")
-            if v_flexible:
-                share = dh / v_flexible
-                y = f.y + (share if "T" in flex else 0.0)
-                h = f.h + (share if "H" in flex else 0.0)
-            else:
-                y, h = f.y, f.h
-            sv.frame = Rect(x, y, w, h)  # bypass setter to avoid recursion
-
     def set_needs_display(self):
         """Mark the view as needing to be redrawn."""
         self._pytoui_st.pytoui_needs_display = True
@@ -562,48 +684,16 @@ class _view(metaclass=_view_meta):
         hide_close_button: bool = False,
     ):
         """Present the view on screen."""
-        st = self._pytoui_st
-        if st.pytoui_presented:
-            raise RuntimeError("View is already presented")
-        st.pytoui_presented = True
-        st.on_screen = True
-        st.pytoui_close_event.clear()
-        st.pytoui_needs_display = True
-
-        from pytoui.ui._runtime import launch_runtime
-
-        if animated and not _UI_DISABLE_ANIMATIONS:
-            st.alpha = 0.0
-            _ANIM_DUR = 0.25
-            _start: list[float | None] = [None]
-
-            def _render_frame(fb) -> None:
-                t = time.time()
-                if _start[0] is None:
-                    _start[0] = t
-                elapsed = t - cast(float, _start[0])
-                animating = elapsed < _ANIM_DUR
-                if animating:
-                    p = elapsed / _ANIM_DUR
-                    p = p * p * (3.0 - 2.0 * p)  # smoothstep
-                    st.alpha = p
-                elif st.alpha < 1.0:
-                    st.alpha = 1.0
-                set_backend(fb)
-                self._pytoui_render()
-                set_backend(None)
-                if animating:
-                    st.pytoui_needs_display = (
-                        True  # after _render() so it's not cleared
-                    )
-        else:
-
-            def _render_frame(fb) -> None:
-                set_backend(fb)
-                self._pytoui_render()
-                set_backend(None)
-
-        launch_runtime(self, _render_frame)
+        self._pytoui_st.present(
+            style,
+            animated,
+            popover_location,
+            hide_title_bar,
+            title_bar_color,
+            title_color,
+            orientations,
+            hide_close_button,
+        )
 
     def close(self):
         """Close a view that was presented via View.present()."""
@@ -639,13 +729,15 @@ class _view(metaclass=_view_meta):
         rt._set_first_responder(self)
         return True
 
+    def pytoui_did_become_first_responder(self): ...
+    def pytoui_did_resign_first_responder(self): ...
+
     # ── overridable hooks ─────────────────────────────────────────────────────
 
     # def did_load(self): ...
     # def will_close(self): ...
     # def draw(self): ...
     # def layout(self): ...
-    def update(self): ...
 
     # def touch_began(self, touch: Touch): ...
     # def touch_moved(self, touch: Touch): ...
@@ -653,89 +745,7 @@ class _view(metaclass=_view_meta):
     # def keyboard_frame_will_change(self, frame): ...
     # def keyboard_frame_did_change(self, frame): ...
 
-    # ── CUSOM INTERNALS ─────────────────────────────────────────────────────────────
-
-    @property
-    def _pytoui_animations_disabled(self) -> bool:
-        return bool(
-            self._pytoui_st.pytoui_animations_disabled or _UI_DISABLE_ANIMATIONS
-        )
-
-    @_pytoui_animations_disabled.setter
-    def _pytoui_animations_disabled(self, value: bool):
-        self._pytoui_st.pytoui_animations_disabled = value
-
-    def _pytoui_hit_test(self, x: float, y: float) -> _view | None:
-        """
-        Recursively searches for the highest Z-index View
-        that supports touch at the specified coordinates.
-        """
-        if self.hidden:
-            return None
-        ox, oy = _screen_origin(self)
-        fw, fh = self.frame.size
-        if not (ox <= x < ox + fw and oy <= y < oy + fh):
-            return None
-        for child in reversed(self.subviews):
-            target = child._pytoui_hit_test(x, y)
-            if target is not None and target.touch_enabled:
-                return target
-        return self if self.touch_enabled else None
-
-    def _pytoui_did_become_first_responder(self): ...
-    def _pytoui_did_resign_first_responder(self): ...
-
-    # ── rendering ─────────────────────────────────────────────────────────────
-
-    def _pytoui_render(self):
-        st = self._pytoui_st
-        st.pytoui_needs_display = False
-        if st.hidden:
-            return
-
-        ox, oy = _screen_origin(self)
-        fw, fh = st.frame.size
-        cr = st.corner_radius
-
-        with GState():
-            _set_origin(ox, oy)
-            set_alpha(st.alpha)
-
-            bg = st.background_color
-            if bg and bg[3] > 0:
-                set_color(bg)
-                if cr > 0:
-                    Path.rounded_rect(0, 0, fw, fh, cr).fill()
-                else:
-                    fill_rect(0, 0, fw, fh)
-
-            if st.border_width > 0 and st.border_color is not None:
-                set_color(st.border_color)
-                p = (
-                    Path.rounded_rect(0, 0, fw, fh, cr)
-                    if cr > 0
-                    else Path.rect(0, 0, fw, fh)
-                )
-                p.line_width = st.border_width
-                p.stroke()
-
-            cm = st.content_mode
-            draw = getattr(self, "draw", lambda: False)
-            if cm == CONTENT_REDRAW:
-                draw()
-            else:
-                cw, ch = st.pytoui_content_draw_size.as_tuple()
-                if cw <= 0.0 or ch <= 0.0:
-                    # First render — record the size draw() was called at
-                    st.pytoui_content_draw_size = Size(fw, fh)
-                    draw()
-                else:
-                    with GState():
-                        _content_mode_transform(cm, cw, ch, fw, fh)
-                        draw()
-
-        for sv in st.subviews:
-            sv._pytoui_render()
+    def update(self): ...
 
 
 class View(_view):
@@ -743,7 +753,7 @@ class View(_view):
 
 
 if IS_PYTHONISTA:
-    import ui  # type: ignore[import-not-found]  # noqa: F811
+    import ui  # type: ignore[import-not-found]
 
     class View(ui.View):  # type: ignore[no-redef]
         # Proxy to the native properties so that subclass
@@ -754,43 +764,10 @@ if IS_PYTHONISTA:
         @pytoui_desktop_only
         def _pytoui_st(self) -> _view_state:
             raise NotImplementedError
-        
+
         @_pytoui_st.setter
         @pytoui_desktop_only
         def _pytoui_st(self, value: _view_state):
-            raise NotImplementedError
-
-        @property
-        def _pytoui_animations_disabled(self) -> bool:
-            return False or _UI_DISABLE_ANIMATIONS
-
-        @_pytoui_animations_disabled.setter
-        def _pytoui_animations_disabled(self, value: bool):
-            from warnings import warn
-
-            warn(
-                "_pytoui_animations_disabled has no effect in Pythonista runtime",
-                UserWarning,
-            )
-
-        @pytoui_desktop_only
-        def _pytoui_render(self):
-            raise NotImplementedError
-
-        @pytoui_desktop_only
-        def _pytoui_did_become_first_responder(self):
-            raise NotImplementedError
-
-        @pytoui_desktop_only
-        def _pytoui_did_resign_first_responder(self):
-            raise NotImplementedError
-
-        @pytoui_desktop_only
-        def _pytoui_apply_autoresizing(self, old_w: float, old_h: float):
-            raise NotImplementedError
-
-        @pytoui_desktop_only
-        def _pytoui_hit_test(self, x: float, y: float) -> View | None:
             raise NotImplementedError
 
 

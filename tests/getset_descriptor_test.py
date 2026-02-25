@@ -32,11 +32,9 @@ class getset_descriptor:
 
     def getter(self, func):
         self._getter = func
-        return None  # self
 
     def setter(self, func):
         self._setter = func
-        return None  # self
 
 
 class _ViewMeta(type):
@@ -47,7 +45,7 @@ class _ViewMeta(type):
         return super().__new__(mcls, name, bases, namespace, **kwargs)
 
 
-class _view(object):
+class _view:
     __final__ = False
     __slots__ = ("__alpha", "__beta")
 

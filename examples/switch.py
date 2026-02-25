@@ -1,5 +1,4 @@
-"""
-Demo app: python -m ui
+"""Demo app: python -m ui
 
 Press ESC or close the window to exit.
 """

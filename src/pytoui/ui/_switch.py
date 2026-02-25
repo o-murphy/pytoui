@@ -3,9 +3,10 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui.ui._draw import Path, set_color
+from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
-from pytoui.ui._types import Touch, Rect
-from pytoui.ui._draw import set_color, Path
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
@@ -18,20 +19,20 @@ class Switch(View):
 
     __slots__ = (
         "_action",
-        "_enabled",
-        "_value",
-        "_background_image",
-        "_image",
-        "_title_label",
         "_anim_alpha",
-        "_target_alpha",
-        "_tracked",
-        "_last_time",
         "_anim_progress",
-        "_target_progress",
-        "_did_change_during_move",
-        "_press_start_time",
+        "_background_image",
         "_current_stretch",
+        "_did_change_during_move",
+        "_enabled",
+        "_image",
+        "_last_time",
+        "_press_start_time",
+        "_target_alpha",
+        "_target_progress",
+        "_title_label",
+        "_tracked",
+        "_value",
     )
 
     _IOS_GREEN = (0.2, 0.78, 0.35, 1.0)
@@ -48,6 +49,8 @@ class Switch(View):
         self._target_progress = 0.0
         self._tracked = False
         self._did_change_during_move = False
+        # overridable
+        self._anim_disabled = _UI_DISABLE_ANIMATIONS
 
         self._press_start_time = 0.0
         self._current_stretch = 0.0
@@ -81,7 +84,7 @@ class Switch(View):
         if self._value != value:
             self._value = value
             self._target_progress = 1.0 if value else 0.0
-            if self._pytoui_animations_disabled:
+            if self._anim_disabled:
                 self._anim_progress = self._target_progress
             else:
                 self._last_time = time.time()
@@ -94,7 +97,7 @@ class Switch(View):
         dt = min(now - self._last_time, 0.05)
         self._last_time = now
 
-        if self._pytoui_animations_disabled:
+        if self._anim_disabled:
             self._anim_progress = self._target_progress
             self._current_stretch = 8.0 if self._tracked else 0.0
             self.update_interval = 0
@@ -171,13 +174,21 @@ class Switch(View):
         # Shadow drawing
         set_color((0, 0, 0, 0.08))
         Path.rounded_rect(
-            draw_x, draw_y + 0.5, pin_w, base_pin_size, base_pin_size / 2
+            draw_x,
+            draw_y + 0.5,
+            pin_w,
+            base_pin_size,
+            base_pin_size / 2,
         ).fill()
 
         # White pin body
         set_color("white")
         Path.rounded_rect(
-            draw_x, draw_y, pin_w, base_pin_size, base_pin_size / 2
+            draw_x,
+            draw_y,
+            pin_w,
+            base_pin_size,
+            base_pin_size / 2,
         ).fill()
 
     def touch_began(self, touch: Touch):
@@ -193,7 +204,7 @@ class Switch(View):
         self._press_start_time = time.time()
         self._last_time = time.time()
 
-        if not self._pytoui_animations_disabled:
+        if not self._anim_disabled:
             self.update_interval = 1.0 / 60.0
         self.set_needs_display()
 
@@ -220,7 +231,7 @@ class Switch(View):
                 self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 
         # Continue animating stretch retraction if needed
-        if self._current_stretch > 0.01 and not self._pytoui_animations_disabled:
+        if self._current_stretch > 0.01 and not self._anim_disabled:
             self._last_time = time.time()
             self.update_interval = 1.0 / 60.0
         self.set_needs_display()

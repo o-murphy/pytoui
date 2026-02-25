@@ -8,10 +8,7 @@ dynamic = ["version"]
 description = "Pythonista UI simulator"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = [
-    "pillow>=12.1.1",
-    "pysdl2>=0.9.17",
-]
+dependencies = ["pillow>=12.1.1", "pysdl2>=0.9.17"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
@@ -28,16 +25,27 @@ packages = ["src/pytoui"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.ruff]
+src = ["src"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.ruff.lint]
+exclude = ["ui.pyi"]
+select = ["E", "F", "I"] # I = isort rules
 ignore = ["E402"]
+# select = ["ALL"]
+# select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pytoui"]
+combine-as-imports = true
 
 [tool.mypy]
 mypy_path = "src"
 files = "src"
+disable_error_code = ["annotation-unchecked"]
 
 [dependency-groups]
-dev = [
-    "mypy>=1.19.1",
-    "pytest>=9.0.2",
-    "ruff>=0.15.0",
-]
+dev = ["mypy>=1.19.1", "pytest>=9.0.2", "ruff>=0.15.0"]

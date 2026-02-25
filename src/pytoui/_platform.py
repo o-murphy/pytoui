@@ -5,6 +5,7 @@ _pui             Reference to Pythonista's native `ui` module, or None on deskto
 """
 
 from __future__ import annotations
+
 import os
 
 try:
@@ -34,7 +35,7 @@ def pytoui_desktop_only(func):
     def wrapper(*args, **kwargs):
         if IS_PYTHONISTA:
             raise RuntimeError(
-                f"{func.__name__} can be used only on non-Pythonista runtime"
+                f"{func.__name__} can be used only on non-Pythonista runtime",
             )
         return func(*args, **kwargs)
 

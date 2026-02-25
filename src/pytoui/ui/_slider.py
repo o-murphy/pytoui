@@ -1,11 +1,12 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 import time
+from typing import TYPE_CHECKING
 
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui.ui._draw import Path, set_color
+from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
-from pytoui.ui._types import Touch, Rect
-from pytoui.ui._draw import set_color, Path
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
@@ -18,13 +19,13 @@ class Slider(View):
 
     __slots__ = (
         "_action",
-        "_enabled",
-        "_value",
-        "_continuous",
-        "_tracked",
         "_anim_value",
-        "_thumb_scale",
+        "_continuous",
+        "_enabled",
         "_last_time",
+        "_thumb_scale",
+        "_tracked",
+        "_value",
     )
 
     _IOS_BLUE = (0.0, 0.48, 1.0, 1.0)
@@ -42,6 +43,8 @@ class Slider(View):
         self._thumb_scale = 1.0
         self._tracked = False
         self._last_time = time.time()
+        # overridable
+        self._anim_disabled = _UI_DISABLE_ANIMATIONS
 
         # Standard iOS slider size
         self.frame = Rect(0, 0, 200, 31)
@@ -73,7 +76,7 @@ class Slider(View):
         if self._value != new_val:
             self._value = new_val
             # If animations are disabled, sync visual value instantly
-            if self._pytoui_animations_disabled:
+            if self._anim_disabled:
                 self._anim_value = self._value
             self.set_needs_display()
 
@@ -94,7 +97,7 @@ class Slider(View):
 
         needs_redraw = False
 
-        if self._pytoui_animations_disabled:
+        if self._anim_disabled:
             self._anim_value = self._value
             self._thumb_scale = 1.15 if self._tracked else 1.0
         else:

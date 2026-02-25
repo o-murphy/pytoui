@@ -10,11 +10,11 @@ class Image:
     """Lightweight image wrapper holding raw RGBA pixel data."""
 
     __slots__ = (
+        "_data",  # bytes — raw RGBA pixels, or None
         "_name",
+        "_rendering_mode",
         "_scale",
         "_size",
-        "_data",  # bytes — raw RGBA pixels, or None
-        "_rendering_mode",
     )
 
     def __init__(
@@ -38,13 +38,17 @@ class Image:
     def from_data(cls, image_data: bytes, scale: float = 1.0) -> Image:
         """Create an image from binary data (png, jpeg, etc.)."""
         try:
-            from PIL import Image as _PILImage
             import io
+
+            from PIL import Image as _PILImage
 
             pil = _PILImage.open(io.BytesIO(image_data)).convert("RGBA")
             w, h = pil.size
             return cls(
-                width=w / scale, height=h / scale, scale=scale, data=pil.tobytes()
+                width=w / scale,
+                height=h / scale,
+                scale=scale,
+                data=pil.tobytes(),
             )
         except ImportError:
             return cls()
@@ -104,8 +108,9 @@ class Image:
         if self._data is None:
             return
 
-        from pytoui.ui._draw import _get_draw_ctx
         import ctypes
+
+        from pytoui.ui._draw import _get_draw_ctx
 
         ctx = _get_draw_ctx()
         fb = ctx.backend
@@ -133,15 +138,12 @@ class Image:
 
     def clip_to_mask(self, x, y, width, height):
         """Use the image as a mask for following drawing operations."""
-        ...
 
     def draw_as_pattern(self, x: float, y: float, width: float, height: float):
         """Fill a rectangle with the image as a repeating pattern."""
-        ...
 
     def resizable_image(self, top: float, left: float, bottom: float, right: float):
         """Create a 9-patch image with the given edges."""
-        ...
 
     def show(self):
         """Show the image in the console (stub)."""

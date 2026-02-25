@@ -1,9 +1,9 @@
 # osdbuf.py
 import ctypes
+from collections.abc import Sequence
 from enum import IntEnum, IntFlag
 from pathlib import Path
-from typing import Any, Sequence
-
+from typing import Any
 
 _OSDBUF_PATH = str(Path(__file__).parent / "libosdbuf.so")
 
@@ -318,7 +318,8 @@ class FrameBuffer:
         ]
         L.RectStroke.restype = None
 
-        # StrokeRoundedRect (handle, x, y, w, h, radius, bw [f32], join [u8], color, blend)
+        # StrokeRoundedRect
+        # (handle, x, y, w, h, radius, bw [f32], join [u8], color, blend)
         L.StrokeRoundedRect.argtypes = [
             ctypes.c_int,
             ctypes.c_float,
@@ -606,12 +607,22 @@ class FrameBuffer:
         self._lib.Line(self._handle, x0, y0, x1, y1, c, int(blend))
 
     def hline(
-        self, x: int, y: int, w: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
+        self,
+        x: int,
+        y: int,
+        w: int,
+        c: int = 0,
+        blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.HLine(self._handle, x, y, w, c, int(blend))
 
     def vline(
-        self, x: int, y: int, h: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
+        self,
+        x: int,
+        y: int,
+        h: int,
+        c: int = 0,
+        blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.VLine(self._handle, x, y, h, c, int(blend))
 
@@ -636,7 +647,13 @@ class FrameBuffer:
         blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.FillRect(
-            self._handle, float(x), float(y), float(w), float(h), int(c), int(blend)
+            self._handle,
+            float(x),
+            float(y),
+            float(w),
+            float(h),
+            int(c),
+            int(blend),
         )
 
     def rounded_rect(
@@ -673,7 +690,12 @@ class FrameBuffer:
         )
 
     def circle(
-        self, cx: int, cy: int, r: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
+        self,
+        cx: int,
+        cy: int,
+        r: int,
+        c: int = 0,
+        blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.Circle(self._handle, cx, cy, r, c, int(blend))
 
@@ -686,7 +708,12 @@ class FrameBuffer:
         blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.FillCircle(
-            self._handle, float(cx), float(cy), float(r), int(c), int(blend)
+            self._handle,
+            float(cx),
+            float(cy),
+            float(r),
+            int(c),
+            int(blend),
         )
 
     def ellipse(
@@ -710,7 +737,13 @@ class FrameBuffer:
         blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.FillEllipse(
-            self._handle, float(cx), float(cy), float(rx), float(ry), int(c), int(blend)
+            self._handle,
+            float(cx),
+            float(cy),
+            float(rx),
+            float(ry),
+            int(c),
+            int(blend),
         )
 
     def ellipse_arc(
@@ -725,7 +758,15 @@ class FrameBuffer:
         blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.EllipseArc(
-            self._handle, cx, cy, rx, ry, startAngle, endAngle, c, int(blend)
+            self._handle,
+            cx,
+            cy,
+            rx,
+            ry,
+            startAngle,
+            endAngle,
+            c,
+            int(blend),
         )
 
     # ============= Text =============
@@ -759,11 +800,18 @@ class FrameBuffer:
 
     @classmethod
     def measure_text(
-        cls, s: str, size: float = 0.0, font_id: int = 0, spacing: float = 0.0
+        cls,
+        s: str,
+        size: float = 0.0,
+        font_id: int = 0,
+        spacing: float = 0.0,
     ) -> int:
         lib = cls._ensure_lib_loaded()
         ret = lib.MeasureText(
-            font_id, ctypes.c_float(size), s.encode("utf-8"), ctypes.c_float(spacing)
+            font_id,
+            ctypes.c_float(size),
+            s.encode("utf-8"),
+            ctypes.c_float(spacing),
         )
         if ret == -1:
             raise ValueError(f"Invalid font handle: {font_id}")
@@ -779,7 +827,9 @@ class FrameBuffer:
 
     @classmethod
     def get_text_metrics(
-        cls, size: float = 0.0, font_id: int = 0
+        cls,
+        size: float = 0.0,
+        font_id: int = 0,
     ) -> tuple[int, int, int]:
         lib = cls._ensure_lib_loaded()
         ascent = ctypes.c_int()
@@ -968,12 +1018,18 @@ class FrameBuffer:
     # ============= Path (handle-based) =============
 
     def path_fill(
-        self, pid: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
+        self,
+        pid: int,
+        c: int = 0,
+        blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.PathFill(self._handle, int(pid), int(c), int(blend))
 
     def path_stroke(
-        self, pid: int, c: int = 0, blend: BlendMode = BlendMode.NORMAL
+        self,
+        pid: int,
+        c: int = 0,
+        blend: BlendMode = BlendMode.NORMAL,
     ) -> None:
         self._lib.PathStroke(self._handle, int(pid), int(c), int(blend))
 
@@ -1103,7 +1159,12 @@ class FrameBuffer:
 
     @classmethod
     def path_add_quad_curve(
-        cls, pid: int, end_x: float, end_y: float, cp_x: float, cp_y: float
+        cls,
+        pid: int,
+        end_x: float,
+        end_y: float,
+        cp_x: float,
+        cp_y: float,
     ) -> None:
         if pid > 0:
             if lib := cls._ensure_lib_loaded():
@@ -1129,7 +1190,10 @@ class FrameBuffer:
 
     @classmethod
     def path_set_line_dash(
-        cls, pid: int, sequence: Sequence[float], phase: float = 0.0
+        cls,
+        pid: int,
+        sequence: Sequence[float],
+        phase: float = 0.0,
     ) -> None:
         if pid > 0:
             if lib := cls._ensure_lib_loaded():
@@ -1192,9 +1256,12 @@ class FrameBuffer:
             size: font size in points
             c: color as 0xRRGGBBAA
             font_id: font handle ID
-            alignment: text alignment (0=LEFT, 1=CENTER, 2=RIGHT, 3=JUSTIFIED, 4=NATURAL)
-            line_break_mode: line break mode (0=WORD_WRAP, 1=CHAR_WRAP, 2=CLIP,
-                            3=TRUNCATE_HEAD, 4=TRUNCATE_TAIL, 5=TRUNCATE_MIDDLE)
+            alignment: text alignment
+                (0=LEFT, 1=CENTER, 2=RIGHT, 3=JUSTIFIED, 4=NATURAL)
+            line_break_mode: line break mode
+                (0=WORD_WRAP, 1=CHAR_WRAP, 2=CLIP,
+                3=TRUNCATE_HEAD, 4=TRUNCATE_TAIL, 5=TRUNCATE_MIDDLE)
+
         """
         if hasattr(self._lib, "DrawStringCoreGraphics"):
             self._lib.DrawStringCoreGraphics(
@@ -1232,6 +1299,7 @@ class FrameBuffer:
 
         Returns:
             (width, height) in pixels
+
         """
         lib = cls._ensure_lib_loaded()
 
@@ -1257,7 +1325,13 @@ class FrameBuffer:
 
     @classmethod
     def create_transform(
-        cls, a: float, b: float, c: float, d: float, tx: float, ty: float
+        cls,
+        a: float,
+        b: float,
+        c: float,
+        d: float,
+        tx: float,
+        ty: float,
     ) -> int:
         if lib := cls._ensure_lib_loaded():
             tid = lib.CreateTransform(

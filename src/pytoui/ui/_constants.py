@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import re
 from typing import Literal
 
@@ -7,7 +8,7 @@ COLOR_REGEX: str = (
     "RGBA\\((\\d+\\.?\\d*),(\\d+\\.?\\d*),(\\d+\\.?\\d*),(\\d+\\.?\\d*)\\)"
 )
 RECT_REGEX: re.Pattern = re.compile(
-    "\\{\\{(\\-?\\d+\\.?\\d*),\\s?(\\-?\\d+\\.?\\d*)\\},\\s?\\{(\\-?\\d+\\.?\\d*),\\s?(\\-?\\d+\\.?\\d*)\\}\\}"
+    "\\{\\{(\\-?\\d+\\.?\\d*),\\s?(\\-?\\d+\\.?\\d*)\\},\\s?\\{(\\-?\\d+\\.?\\d*),\\s?(\\-?\\d+\\.?\\d*)\\}\\}",
 )
 
 # --- Activity Indicator Styles ---
@@ -221,10 +222,10 @@ __all__ = (
 
 # ── Pythonista shim ────────────────────────────────────────────────────────────
 
-from pytoui._platform import IS_PYTHONISTA  # noqa: E402
+from pytoui._platform import IS_PYTHONISTA
 
 if IS_PYTHONISTA:
-    from ui import (  # type: ignore[import-not-found,no-redef]  # noqa: F811
+    from ui import (  # type: ignore[import-not-found,no-redef]
         ACTIVITY_INDICATOR_STYLE_GRAY,
         ACTIVITY_INDICATOR_STYLE_WHITE,
         ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
@@ -287,8 +288,8 @@ if IS_PYTHONISTA:
         KEYBOARD_DEFAULT,
         KEYBOARD_EMAIL,
         KEYBOARD_NAME_PHONE_PAD,
-        KEYBOARD_NUMBERS,
         KEYBOARD_NUMBER_PAD,
+        KEYBOARD_NUMBERS,
         KEYBOARD_PHONE_PAD,
         KEYBOARD_TWITTER,
         KEYBOARD_URL,

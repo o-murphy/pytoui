@@ -7,9 +7,8 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pytoui._base_runtime import CHECKER_SIZE, BaseRuntime
 from pytoui._osdbuf import FrameBuffer
-
-from pytoui._base_runtime import BaseRuntime, CHECKER_SIZE
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
@@ -28,7 +27,7 @@ _LIB_PATH = str(Path(__file__).parent / "libwinitrt.so")
 class WinitRuntime(BaseRuntime):
     """Runtime using Rust-based winit for windowing and event handling."""
 
-    def __init__(self, root_view: "View", width: int, height: int, render_fn):
+    def __init__(self, root_view: View, width: int, height: int, render_fn):
         super().__init__(root_view, width, height, render_fn)
 
         # Use ctypes for stable memory addresses used by the shared library
@@ -58,7 +57,11 @@ class WinitRuntime(BaseRuntime):
             ctypes.POINTER(ctypes.c_uint32),  # height_ptr
             ctypes.CFUNCTYPE(ctypes.c_int),  # render_callback -> 0=continue, 1=close
             ctypes.CFUNCTYPE(
-                None, ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int64
+                None,
+                ctypes.c_int,
+                ctypes.c_double,
+                ctypes.c_double,
+                ctypes.c_int64,
             ),  # event_callback(etype, x, y, touch_id)  touch_id==-1 → mouse
             ctypes.c_char_p,  # title
         ]
@@ -66,7 +69,11 @@ class WinitRuntime(BaseRuntime):
         # Wrap methods in callbacks to prevent Garbage Collection
         self._render_cb = ctypes.CFUNCTYPE(ctypes.c_int)(self._internal_render)
         self._event_cb = ctypes.CFUNCTYPE(
-            None, ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int64
+            None,
+            ctypes.c_int,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int64,
         )(self._internal_event)
 
     @property
@@ -85,7 +92,7 @@ class WinitRuntime(BaseRuntime):
     def get_screen_size(cls):
         """Retrieve the primary display bounds using the winit library."""
         lib = ctypes.CDLL(
-            str(Path(__file__).parent.parent / "winitrt" / "libwinitrt.so")
+            str(Path(__file__).parent.parent / "winitrt" / "libwinitrt.so"),
         )
         lib.winit_screen_size.argtypes = [
             ctypes.POINTER(ctypes.c_uint32),
@@ -154,7 +161,9 @@ class WinitRuntime(BaseRuntime):
     def run(self):
         """Start the runtime loop and initialize the native window."""
         self._fb = FrameBuffer(
-            self.pixel_data, self._width_c.value, self._height_c.value
+            self.pixel_data,
+            self._width_c.value,
+            self._height_c.value,
         )
         self._fb.antialias = _UI_ANTIALIAS
 

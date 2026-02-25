@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import time
-from typing import Sequence, TYPE_CHECKING
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
+from pytoui.ui._draw import Path, draw_string, measure_string, set_color
+from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
-from pytoui.ui._types import Touch, Rect
-from pytoui.ui._draw import Path, set_color, draw_string, measure_string
-
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _Action
@@ -21,15 +22,15 @@ class SegmentedControl(View):
 
     __slots__ = (
         "_action",
-        "_enabled",
-        "_segments",
-        "_selected_index",
-        "_tracking_index",
         "_anim_index",
+        "_enabled",
         "_last_time",
-        "_tracked",
         "_press_scale",
         "_press_start_time",
+        "_segments",
+        "_selected_index",
+        "_tracked",
+        "_tracking_index",
     )
 
     _DEFAULT_MARGIN = 2.0
@@ -46,6 +47,8 @@ class SegmentedControl(View):
         self._selected_index = 0
         self._tracking_index = 0.0
         self._anim_index = 0.0
+        # overridable
+        self._anim_disabled = _UI_DISABLE_ANIMATIONS
 
         # Press scale animation
         self._press_scale = 1.0
@@ -84,7 +87,7 @@ class SegmentedControl(View):
         if self._selected_index != new_index:
             self._selected_index = new_index
             self._tracking_index = float(new_index)
-            if self._pytoui_animations_disabled:
+            if self._anim_disabled:
                 self._anim_index = float(self._selected_index)
             else:
                 self._last_time = time.time()
@@ -112,7 +115,7 @@ class SegmentedControl(View):
         dt = min(now - self._last_time, 0.05)
         self._last_time = now
 
-        if self._pytoui_animations_disabled:
+        if self._anim_disabled:
             self._anim_index = float(self._tracking_index)
             self._press_scale = 1.0
             self.update_interval = 0
@@ -258,7 +261,7 @@ class SegmentedControl(View):
         # Initialize tracking index at current selection
         self._tracking_index = float(self._selected_index)
 
-        if not self._pytoui_animations_disabled:
+        if not self._anim_disabled:
             self.update_interval = 1.0 / 60.0
         self.set_needs_display()
 
@@ -270,7 +273,7 @@ class SegmentedControl(View):
         new_idx = self._get_index_at_location(touch.location[0])
         if new_idx != -1:
             self._tracking_index = float(new_idx)
-            if self.update_interval == 0 and not self._pytoui_animations_disabled:
+            if self.update_interval == 0 and not self._anim_disabled:
                 self._last_time = time.time()
                 self.update_interval = 1.0 / 60.0
 
@@ -293,7 +296,7 @@ class SegmentedControl(View):
 
         self._tracked = False
         # Ensure scale and position return to final states
-        if not self._pytoui_animations_disabled:
+        if not self._anim_disabled:
             self._last_time = time.time()
             self.update_interval = 1.0 / 60.0
         self.set_needs_display()

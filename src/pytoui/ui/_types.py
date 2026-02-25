@@ -1,27 +1,28 @@
 from __future__ import annotations
-from typing import Literal, Callable, Any, Union
 
+from collections.abc import Callable
+from typing import Any, Literal, Union
 
 __all__ = (
-    "Vector2",
-    "Point",
-    "Size",
-    "Rect",
-    "Touch",
-    "autoreleasepool",
-    "_RectLike",
-    "_PointLike",
-    "_RGBA",
-    "_RGB",
     "_HEX",
+    "_RGB",
+    "_RGBA",
+    "Point",
+    "Rect",
+    "Size",
+    "Touch",
+    "Vector2",
+    "_Action",
     "_ColorLike",
     "_Font",
-    "_Action",
+    "_PointLike",
+    "_PresentOrientation",
+    "_PresentStyle",
+    "_RectLike",
     "_SizeLike",
     "_TouchPhase",
     "_ViewFlex",
-    "_PresentStyle",
-    "_PresentOrientation",
+    "autoreleasepool",
 )
 
 _RGB = tuple[float, float, float]
@@ -36,7 +37,11 @@ _ViewFlex = Literal["", "W", "H", "L", "R", "T", "B"]
 _TouchPhase = Literal["began", "ended", "moved", "stationary", "cancelled"]
 _PresentStyle = Literal["default", "full_screen", "sheet", "popover", "panel"]
 _PresentOrientation = Literal[
-    "portrait", "portrait-upside-down", "landscape", "landscape-left", "landscape-right"
+    "portrait",
+    "portrait-upside-down",
+    "landscape",
+    "landscape-left",
+    "landscape-right",
 ]
 
 
@@ -200,7 +205,7 @@ class Rect:
         Rect(Point(0, 0), Size(100, 50))
     """
 
-    __slots__ = ("_x", "_y", "_w", "_h")
+    __slots__ = ("_h", "_w", "_x", "_y")
 
     _x: float
     _y: float
@@ -333,7 +338,6 @@ class Rect:
 
     def inset(self, *args) -> Rect:
         """Return a new rectangle inset by dx horizontally and dy vertically."""
-
         dx = dy = dw = dh = 0.0
 
         if len(args) >= 1:
@@ -401,7 +405,8 @@ class Rect:
 
 
 class Touch:
-    """The location of the touch (x, y as a 2-tuple) in the coordinate system of the View that the touch belongs to."""
+    """The location of the touch (x, y as a 2-tuple) in the
+    coordinate system of the View that the touch belongs to."""
 
     __slots__ = (
         "location",
@@ -438,14 +443,14 @@ class autoreleasepool:
 
 # ── Pythonista shim ────────────────────────────────────────────────────────────
 
-from pytoui._platform import IS_PYTHONISTA  # noqa: E402
+from pytoui._platform import IS_PYTHONISTA
 
 if IS_PYTHONISTA:
     from ui import (  # type: ignore[import-not-found,no-redef,assignment]
-        Vector2,
         Point,
-        Size,
         Rect,
+        Size,
         Touch,
+        Vector2,
         autoreleasepool,
     )

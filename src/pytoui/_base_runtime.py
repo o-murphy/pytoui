@@ -6,7 +6,8 @@ do not duplicate logic.
 
 Per-window first-responder
 --------------------------
-Each BaseRuntime instance tracks its own _first_responder.  View.become_first_responder()
+Each BaseRuntime instance tracks its own _first_responder.
+View.become_first_responder()
 walks up to the root view, looks up the owning runtime in _root_to_runtime, and
 delegates to _set_first_responder().
 """
@@ -20,17 +21,17 @@ from pytoui.ui._draw import convert_point
 from pytoui.ui._types import Touch
 
 if TYPE_CHECKING:
-    from pytoui.ui._view import View
+    from pytoui.ui._view import _view
 
-__all__ = ("BaseRuntime", "_any_dirty", "CHECKER_SIZE", "_get_runtime_for_view")
+__all__ = ("CHECKER_SIZE", "BaseRuntime", "_any_dirty", "_get_runtime_for_view")
 
 CHECKER_SIZE = 8
 
 # id(root_view) → runtime  (used by View.become_first_responder)
-_root_to_runtime: dict[int, "BaseRuntime"] = {}
+_root_to_runtime: dict[int, BaseRuntime] = {}
 
 
-def _get_runtime_for_view(view: View) -> "BaseRuntime | None":
+def _get_runtime_for_view(view: _view) -> BaseRuntime | None:
     root = view
     st = root._pytoui_st
     while st.superview is not None:
@@ -38,7 +39,7 @@ def _get_runtime_for_view(view: View) -> "BaseRuntime | None":
     return _root_to_runtime.get(id(root))
 
 
-def _any_dirty(view: View) -> bool:
+def _any_dirty(view: _view) -> bool:
     """Return True if view or any descendant needs redrawing."""
     st = view._pytoui_st
     if st.pytoui_needs_display:
@@ -56,7 +57,7 @@ class BaseRuntime:
     call self._unregister() when the window closes.
     """
 
-    def __init__(self, root_view: View, width: int, height: int, render_fn):
+    def __init__(self, root_view: _view, width: int, height: int, render_fn):
         self.root = root_view
         self.width = width
         self.height = height
@@ -64,17 +65,18 @@ class BaseRuntime:
 
         # touch_id → tracked view / last screen position
         # touch_id == -1 is the mouse pointer; >= 0 are real touch fingers
-        self._tracked: dict[int, View] = {}
+        self._tracked: dict[int, _view] = {}
         self._last_pos: dict[int, tuple[float, float]] = {}
 
         # Per-window first responder
-        self._first_responder: View | None = None
+        self._first_responder: _view | None = None
 
         _root_to_runtime[id(root_view)] = self
 
     @property
     def current_size(self) -> tuple[int, int]:
-        """Current window dimensions in pixels. Subclasses may override for live resize."""
+        """Current window dimensions in pixels.
+        Subclasses may override for live resize."""
         return (self.width, self.height)
 
     def _unregister(self) -> None:
@@ -84,22 +86,28 @@ class BaseRuntime:
     # First responder
     # ------------------------------------------------------------------
 
-    def _set_first_responder(self, view: View | None) -> None:
+    def _set_first_responder(self, view: _view | None) -> None:
         old = self._first_responder
         if old is view:
             return
         if old is not None:
-            old._pytoui_did_resign_first_responder()
+            old.pytoui_did_resign_first_responder()
         self._first_responder = view
         if view is not None:
-            view._pytoui_did_become_first_responder()
+            view.pytoui_did_become_first_responder()
 
     # ------------------------------------------------------------------
     # Touch handling
     # ------------------------------------------------------------------
 
     def _create_touch(
-        self, view: "View", screen_x, screen_y, phase, touch_id, prev_pos
+        self,
+        view: _view,
+        screen_x,
+        screen_y,
+        phase,
+        touch_id,
+        prev_pos,
     ) -> Touch:
         local = convert_point((screen_x, screen_y), to_view=view)
         prev_local = convert_point(prev_pos, to_view=view)
@@ -113,7 +121,7 @@ class BaseRuntime:
 
     def _touch_down(self, x, y, touch_id):
         self._last_pos[touch_id] = (x, y)
-        target = self.root._pytoui_hit_test(x, y)
+        target = self.root._pytoui_st.pytoui_hit_test(x, y)
         if not target:
             return
         if not hasattr(target, "touch_began"):
@@ -144,7 +152,7 @@ class BaseRuntime:
             return
         if not hasattr(target, "touch_ended"):
             return
-        current = self.root._pytoui_hit_test(x, y)
+        current = self.root._pytoui_st.pytoui_hit_test(x, y)
         phase = "ended" if current is target else "cancelled"
         target.touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
 
@@ -156,14 +164,14 @@ class BaseRuntime:
         if not hasattr(target, "touch_ended"):
             return
         target.touch_ended(
-            self._create_touch(target, x, y, "cancelled", touch_id, (x, y))
+            self._create_touch(target, x, y, "cancelled", touch_id, (x, y)),
         )
 
     # ------------------------------------------------------------------
     # Update loop
     # ------------------------------------------------------------------
 
-    def _update_hierarchy(self, view: "View", now: float):
+    def _update_hierarchy(self, view: _view, now: float):
         st = view._pytoui_st
         if view.update_interval > 0:
             if now - st.pytoui_last_update_t >= view.update_interval:

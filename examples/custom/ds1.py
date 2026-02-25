@@ -1,13 +1,15 @@
-from pytoui import ui
 import math
-from typing import Callable
+from collections.abc import Callable
+
 from examples.custom.controls import (
-    ValueStore,
-    MockServer,
     BaseControl,
     KnobView,
+    MockServer,
     ThresholdMixin,
+    ValueStore,
 )
+
+from pytoui import ui
 
 
 class LedIndicator(BaseControl):
@@ -37,7 +39,10 @@ class LedIndicator(BaseControl):
         radius = min(cx, cy) - 2
 
         housing = ui.Path.oval(
-            cx - radius - 1, cy - radius - 1, (radius + 1) * 2, (radius + 1) * 2
+            cx - radius - 1,
+            cy - radius - 1,
+            (radius + 1) * 2,
+            (radius + 1) * 2,
         )
         ui.set_color("#222222")
         housing.fill()
@@ -92,7 +97,11 @@ class FootswitchButton(BaseControl, ThresholdMixin):
 
         press_offset = 3 if self._is_pressed else 0
         rubber_rect = ui.Path.rounded_rect(
-            padding, padding, w - padding * 2, h - padding * 2 - press_offset, 3
+            padding,
+            padding,
+            w - padding * 2,
+            h - padding * 2 - press_offset,
+            3,
         )
         ui.set_color("#1a1a1a" if not self._is_pressed else "#111111")
         rubber_rect.fill()
@@ -179,20 +188,29 @@ class DS1KnobView(KnobView):
             dot.fill()
 
         knob_bg = ui.Path.oval(
-            cx - knob_radius, cy - knob_radius, knob_radius * 2, knob_radius * 2
+            cx - knob_radius,
+            cy - knob_radius,
+            knob_radius * 2,
+            knob_radius * 2,
         )
         ui.set_color(self.knob_color)
         knob_bg.fill()
 
         center_radius = knob_radius * 0.55
         center = ui.Path.oval(
-            cx - center_radius, cy - center_radius, center_radius * 2, center_radius * 2
+            cx - center_radius,
+            cy - center_radius,
+            center_radius * 2,
+            center_radius * 2,
         )
         ui.set_color("#D8D8D8")
         center.fill()
 
         ring = ui.Path.oval(
-            cx - knob_radius, cy - knob_radius, knob_radius * 2, knob_radius * 2
+            cx - knob_radius,
+            cy - knob_radius,
+            knob_radius * 2,
+            knob_radius * 2,
         )
         ring.line_width = 1.5
         ui.set_color("#999999")
@@ -475,7 +493,7 @@ def main():
             "level": 0.7,
             "dist": 0.6,
             "bypass": 1.0,
-        }
+        },
     )
     server = MockServer(store)
 

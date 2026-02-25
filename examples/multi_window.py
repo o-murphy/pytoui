@@ -1,5 +1,4 @@
-"""
-Demo2: multiple View.present() windows.
+"""Demo2: multiple View.present() windows.
 
 Run: python -m ui.demo2
 
@@ -11,6 +10,7 @@ Press ESC or close any window to close it.
 """
 
 import threading
+
 from pytoui import ui
 
 

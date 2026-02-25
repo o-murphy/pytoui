@@ -1,7 +1,8 @@
-from pytoui import ui
 import math
-from typing import Callable
 from abc import abstractmethod
+from collections.abc import Callable
+
+from pytoui import ui
 
 # --- Store / Model ---
 
@@ -11,7 +12,7 @@ class MockScrollView(ui.View):
 
 
 if not hasattr(ui, "ScrollView"):
-    setattr(ui, "ScrollView", MockScrollView)
+    ui.ScrollView = MockScrollView
 
 
 class ValueStore:
@@ -48,8 +49,8 @@ class MockServer:
         self.store = store
 
     def send_value(self, key: str, value: float):
-        import time
         import threading
+        import time
 
         def delayed_update():
             time.sleep(0.05)
@@ -122,9 +123,7 @@ class OptionsMixin:
         self.options = options or ["Off", "On"]
         self.match_mode = match_mode
         n = len(self.options)
-        self.values = (
-            values if values else [i / (n - 1) if n > 1 else 0.5 for i in range(n)]
-        )
+        self.values = values or [i / (n - 1) if n > 1 else 0.5 for i in range(n)]
 
     def _value_to_index(self, value: float) -> int:
         if self.match_mode == "exact":
@@ -132,15 +131,16 @@ class OptionsMixin:
                 if abs(value - v) < 0.001:
                     return i
             return 0
-        elif self.match_mode == "range":
+        if self.match_mode == "range":
             for i in range(len(self.values) - 1):
                 if value < (self.values[i] + self.values[i + 1]) / 2:
                     return i
             return len(self.values) - 1
-        else:  # nearest
-            return min(
-                range(len(self.values)), key=lambda i: abs(value - self.values[i])
-            )
+        # nearest
+        return min(
+            range(len(self.values)),
+            key=lambda i: abs(value - self.values[i]),
+        )
 
     def _index_to_value(self, index: int) -> float | None:
         return self.values[index] if 0 <= index < len(self.values) else None
@@ -275,7 +275,10 @@ class KnobView(BaseControl, DraggableMixin):
             tick.stroke()
 
         bg = ui.Path.oval(
-            cx - knob_radius, cy - knob_radius, knob_radius * 2, knob_radius * 2
+            cx - knob_radius,
+            cy - knob_radius,
+            knob_radius * 2,
+            knob_radius * 2,
         )
         ui.set_color("#d1d1d1")
         bg.fill()
@@ -284,7 +287,11 @@ class KnobView(BaseControl, DraggableMixin):
         bg.stroke()
 
         self._draw_indicator(
-            cx, cy, knob_radius - 4, from_center=False, inner_radius=knob_radius * 0.3
+            cx,
+            cy,
+            knob_radius - 4,
+            from_center=False,
+            inner_radius=knob_radius * 0.3,
         )
         self._draw_center_dot(cx, cy, 4)
 
@@ -299,7 +306,11 @@ class KnobView(BaseControl, DraggableMixin):
         bg.stroke()
 
         self._draw_indicator(
-            cx, cy, radius - 4, from_center=False, inner_radius=radius * 0.3
+            cx,
+            cy,
+            radius - 4,
+            from_center=False,
+            inner_radius=radius * 0.3,
         )
         self._draw_center_dot(cx, cy, 5)
 
@@ -431,7 +442,11 @@ class VSliderView(_SliderView):
         corner_radius = track_width / 2
 
         track = ui.Path.rounded_rect(
-            track_x, track_y, track_width, track_height, corner_radius
+            track_x,
+            track_y,
+            track_width,
+            track_height,
+            corner_radius,
         )
         ui.set_color(self.track_color)
         track.fill()
@@ -441,7 +456,11 @@ class VSliderView(_SliderView):
 
         if fill_height > 0:
             ui.Path.rounded_rect(
-                track_x, track_y, track_width, track_height, corner_radius
+                track_x,
+                track_y,
+                track_width,
+                track_height,
+                corner_radius,
             ).add_clip()
             fill = ui.Path.rect(track_x, fill_y, track_width, fill_height)
             ui.set_color(self.fill_color)
@@ -475,7 +494,11 @@ class VSliderView(_SliderView):
             tick.stroke()
 
         track = ui.Path.rounded_rect(
-            track_x, track_y, track_width, track_height, corner_radius
+            track_x,
+            track_y,
+            track_width,
+            track_height,
+            corner_radius,
         )
         ui.set_color(self.track_color)
         track.fill()
@@ -485,7 +508,11 @@ class VSliderView(_SliderView):
 
         if fill_height > 0:
             ui.Path.rounded_rect(
-                track_x, track_y, track_width, track_height, corner_radius
+                track_x,
+                track_y,
+                track_width,
+                track_height,
+                corner_radius,
             ).add_clip()
             fill = ui.Path.rect(track_x, fill_y, track_width, fill_height)
             ui.set_color(self.fill_color)
@@ -510,7 +537,11 @@ class HSliderView(_SliderView):
         corner_radius = track_height / 2
 
         track = ui.Path.rounded_rect(
-            track_x, track_y, track_width, track_height, corner_radius
+            track_x,
+            track_y,
+            track_width,
+            track_height,
+            corner_radius,
         )
         ui.set_color(self.track_color)
         track.fill()
@@ -519,7 +550,11 @@ class HSliderView(_SliderView):
 
         if fill_width > 0:
             ui.Path.rounded_rect(
-                track_x, track_y, track_width, track_height, corner_radius
+                track_x,
+                track_y,
+                track_width,
+                track_height,
+                corner_radius,
             ).add_clip()
             fill = ui.Path.rect(track_x, track_y, fill_width, track_height)
             ui.set_color(self.fill_color)
@@ -553,7 +588,11 @@ class HSliderView(_SliderView):
             tick.stroke()
 
         track = ui.Path.rounded_rect(
-            track_x, track_y, track_width, track_height, corner_radius
+            track_x,
+            track_y,
+            track_width,
+            track_height,
+            corner_radius,
         )
         ui.set_color(self.track_color)
         track.fill()
@@ -562,7 +601,11 @@ class HSliderView(_SliderView):
 
         if fill_width > 0:
             ui.Path.rounded_rect(
-                track_x, track_y, track_width, track_height, corner_radius
+                track_x,
+                track_y,
+                track_width,
+                track_height,
+                corner_radius,
             ).add_clip()
             fill = ui.Path.rect(track_x, track_y, fill_width, track_height)
             ui.set_color(self.fill_color)
@@ -853,7 +896,7 @@ def main():
             "quality": 0.5,
             "channel": 0.25,
             "preset": 0.0,
-        }
+        },
     )
     server = MockServer(store)
 
@@ -895,7 +938,11 @@ def main():
         ),
         make_row(
             LabeledControl(
-                store, "volume", server, label="Volume", control=VSliderView()
+                store,
+                "volume",
+                server,
+                label="Volume",
+                control=VSliderView(),
             ),
             LabeledControl(
                 store,
@@ -970,7 +1017,8 @@ def main():
                 server,
                 label="Mode",
                 control=SegmentView(
-                    options=["Low", "Mid", "High"], values=[0.0, 0.5, 1.0]
+                    options=["Low", "Mid", "High"],
+                    values=[0.0, 0.5, 1.0],
                 ),
                 hide_value=True,
             ),

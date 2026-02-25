@@ -2,24 +2,25 @@ from __future__ import annotations
 
 import math
 
-from pytoui.ui._draw import GState, Path, Transform, concat_ctm, set_color
-from pytoui.ui._types import Rect
-from pytoui.ui._view import View
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
 from pytoui.ui._constants import (
     ACTIVITY_INDICATOR_STYLE_GRAY,
     ACTIVITY_INDICATOR_STYLE_WHITE,
     ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
 )
+from pytoui.ui._draw import GState, Path, Transform, concat_ctm, set_color
+from pytoui.ui._types import Rect
+from pytoui.ui._view import View
 
 
 class ActivityIndicator(View):
     __final__ = True
 
     __slots__ = (
-        "_style",
-        "_hides_when_stopped",
         "_anim_step",
+        "_hides_when_stopped",
         "_is_animating",
+        "_style",
     )
 
     def __init__(self):
@@ -27,6 +28,9 @@ class ActivityIndicator(View):
         self._hides_when_stopped = True
         self._anim_step = 0
         self._is_animating = False
+
+        # overridable
+        self._anim_disabled = _UI_DISABLE_ANIMATIONS
 
         # default size for standard style; frame is user-settable and must not
         # change automatically when style changes
@@ -54,7 +58,7 @@ class ActivityIndicator(View):
     def start(self):
         if not self._is_animating:
             self._is_animating = True
-            if self._pytoui_animations_disabled:
+            if self._anim_disabled:
                 self.update_interval = 0.5
             else:
                 self.update_interval = 1.0 / 12.0
@@ -113,7 +117,7 @@ class ActivityIndicator(View):
             angle = i * (2.0 * math.pi / num_lines)
             dist = (i - self._anim_step) % num_lines
 
-            if self._pytoui_animations_disabled:
+            if self._anim_disabled:
                 if dist == 0:
                     alpha = 1.0
                 elif dist == 1:

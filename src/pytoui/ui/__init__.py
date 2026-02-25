@@ -1,5 +1,4 @@
-"""
-Pythonista-compatible UI framework for framebuffer rendering.
+"""Pythonista-compatible UI framework for framebuffer rendering.
 
 Usage:
     import ui
@@ -15,51 +14,9 @@ Usage:
 
 from __future__ import annotations
 
-from pytoui.ui._types import (
-    Vector2,
-    Rect,
-    Point,
-    Size,
-    Touch,
-    autoreleasepool,
-)
-from pytoui.ui._view import View
-from pytoui.ui._label import Label
-from pytoui.ui._button import Button
-from pytoui.ui._switch import Switch
-from pytoui.ui._segmented_control import SegmentedControl
 from pytoui.ui._activity_indicator import ActivityIndicator
-from pytoui.ui._slider import Slider
-from pytoui.ui._image import Image
-from pytoui.ui._imageview import ImageView
-from pytoui.ui._draw import (
-    GState,
-    ImageContext,
-    parse_color,
-    set_color,
-    set_blend_mode,
-    set_shadow,
-    fill_rect,
-    concat_ctm,
-    draw_string,
-    measure_string,
-    convert_point,
-    convert_rect,
-    animate,
-    delay,
-    cancel_delays,
-    in_background,
-    get_screen_size,
-    get_window_size,
-    get_ui_style,
-    Path,
-    Transform,
-)
-
+from pytoui.ui._button import Button
 from pytoui.ui._constants import (
-    # --- Regular Expressions ---
-    COLOR_REGEX,
-    RECT_REGEX,
     # --- Activity Indicator Styles ---
     ACTIVITY_INDICATOR_STYLE_GRAY,
     ACTIVITY_INDICATOR_STYLE_WHITE,
@@ -105,6 +62,8 @@ from pytoui.ui._constants import (
     BLEND_SOURCE_IN,
     BLEND_SOURCE_OUT,
     BLEND_XOR,
+    # --- Regular Expressions ---
+    COLOR_REGEX,
     # --- Content Modes ---
     CONTENT_BOTTOM,
     CONTENT_BOTTOM_LEFT,
@@ -132,8 +91,8 @@ from pytoui.ui._constants import (
     KEYBOARD_DEFAULT,
     KEYBOARD_EMAIL,
     KEYBOARD_NAME_PHONE_PAD,
-    KEYBOARD_NUMBERS,
     KEYBOARD_NUMBER_PAD,
+    KEYBOARD_NUMBERS,
     KEYBOARD_PHONE_PAD,
     KEYBOARD_TWITTER,
     KEYBOARD_URL,
@@ -151,11 +110,50 @@ from pytoui.ui._constants import (
     LINE_JOIN_BEVEL,
     LINE_JOIN_MITER,
     LINE_JOIN_ROUND,
+    RECT_REGEX,
     # --- Rendering Modes ---
     RENDERING_MODE_AUTOMATIC,
     RENDERING_MODE_ORIGINAL,
     RENDERING_MODE_TEMPLATE,
 )
+from pytoui.ui._draw import (
+    GState,
+    ImageContext,
+    Path,
+    Transform,
+    animate,
+    cancel_delays,
+    concat_ctm,
+    convert_point,
+    convert_rect,
+    delay,
+    draw_string,
+    fill_rect,
+    get_screen_size,
+    get_ui_style,
+    get_window_size,
+    in_background,
+    measure_string,
+    parse_color,
+    set_blend_mode,
+    set_color,
+    set_shadow,
+)
+from pytoui.ui._image import Image
+from pytoui.ui._imageview import ImageView
+from pytoui.ui._label import Label
+from pytoui.ui._segmented_control import SegmentedControl
+from pytoui.ui._slider import Slider
+from pytoui.ui._switch import Switch
+from pytoui.ui._types import (
+    Point,
+    Rect,
+    Size,
+    Touch,
+    Vector2,
+    autoreleasepool,
+)
+from pytoui.ui._view import View
 
 # backward compat
 

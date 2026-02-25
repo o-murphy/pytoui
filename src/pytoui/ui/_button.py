@@ -1,21 +1,21 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 import time
+from typing import TYPE_CHECKING
 
-from pytoui.ui._view import View
+from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
+from pytoui.ui._draw import draw_string, measure_string
+from pytoui.ui._image import Image
 from pytoui.ui._types import (
     Rect,
     Size,
     Touch,
 )
-from pytoui.ui._image import Image
-from pytoui.ui._draw import draw_string, measure_string
-from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
-
+from pytoui.ui._view import View
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import _Action, _RGBA, _Font
+    from pytoui.ui._types import _RGBA, _Action, _Font
 
 __all__ = ("Button",)
 
@@ -25,17 +25,17 @@ class Button(View):
 
     __slots__ = (
         "_action",
-        "_enabled",
-        "_background_image",
-        "_image",
-        "_title",
-        "_font",
-        "_text_color",
         "_anim_alpha",
-        "_target_alpha",
-        "_tracked",
+        "_background_image",
         "_content_insets",
+        "_enabled",
+        "_font",
+        "_image",
         "_last_time",
+        "_target_alpha",
+        "_text_color",
+        "_title",
+        "_tracked",
     )
 
     # Authentic iOS system blue color
@@ -56,6 +56,8 @@ class Button(View):
         self._target_alpha = 1.0
         self._tracked = False
         self._last_time = time.time()
+        # overridable
+        self._anim_disabled = _UI_DISABLE_ANIMATIONS
 
         # Default iOS content insets (top, left, bottom, right)
         self._content_insets: Size = Size(8.0, 8.0)
@@ -95,7 +97,7 @@ class Button(View):
     def enabled(self, value: bool):
         self._enabled = value
         self._target_alpha = 1.0 if value else 0.3
-        if self._pytoui_animations_disabled:
+        if self._anim_disabled:
             self._anim_alpha = self._target_alpha
         else:
             self._last_time = time.time()
@@ -117,7 +119,7 @@ class Button(View):
         self._last_time = now
 
         # --- ANIMATION ---
-        if self._pytoui_animations_disabled:
+        if self._anim_disabled:
             self._anim_alpha = self._target_alpha
             self.update_interval = 0
             self.set_needs_display()
@@ -189,7 +191,7 @@ class Button(View):
         self._last_time = time.time()
         # In iOS, the button becomes semi-transparent immediately upon touch
         self._target_alpha = 0.25
-        if self._pytoui_animations_disabled:
+        if self._anim_disabled:
             self._anim_alpha = 0.25
         else:
             self.update_interval = 1.0 / 60.0
@@ -207,7 +209,7 @@ class Button(View):
 
             if new_target != self._target_alpha:
                 self._target_alpha = new_target
-                if self.update_interval == 0 and not self._pytoui_animations_disabled:
+                if self.update_interval == 0 and not self._anim_disabled:
                     self._last_time = time.time()
                     self.update_interval = 1.0 / 60.0
                 self.set_needs_display()
@@ -225,7 +227,7 @@ class Button(View):
             if self.enabled and touch.phase == "ended" and inside:
                 self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 
-            if not self._pytoui_animations_disabled:
+            if not self._anim_disabled:
                 self._last_time = time.time()
                 self.update_interval = 1.0 / 60.0
             self.set_needs_display()

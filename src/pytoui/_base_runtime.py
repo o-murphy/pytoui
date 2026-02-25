@@ -42,7 +42,7 @@ def _any_dirty(view: _ViewInternals) -> bool:
     """Return True if view or any descendant needs redrawing."""
     if view.pytoui_needs_display:
         return True
-    for sv in view.subviews:
+    for sv in view._subviews:
         if _any_dirty(sv):
             return True
     return False
@@ -126,7 +126,7 @@ class BaseRuntime:
         if not touch_began:
             return
 
-        if not target.multitouch_enabled and any(
+        if not target._multitouch_enabled and any(
             v is target for v in self._tracked.values()
         ):
             return
@@ -175,8 +175,8 @@ class BaseRuntime:
 
     def _update_hierarchy(self, view: _ViewInternals, now: float):
         if view.update_interval > 0:
-            if now - view.pytoui_last_update_t >= view.update_interval:
+            if now - view.pytoui_last_update_time >= view.update_interval:
                 view.pytoui_update()
-                view.pytoui_last_update_t = now
-        for sv in view.subviews:
+                view.pytoui_last_update_time = now
+        for sv in view._subviews:
             self._update_hierarchy(sv, now)

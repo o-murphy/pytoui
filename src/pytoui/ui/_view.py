@@ -106,63 +106,223 @@ class _ViewInternals:
         # view ref
         "_ref",
         # attributes
-        "alpha",
-        "background_color",
-        "bg_color",
-        "border_color",
-        "border_width",
-        "content_mode",
-        "corner_radius",
-        "flex",
-        "autoresizing",
-        "hidden",
-        "name",
-        "tint_color",
-        "transform",
-        "update_interval",
-        "touch_enabled",
-        "multitouch_enabled",
+        "_alpha",
+        "_background_color",
+        "_border_color",
+        "_border_width",
+        "_content_mode",
+        "_corner_radius",
+        "_flex",
+        "_hidden",
+        "_name",
+        "_tint_color",
+        "_transform",
+        "_update_interval",
+        "_touch_enabled",
+        "_multitouch_enabled",
         "_frame",
         "_bounds",
-        "on_screen",
-        "subviews",
-        "superview",
-        # pytoui internal attributes
-        "pytoui_presented",
-        "pytoui_close_event",
-        "pytoui_needs_display",
-        "pytoui_last_update_t",
-        "pytoui_content_draw_size",
+        "_on_screen",
+        "_subviews",
+        "_superview",
+        # pytoui attributes
+        "_pytoui_presented",
+        "_pytoui_needs_display",
+        "_pytoui_last_update_time",
+        # pytoui attributes
+        "_pytoui_close_event",
+        "_pytoui_content_draw_size",
     )
 
     def __init__(self, view: _View):
         self._ref: _View = view
-        self.alpha: float = 1.0
-        self.background_color: _RGBA | None = (0.0, 0.0, 0.0, 0.0)
-        self.border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
-        self.border_width: float = 0.0
+        self._alpha: float = 1.0
+        self._background_color: _RGBA | None = (0.0, 0.0, 0.0, 0.0)
+        self._border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
+        self._border_width: float = 0.0
         self._bounds: Rect = Rect(0.0, 0.0, 100.0, 100.0)
-        self.content_mode: int = CONTENT_SCALE_TO_FILL
-        self.corner_radius: float = 0.0
-        self.flex: _ViewFlex = ""
+        self._content_mode: int = CONTENT_SCALE_TO_FILL
+        self._corner_radius: float = 0.0
+        self._flex: _ViewFlex = ""
         self._frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
-        self.hidden: bool = False
-        self.name: str = str(uuid4())
-        self.subviews: list[_ViewInternals] = []
-        self.superview: _ViewInternals | None = None
-        self.tint_color: _RGBA | None = None
-        self.transform: Transform | None = None
-        self.update_interval: float = 0.0
-        self.on_screen: bool = False
-        self.touch_enabled: bool = True
-        self.multitouch_enabled: bool = False
+        self._hidden: bool = False
+        self._name: str = str(uuid4())
+        self._subviews: list[_ViewInternals] = []
+        self._superview: _ViewInternals | None = None
+        self._tint_color: _RGBA | None = None
+        self._transform: Transform | None = None
+        self._update_interval: float = 0.0
+        self._on_screen: bool = False
+        self._touch_enabled: bool = True
+        self._multitouch_enabled: bool = False
 
         # CUSTOM
-        self.pytoui_presented: bool = False
-        self.pytoui_close_event: Event = Event()
-        self.pytoui_needs_display: bool = True
-        self.pytoui_last_update_t: float = 0.0
-        self.pytoui_content_draw_size: Size = Size(0.0, 0.0)
+        self._pytoui_presented: bool = False
+        self._pytoui_needs_display: bool = True
+        self._pytoui_last_update_time: float = 0.0
+
+        # INTERNAL ONLY
+        self._pytoui_close_event: Event = Event()
+        self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
+
+    @property
+    def ref(self) -> _View:
+        # READONLY
+        return self._ref
+
+    @property
+    def pytoui_presented(self) -> bool:
+        # READONLY
+        return self._pytoui_presented
+
+    @property
+    def pytoui_needs_display(self) -> bool:
+        # READONLY
+        return self._pytoui_needs_display
+
+    @property
+    def pytoui_last_update_time(self) -> float:
+        return self._pytoui_last_update_time
+
+    @pytoui_last_update_time.setter
+    def pytoui_last_update_time(self, value: float):
+        self._pytoui_last_update_time = float(value)
+
+    @property
+    def alpha(self) -> float:
+        """The view's alpha value as a float in the range 0.0 to 1.0."""
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value: float):
+        if _record(self, "alpha", self.alpha, value):
+            return
+        self._alpha = float(value)
+        self.set_needs_display()
+
+    @property
+    def background_color(self) -> _RGBA | None:
+        """The view's background color, defaults to None (transparent)."""
+        return parse_color(self._background_color)
+
+    @background_color.setter
+    def background_color(self, value: _ColorLike):
+        parsed = parse_color(value)
+        if _record(self, "background_color", self._background_color, parsed):
+            return
+        self._background_color = parsed
+        self.set_needs_display()
+
+    bg_color = background_color
+
+    @property
+    def border_color(self) -> _RGBA | None:
+        """The view's border color (only has effect if border_width > 0)."""
+        return parse_color(self._border_color)
+
+    @border_color.setter
+    def border_color(self, value: _ColorLike):
+        self._border_color = parse_color(value)
+        self.set_needs_display()
+
+    @property
+    def border_width(self) -> float:
+        """The view's border width, defaults to zero (no border)."""
+        return self._border_width
+
+    @border_width.setter
+    def border_width(self, value: float):
+        self._border_width = float(value)
+        self.set_needs_display()
+
+    @property
+    def content_mode(self) -> int:
+        """Determines how a view lays out its content when its bounds change."""
+        return self._content_mode
+
+    @content_mode.setter
+    def content_mode(self, value: int):
+        self._content_mode = value
+        self._pytoui_content_draw_size = Size(0.0, 0.0)
+        self.set_needs_display()
+
+    @property
+    def corner_radius(self) -> float:
+        """The view's corner radius."""
+        return self._corner_radius
+
+    @corner_radius.setter
+    def corner_radius(self, value: float):
+        self._corner_radius = float(value)
+        self.set_needs_display()
+
+    @property
+    def flex(self) -> _ViewFlex:
+        """The autoresizing behavior of the view."""
+        return self._flex
+
+    @flex.setter
+    def flex(self, value: _ViewFlex):
+        self._flex = value
+        self.set_needs_display()
+
+    autoresizing = flex
+
+    @property
+    def hidden(self) -> bool:
+        """Determines if the view is hidden."""
+        return self._hidden
+
+    @hidden.setter
+    def hidden(self, value: bool):
+        self._hidden = value
+        self.set_needs_display()
+
+    @property
+    def name(self) -> str:
+        """A string that identifies the view."""
+        return self._name
+
+    @name.setter
+    def name(self, value: str):
+        self._name = value
+
+    @property
+    def on_screen(self) -> bool:
+        """(readonly) Whether the view is part of
+        a view hierarchy currently on screen."""
+        return self._on_screen
+
+    @property
+    def subviews(self) -> list[_ViewInternals]:
+        """(readonly) A tuple of the view's children."""
+        return self._subviews
+
+    @property
+    def superview(self) -> _ViewInternals | None:
+        """(readonly) The view's parent view."""
+        sv = self._superview
+        if sv is not None:
+            return sv
+        return None
+
+    @property
+    def touch_enabled(self) -> bool:
+        return self._touch_enabled
+
+    @touch_enabled.setter
+    def touch_enabled(self, value: bool):
+        self._touch_enabled = bool(value)
+
+    @property
+    def multitouch_enabled(self) -> bool:
+        """If True, the view receives all simultaneous touches.
+        If False (default), only the first touch is tracked."""
+        return self._multitouch_enabled
+
+    @multitouch_enabled.setter
+    def multitouch_enabled(self, value: bool):
+        self._multitouch_enabled = bool(value)
 
     @property
     def frame(self) -> Rect:
@@ -204,6 +364,45 @@ class _ViewInternals:
         self.set_needs_display()
 
     @property
+    def tint_color(self) -> _RGBA:
+        """The view's tint color, inherited from superview if None."""
+        v: _ViewInternals | None = self
+        while v is not None:
+            if self._tint_color is not None:
+                return self._tint_color
+            if self._superview is not None:
+                v = self._superview
+        return self.SYSTEM_TINT
+
+    @tint_color.setter
+    def tint_color(self, value: _ColorLike):
+        self._tint_color = parse_color(value)
+        self.set_needs_display()
+
+    @property
+    def transform(self) -> Transform | None:
+        """The transform applied to the view relative to the center of its bounds."""
+        return self._transform
+
+    @transform.setter
+    def transform(self, value: Transform | None):
+        if _record(self, "transform", self._transform, value):
+            return
+        self._transform = value
+        self.set_needs_display()
+
+    @property
+    def update_interval(self) -> float:
+        """Interval between update() calls in seconds. 0 disables updates."""
+        return self._update_interval
+
+    @update_interval.setter
+    def update_interval(self, value: float):
+        self._update_interval = float(value)
+        if value > 0.0:
+            self.pytoui_last_update_time = time.time()
+
+    @property
     def pytoui_touch_began(self) -> Callable[[Touch], None] | None:
         return getattr(self._ref, "touch_began", None)
 
@@ -224,13 +423,13 @@ class _ViewInternals:
 
     def pytoui_apply_autoresizing(self, old_w: float, old_h: float):
         """Resize subviews based on their flex flags after this view's size changed."""
-        bw, bh = self.bounds.size
+        bw, bh = self._bounds.size
         dw = bw - old_w
         dh = bh - old_h
         if dw == 0.0 and dh == 0.0:
             return
-        for sv in self.subviews:
-            flex = sv.flex
+        for sv in self._subviews:
+            flex = sv._flex
             if not flex:
                 continue
             f = sv.frame
@@ -254,34 +453,34 @@ class _ViewInternals:
         """Recursively searches for the highest Z-index View
         that supports touch at the specified coordinates.
         """
-        if self.hidden:
+        if self._hidden:
             return None
         ox, oy = _screen_origin(self._ref)
-        fw, fh = self.frame.size
+        fw, fh = self._frame.size
         if not (ox <= x < ox + fw and oy <= y < oy + fh):
             return None
-        for child in reversed(self.subviews):
+        for child in reversed(self._subviews):
             target = child.pytoui_hit_test(x, y)
-            if target is not None and target.touch_enabled:
+            if target is not None and target._touch_enabled:
                 return target
-        return self if self.touch_enabled else None
+        return self if self._touch_enabled else None
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def pytoui_render(self):
-        self.pytoui_needs_display = False
-        if self.hidden:
+        self._pytoui_needs_display = False
+        if self._hidden:
             return
 
         ox, oy = _screen_origin(self)
-        fw, fh = self.frame.size
-        cr = self.corner_radius
+        fw, fh = self._frame.size
+        cr = self._corner_radius
 
         with GState():
             _set_origin(ox, oy)
-            set_alpha(self.alpha)
+            set_alpha(self._alpha)
 
-            bg = self.background_color
+            bg = self._background_color
             if bg and bg[3] > 0:
                 set_color(bg)
                 if cr > 0:
@@ -289,83 +488,82 @@ class _ViewInternals:
                 else:
                     fill_rect(0, 0, fw, fh)
 
-            if self.border_width > 0 and self.border_color is not None:
-                set_color(self.border_color)
+            if self._border_width > 0 and self._border_color is not None:
+                set_color(self._border_color)
                 p = (
                     Path.rounded_rect(0, 0, fw, fh, cr)
                     if cr > 0
                     else Path.rect(0, 0, fw, fh)
                 )
-                p.line_width = self.border_width
+                p.line_width = self._border_width
                 p.stroke()
 
-            cm = self.content_mode
+            cm = self._content_mode
             draw = getattr(self._ref, "draw", lambda: False)
             if cm == CONTENT_REDRAW:
                 draw()
             else:
-                cw, ch = self.pytoui_content_draw_size.as_tuple()
+                cw, ch = self._pytoui_content_draw_size.as_tuple()
                 if cw <= 0.0 or ch <= 0.0:
                     # First render — record the size draw() was called at
-                    self.pytoui_content_draw_size = Size(fw, fh)
+                    self._pytoui_content_draw_size = Size(fw, fh)
                     draw()
                 else:
                     with GState():
                         _content_mode_transform(cm, cw, ch, fw, fh)
                         draw()
 
-        for sv in self.subviews:
+        for sv in self._subviews:
             sv.pytoui_render()
 
     def __getitem__(self, name: str) -> _ViewInternals:
-        for view in self.subviews:
-            if view.name == name:
+        for view in self._subviews:
+            if view._name == name:
                 return view
         raise KeyError(name)
 
     def add_subview(self, view: _ViewInternals):
         """Add another view as a child of this view."""
-        vst = view
-        if vst.superview is self._ref:
+        if view._superview is self._ref:
             return
-        if vst.superview is not None:
-            vst.superview.remove_subview(view)
-        self.subviews.append(view)
-        vst.superview = self
+        if view._superview is not None:
+            view._superview.remove_subview(view)
+        self._subviews.append(view)
+        view._superview = self
 
     def remove_subview(self, view: _ViewInternals):
         """Remove a child view."""
-        self.subviews.remove(view)
-        view.superview = None
+        self._subviews.remove(view)
+        view._superview = None
 
     def bring_to_front(self):
         """Show the view on top of its sibling views."""
-        sv = self.superview
+        sv = self._superview
         if sv is None:
             return
-        siblings = self.subviews
+        siblings = self._subviews
         siblings.remove(self)
         siblings.append(self)
 
     def send_to_back(self):
         """Put the view behind its sibling views."""
-        sv = self.superview
+        sv = self._superview
         if sv is None:
             return
-        siblings = self.subviews
+        siblings = self._subviews
         siblings.remove(self)
         siblings.insert(0, self)
 
     def set_needs_display(self):
-        self.pytoui_needs_display = True
+        self._pytoui_needs_display = True
 
     def size_to_fit(self):
         """Resize to enclose all subviews."""
-        if not self.subviews:
+        if not self._subviews:
             return
-        max_w = max(sv.frame.x + sv.frame.w for sv in self.subviews)
-        max_h = max(sv.frame.y + sv.frame.h for sv in self.subviews)
-        self.frame = Rect(self.frame.x, self.frame.y, max_w, max_h)
+        max_w = max(sv.frame.x + sv.frame.w for sv in self._subviews)
+        max_h = max(sv.frame.y + sv.frame.h for sv in self._subviews)
+        self.frame = Rect(self._frame.x, self._frame.y, max_w, max_h)
 
     def present(
         self,
@@ -379,17 +577,17 @@ class _ViewInternals:
         hide_close_button: bool = False,
     ):
         """Present the view on screen."""
-        if self.pytoui_presented:
+        if self._pytoui_presented:
             raise RuntimeError("View is already presented")
-        self.pytoui_presented = True
-        self.on_screen = True
-        self.pytoui_close_event.clear()
-        self.pytoui_needs_display = True
+        self._pytoui_presented = True
+        self._on_screen = True
+        self._pytoui_close_event.clear()
+        self._pytoui_needs_display = True
 
         from pytoui.ui._runtime import launch_runtime
 
         if animated and not _UI_DISABLE_ANIMATIONS:
-            self.alpha = 0.0
+            self._alpha = 0.0
             _ANIM_DUR = 0.25
             _start: list[float | None] = [None]
 
@@ -402,14 +600,14 @@ class _ViewInternals:
                 if animating:
                     p = elapsed / _ANIM_DUR
                     p = p * p * (3.0 - 2.0 * p)  # smoothstep
-                    self.alpha = p
-                elif self.alpha < 1.0:
-                    self.alpha = 1.0
+                    self._alpha = p
+                elif self._alpha < 1.0:
+                    self._alpha = 1.0
                 set_backend(fb)
                 self.pytoui_render()
                 set_backend(None)
                 if animating:
-                    self.pytoui_needs_display = (
+                    self._pytoui_needs_display = (
                         True  # after _render() so it's not cleared
                     )
         else:
@@ -423,19 +621,19 @@ class _ViewInternals:
 
     def close(self):
         """Close a view that was presented via View.present()."""
-        if not self.pytoui_presented:
+        if not self._pytoui_presented:
             return
         if hasattr(self._ref, "will_close"):
             self.will_close()
-        self.on_screen = False
-        self.pytoui_presented = False
-        self.pytoui_close_event.set()
+        self._on_screen = False
+        self._pytoui_presented = False
+        self._pytoui_close_event.set()
 
     def wait_modal(self):
         """Block until the view is dismissed."""
-        if not self.on_screen:
+        if not self._on_screen:
             return
-        self.pytoui_close_event.wait()
+        self._pytoui_close_event.wait()
 
 
 class _View:
@@ -471,25 +669,16 @@ class _View:
 
     @alpha.setter
     def alpha(self, value: float):
-        st = self._internals_
-        if _record(self, "alpha", st.alpha, value):
-            return
-        st.alpha = float(value)
-        self.set_needs_display()
+        self._internals_.alpha = value
 
     @property
     def background_color(self) -> _RGBA | None:
         """The view's background color, defaults to None (transparent)."""
-        return parse_color(self._internals_.background_color)
+        return self._internals_.background_color
 
     @background_color.setter
     def background_color(self, value: _ColorLike):
-        parsed = parse_color(value)
-        st = self._internals_
-        if _record(self, "background_color", st.background_color, parsed):
-            return
-        st.background_color = parsed
-        self.set_needs_display()
+        self._internals_.background_color = value
 
     # bg_color as alias
     bg_color = background_color
@@ -497,12 +686,11 @@ class _View:
     @property
     def border_color(self) -> _RGBA | None:
         """The view's border color (only has effect if border_width > 0)."""
-        return parse_color(self._internals_.border_color)
+        return self._internals_.border_color
 
     @border_color.setter
     def border_color(self, value: _ColorLike):
-        self._internals_.border_color = parse_color(value)
-        self.set_needs_display()
+        self._internals_.border_color = value
 
     @property
     def border_width(self) -> float:
@@ -511,8 +699,7 @@ class _View:
 
     @border_width.setter
     def border_width(self, value: float):
-        self._internals_.border_width = float(value)
-        self.set_needs_display()
+        self._internals_.border_width = value
 
     @property
     def bounds(self) -> Rect:
@@ -581,10 +768,7 @@ class _View:
 
     @content_mode.setter
     def content_mode(self, value: int):
-        st = self._internals_
-        st.content_mode = value
-        st.pytoui_content_draw_size = Size(0.0, 0.0)
-        self.set_needs_display()
+        self._internals_.content_mode = value
 
     @property
     def corner_radius(self) -> float:
@@ -593,8 +777,7 @@ class _View:
 
     @corner_radius.setter
     def corner_radius(self, value: float):
-        self._internals_.corner_radius = float(value)
-        self.set_needs_display()
+        self._internals_.corner_radius = value
 
     @property
     def flex(self) -> _ViewFlex:
@@ -604,7 +787,6 @@ class _View:
     @flex.setter
     def flex(self, value: _ViewFlex):
         self._internals_.flex = value
-        self.set_needs_display()
 
     autoresizing = flex
 
@@ -625,7 +807,6 @@ class _View:
     @hidden.setter
     def hidden(self, value: bool):
         self._internals_.hidden = value
-        self.set_needs_display()
 
     @property
     def name(self) -> str:
@@ -645,32 +826,24 @@ class _View:
     @property
     def subviews(self) -> tuple[_View, ...]:
         """(readonly) A tuple of the view's children."""
-        return tuple(sv._ref for sv in self._internals_.subviews)
+        return tuple(sv.ref for sv in self._internals_.subviews)
 
     @property
     def superview(self) -> _View | None:
         """(readonly) The view's parent view."""
         sv = self._internals_.superview
         if sv is not None:
-            return sv._ref
+            return sv.ref
         return None
 
     @property
     def tint_color(self) -> _RGBA:
         """The view's tint color, inherited from superview if None."""
-        v: _View | None = self
-        while v is not None:
-            st = v._internals_
-            if st.tint_color is not None:
-                return st.tint_color
-            if st.superview is not None:
-                v = st.superview._ref
-        return st.SYSTEM_TINT
+        return self._internals_.tint_color
 
     @tint_color.setter
     def tint_color(self, value: _ColorLike):
-        self._internals_.tint_color = parse_color(value)
-        self.set_needs_display()
+        self._internals_.tint_color = value
 
     @property
     def touch_enabled(self) -> bool:
@@ -688,7 +861,7 @@ class _View:
 
     @multitouch_enabled.setter
     def multitouch_enabled(self, value: bool):
-        self._internals_.multitouch_enabled = bool(value)
+        self._internals_.multitouch_enabled = value
 
     @property
     def transform(self) -> Transform | None:
@@ -697,11 +870,7 @@ class _View:
 
     @transform.setter
     def transform(self, value: Transform | None):
-        st = self._internals_
-        if _record(self, "transform", st.transform, value):
-            return
-        st.transform = value
-        self.set_needs_display()
+        self._internals_.transform = value
 
     @property
     def update_interval(self) -> float:
@@ -710,15 +879,12 @@ class _View:
 
     @update_interval.setter
     def update_interval(self, value: float):
-        st = self._internals_
-        st.update_interval = float(value)
-        if value > 0.0:
-            st.pytoui_last_update_t = time.time()
+        self._internals_.update_interval = value
 
     # ── subview management ────────────────────────────────────────────────────
 
     def __getitem__(self, name: str) -> _View:
-        return self._internals_[name]._ref
+        return self._internals_[name].ref
 
     def add_subview(self, view: _View):
         """Add another view as a child of this view."""
@@ -799,7 +965,7 @@ class _View:
 
 
 class View(_View):
-    pass
+    _final_ = False
 
 
 if IS_PYTHONISTA:

@@ -36,6 +36,7 @@ class Button(View):
         "_text_color",
         "_title",
         "_tracked",
+        "_anim_disabled",
     )
 
     # Authentic iOS system blue color

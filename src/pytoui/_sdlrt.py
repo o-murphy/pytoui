@@ -180,7 +180,7 @@ class SDLRuntime(BaseRuntime):
             SDLRuntime._sdl_ref_count += 1
 
         self.window = sdl2.SDL_CreateWindow(
-            root_view.name.encode(),
+            root_view._name.encode(),
             sdl2.SDL_WINDOWPOS_CENTERED,
             sdl2.SDL_WINDOWPOS_CENTERED,
             width,

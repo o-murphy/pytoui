@@ -177,7 +177,7 @@ class WinitRuntime(BaseRuntime):
                 ctypes.byref(self._height_c),
                 self._render_cb,
                 self._event_cb,
-                self.root.name.encode("utf-8"),
+                self.root._name.encode("utf-8"),
             )
         finally:
             if self._fb is not None and self._fb._handle > 0:

@@ -33,6 +33,7 @@ class Switch(View):
         "_title_label",
         "_tracked",
         "_value",
+        "_anim_disabled",
     )
 
     _IOS_GREEN = (0.2, 0.78, 0.35, 1.0)

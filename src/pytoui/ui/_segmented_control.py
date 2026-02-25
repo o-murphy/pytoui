@@ -31,6 +31,7 @@ class SegmentedControl(View):
         "_selected_index",
         "_tracked",
         "_tracking_index",
+        "_anim_disabled",
     )
 
     _DEFAULT_MARGIN = 2.0

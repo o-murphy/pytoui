@@ -35,7 +35,7 @@ class ImageView(View):
 
     _final_ = True
 
-    __slots__ = ("_image",)
+    __slots__ = ("_image", "_content_mode")
 
     def __init__(self):
         self._image: Image | None = None

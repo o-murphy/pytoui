@@ -26,6 +26,7 @@ class Slider(View):
         "_thumb_scale",
         "_tracked",
         "_value",
+        "_anim_disabled",
     )
 
     _IOS_BLUE = (0.0, 0.48, 1.0, 1.0)

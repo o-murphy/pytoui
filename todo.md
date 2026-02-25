@@ -9,10 +9,8 @@ NOTE:
 
 HOT:
 * View
-  * Protect View's readonly methods/props
   * Adjust animating to Pythonista logic
   * View.update is not in Pythonista signature
-  * Proxify ref, do not give _view to runtime, use _view_state 
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.
     * View.present("fullscreen") - fullscreen

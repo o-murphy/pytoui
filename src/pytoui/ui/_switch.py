@@ -4,7 +4,7 @@ import time
 from typing import TYPE_CHECKING
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS
-from pytoui.ui._draw import Path, set_color
+from pytoui.ui._draw import Path, parse_color, set_color
 from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
 
@@ -34,10 +34,14 @@ class Switch(View):
         "_tracked",
         "_value",
         "_anim_disabled",
+        "_on_color",
+        "_off_color",
+        "_pill_color",
     )
 
     _IOS_GREEN = (0.2, 0.78, 0.35, 1.0)
     _IOS_GRAY = (0.85, 0.85, 0.85, 1.0)
+    _IOS_WHITE = (1.0, 1.0, 1.0, 1.0)
     _LOGICAL_WIDTH = 51.0
     _LOGICAL_HEIGHT = 31.0
 
@@ -52,6 +56,9 @@ class Switch(View):
         self._did_change_during_move = False
         # overridable
         self._anim_disabled = _UI_DISABLE_ANIMATIONS
+        self._on_color = self._IOS_GREEN
+        self._off_color = self._IOS_GRAY
+        self._pill_color = self._IOS_WHITE
 
         self._press_start_time = 0.0
         self._current_stretch = 0.0
@@ -150,15 +157,22 @@ class Switch(View):
         press_dim = 0.96 if self._tracked else 1.0
 
         # Background color interpolation
-        bg_r = (
-            self._IOS_GRAY[0] + (self._IOS_GREEN[0] - self._IOS_GRAY[0]) * p
-        ) * press_dim
-        bg_g = (
-            self._IOS_GRAY[1] + (self._IOS_GREEN[1] - self._IOS_GRAY[1]) * p
-        ) * press_dim
-        bg_b = (
-            self._IOS_GRAY[2] + (self._IOS_GREEN[2] - self._IOS_GRAY[2]) * p
-        ) * press_dim
+        (
+            on_r,
+            on_g,
+            on_b,
+            _,
+        ) = parse_color(self._on_color)
+        (
+            off_r,
+            off_g,
+            off_b,
+            _,
+        ) = parse_color(self._off_color)
+
+        bg_r = (off_r + (on_r - off_g) * p) * press_dim
+        bg_g = (off_g + (on_g - off_g) * p) * press_dim
+        bg_b = (off_b + (on_b - off_b) * p) * press_dim
 
         set_color((bg_r, bg_g, bg_b, 1.0))
         Path.rounded_rect(ox, oy, w, h, h / 2).fill()
@@ -183,7 +197,7 @@ class Switch(View):
         ).fill()
 
         # White pin body
-        set_color("white")
+        set_color(parse_color(self._pill_color))
         Path.rounded_rect(
             draw_x,
             draw_y,

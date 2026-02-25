@@ -20,7 +20,7 @@ def main():
     button.center = (200, 300)
     button.action = action
     button.flex = "WH"
-    button.background_color = "blue"
+    button.background_color = "dark_blue"
     button.corner_radius = 16
 
     root = ui.View()

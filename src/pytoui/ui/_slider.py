@@ -27,6 +27,8 @@ class Slider(View):
         "_tracked",
         "_value",
         "_anim_disabled",
+        "_progress_color",
+        "_track_color",
     )
 
     _IOS_BLUE = (0.0, 0.48, 1.0, 1.0)
@@ -44,8 +46,11 @@ class Slider(View):
         self._thumb_scale = 1.0
         self._tracked = False
         self._last_time = time.time()
-        # overridable
+
+        # overrides
         self._anim_disabled = _UI_DISABLE_ANIMATIONS
+        self._progress_color = self._IOS_BLUE
+        self._track_color = self._IOS_TRACK
 
         # Standard iOS slider size
         self.frame = Rect(0, 0, 200, 31)
@@ -140,7 +145,7 @@ class Slider(View):
         pos_x = margin + (available_width * self._anim_value)
 
         # 1️⃣ Background track
-        set_color(self._IOS_TRACK)
+        set_color(self._track_color)
         Path.rounded_rect(
             margin,
             mid_y - track_h / 2,
@@ -150,7 +155,7 @@ class Slider(View):
         ).fill()
 
         # 2️⃣ Active track
-        set_color(self._IOS_BLUE)
+        set_color(self._progress_color)
         Path.rounded_rect(
             margin,
             mid_y - track_h / 2,

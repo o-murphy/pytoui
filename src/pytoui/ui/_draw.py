@@ -29,6 +29,7 @@ NOTE: If needed we should delegate some operations to rust (osdbuf/src/lib.rs)
 from __future__ import annotations
 
 import math
+import re
 import time
 from collections.abc import Callable, Sequence
 from functools import lru_cache
@@ -844,7 +845,7 @@ def parse_color(c: _ColorLike) -> _RGBA | None:
 
     if isinstance(c, str):
         # CSS color name lookup
-        named = _COLORS.get(c.lower().replace(" ", ""))
+        named = _COLORS.get(re.sub(r"[^a-zA-Z0-9]", "", c).lower())
         if named is not None:
             return named
 

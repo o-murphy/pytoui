@@ -307,7 +307,7 @@ class SDLRuntime(BaseRuntime):
                     sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
                     self.width, self.height = w, h
                     rf = self.root.frame
-                    self.root.ref.frame = Rect(rf.x, rf.y, float(w), float(h))
+                    self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
 
                 needs_redraw = _any_dirty(self.root)
 

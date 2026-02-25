@@ -104,7 +104,7 @@ class _ViewInternals:
 
     __slots__ = (
         # view ref
-        "ref",
+        "_ref",
         # attributes
         "alpha",
         "background_color",
@@ -122,8 +122,8 @@ class _ViewInternals:
         "update_interval",
         "touch_enabled",
         "multitouch_enabled",
-        "frame",
-        "bounds",
+        "_frame",
+        "_bounds",
         "on_screen",
         "subviews",
         "superview",
@@ -136,16 +136,16 @@ class _ViewInternals:
     )
 
     def __init__(self, view: _View):
-        self.ref: _View = view
+        self._ref: _View = view
         self.alpha: float = 1.0
         self.background_color: _RGBA | None = (0.0, 0.0, 0.0, 0.0)
         self.border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
         self.border_width: float = 0.0
-        self.bounds: Rect = Rect(0.0, 0.0, 100.0, 100.0)
+        self._bounds: Rect = Rect(0.0, 0.0, 100.0, 100.0)
         self.content_mode: int = CONTENT_SCALE_TO_FILL
         self.corner_radius: float = 0.0
         self.flex: _ViewFlex = ""
-        self.frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
+        self._frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
         self.hidden: bool = False
         self.name: str = str(uuid4())
         self.subviews: list[_ViewInternals] = []
@@ -165,23 +165,62 @@ class _ViewInternals:
         self.pytoui_content_draw_size: Size = Size(0.0, 0.0)
 
     @property
+    def frame(self) -> Rect:
+        """The view's position and size in the coordinate system of its superview."""
+        return self._frame
+
+    @frame.setter
+    def frame(self, value: _RectLike):
+        new_frame = Rect(*value)
+        old_frame = self._frame
+        if _record(self, "frame", old_frame, new_frame):
+            return
+        old_w, old_h = old_frame.size
+        self._frame = new_frame
+        new_w, new_h = new_frame.size
+        if new_w != old_w or new_h != old_h:
+            self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
+            self.pytoui_apply_autoresizing(old_w, old_h)
+            if hasattr(self._ref, "layout"):
+                self._ref.layout()
+        self.set_needs_display()
+
+    @property
+    def bounds(self) -> Rect:
+        """The view's location and size in its own coordinate system."""
+        return self._bounds
+
+    @bounds.setter
+    def bounds(self, value: _RectLike):
+        new_bounds = Rect(*value)
+        old_w, old_h = self._bounds.size
+        self._bounds = new_bounds
+        new_w, new_h = new_bounds.size
+        if new_w != old_w or new_h != old_h:
+            self._frame = Rect(self._frame.x, self._frame.y, new_w, new_h)
+            self.pytoui_apply_autoresizing(old_w, old_h)
+            if hasattr(self._ref, "layout"):
+                self._ref.layout()
+        self.set_needs_display()
+
+    @property
     def pytoui_touch_began(self) -> Callable[[Touch], None] | None:
-        return getattr(self.ref, "touch_began", None)
+        return getattr(self._ref, "touch_began", None)
 
     @property
     def pytoui_touch_moved(self) -> Callable[[Touch], None] | None:
-        return getattr(self.ref, "touch_moved", None)
+        return getattr(self._ref, "touch_moved", None)
 
     @property
     def pytoui_touch_ended(self) -> Callable[[Touch], None] | None:
-        return getattr(self.ref, "touch_ended", None)
+        return getattr(self._ref, "touch_ended", None)
 
     def pytoui_did_become_first_responder(self): ...
     def pytoui_did_resign_first_responder(self): ...
 
     def pytoui_update(self):
-        if hasattr(self.ref, "update"):
-            self.ref.update()
+        if hasattr(self._ref, "update"):
+            self._ref.update()
 
     def pytoui_apply_autoresizing(self, old_w: float, old_h: float):
         """Resize subviews based on their flex flags after this view's size changed."""
@@ -217,7 +256,7 @@ class _ViewInternals:
         """
         if self.hidden:
             return None
-        ox, oy = _screen_origin(self.ref)
+        ox, oy = _screen_origin(self._ref)
         fw, fh = self.frame.size
         if not (ox <= x < ox + fw and oy <= y < oy + fh):
             return None
@@ -261,7 +300,7 @@ class _ViewInternals:
                 p.stroke()
 
             cm = self.content_mode
-            draw = getattr(self.ref, "draw", lambda: False)
+            draw = getattr(self._ref, "draw", lambda: False)
             if cm == CONTENT_REDRAW:
                 draw()
             else:
@@ -287,7 +326,7 @@ class _ViewInternals:
     def add_subview(self, view: _ViewInternals):
         """Add another view as a child of this view."""
         vst = view
-        if vst.superview is self.ref:
+        if vst.superview is self._ref:
             return
         if vst.superview is not None:
             vst.superview.remove_subview(view)
@@ -317,7 +356,7 @@ class _ViewInternals:
         siblings.remove(self)
         siblings.insert(0, self)
 
-    def set_need_display(self):
+    def set_needs_display(self):
         self.pytoui_needs_display = True
 
     def size_to_fit(self):
@@ -386,7 +425,7 @@ class _ViewInternals:
         """Close a view that was presented via View.present()."""
         if not self.pytoui_presented:
             return
-        if hasattr(self.ref, "will_close"):
+        if hasattr(self._ref, "will_close"):
             self.will_close()
         self.on_screen = False
         self.pytoui_presented = False
@@ -409,15 +448,15 @@ class _View:
 
     # ── overridable hooks ─────────────────────────────────────────────────────
 
-    # did_load: Callable[[], None]
-    # will_close: Callable[[], None]
-    # layout: Callable[[], None]
-    # draw: _Callable[[], None]
-    # touch_began: Callable[[Touch], None]
-    # touch_moved: Callable[[Touch], None]
-    # touch_ended: Callable[[Touch], None]
-    # keyboard_frame_will_change: Callable[[Rect], None]
-    # keyboard_frame_did_change: Callable[[Rect], None]
+    did_load: Callable[[], None]
+    will_close: Callable[[], None]
+    layout: Callable[[], None]
+    draw: Callable[[], None]
+    touch_began: Callable[[Touch], None]
+    touch_moved: Callable[[Touch], None]
+    touch_ended: Callable[[Touch], None]
+    keyboard_frame_will_change: Callable[[Rect], None]
+    keyboard_frame_did_change: Callable[[Rect], None]
 
     # ── descriptor ────────────────────────────────────────────────────────────
     def __init__(self):
@@ -482,17 +521,7 @@ class _View:
 
     @bounds.setter
     def bounds(self, value: _RectLike):
-        new_bounds = Rect(*value)
-        st = self._internals_
-        old_w, old_h = st.bounds.size
-        st.bounds = new_bounds
-        new_w, new_h = new_bounds.size
-        if new_w != old_w or new_h != old_h:
-            st.frame = Rect(st.frame.x, st.frame.y, new_w, new_h)
-            st.pytoui_apply_autoresizing(old_w, old_h)
-            if hasattr(self, "layout"):
-                self.layout()
-        self.set_needs_display()
+        self._internals_.bounds = value
 
     @property
     def center(self) -> Point:
@@ -586,20 +615,7 @@ class _View:
 
     @frame.setter
     def frame(self, value: _RectLike):
-        new_frame = Rect(*value)
-        st = self._internals_
-        old_frame = st.frame
-        if _record(self, "frame", old_frame, new_frame):
-            return
-        old_w, old_h = old_frame.size
-        st.frame = new_frame
-        new_w, new_h = new_frame.size
-        if new_w != old_w or new_h != old_h:
-            st.bounds = Rect(st.bounds.x, st.bounds.y, new_w, new_h)
-            st.pytoui_apply_autoresizing(old_w, old_h)
-            if hasattr(self, "layout"):
-                self.layout()
-        self.set_needs_display()
+        self._internals_.frame = value
 
     @property
     def hidden(self) -> bool:
@@ -629,14 +645,14 @@ class _View:
     @property
     def subviews(self) -> tuple[_View, ...]:
         """(readonly) A tuple of the view's children."""
-        return tuple(sv.ref for sv in self._internals_.subviews)
+        return tuple(sv._ref for sv in self._internals_.subviews)
 
     @property
     def superview(self) -> _View | None:
         """(readonly) The view's parent view."""
         sv = self._internals_.superview
         if sv is not None:
-            return sv.ref
+            return sv._ref
         return None
 
     @property
@@ -648,7 +664,7 @@ class _View:
             if st.tint_color is not None:
                 return st.tint_color
             if st.superview is not None:
-                v = st.superview.ref
+                v = st.superview._ref
         return st.SYSTEM_TINT
 
     @tint_color.setter
@@ -702,7 +718,7 @@ class _View:
     # ── subview management ────────────────────────────────────────────────────
 
     def __getitem__(self, name: str) -> _View:
-        return self._internals_[name].ref
+        return self._internals_[name]._ref
 
     def add_subview(self, view: _View):
         """Add another view as a child of this view."""
@@ -724,7 +740,7 @@ class _View:
 
     def set_needs_display(self):
         """Mark the view as needing to be redrawn."""
-        self._internals_.set_need_display()
+        self._internals_.set_needs_display()
 
     def size_to_fit(self):
         """Resize to enclose all subviews."""

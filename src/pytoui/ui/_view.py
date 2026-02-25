@@ -656,6 +656,9 @@ class _View:
     keyboard_frame_will_change: Callable[[Rect], None]
     keyboard_frame_did_change: Callable[[Rect], None]
 
+    # NOTE: View.update() is an implicit beahaviour
+    update: Callable[[], None]
+
     # ── descriptor ────────────────────────────────────────────────────────────
     def __init__(self):
         pass
@@ -960,8 +963,6 @@ class _View:
             return False
         rt._set_first_responder(self._internals_)
         return True
-
-    def update(self): ...
 
 
 class View(_View):

@@ -8,9 +8,18 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
+  * separate logics in different rust modules
+  * fix Path.add_clip
+  * Adjust animating to Pythonista logic
+    * reimplement 'animate' and remove update form API
+  * default fonts lookup and loading
+  * add mouse wheel events to runtimes and simulate scrolls (touches) maybe via scroll view
+  * add keyboard support
+
+NEXT:
 * View
   * Adjust animating to Pythonista logic
-  * View.update is not in Pythonista signature
+  * View.update is an implicit behaviour so better to use ui.animate
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second window blocks the first one till opened (like modal view) i think.
     * View.present("fullscreen") - fullscreen

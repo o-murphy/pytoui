@@ -654,7 +654,7 @@ class SegmentView(BaseControl, OptionsMixin):
 
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
+        on_input: Callable[[float], None] | None = None,
         options: list[str] = None,
         values: list[float] = None,
         match_mode: str = "nearest",
@@ -762,7 +762,7 @@ class LabeledControl(ui.View):
         server: MockServer,
         label: str = None,
         format_func: Callable[[float], str] = None,
-        control: BaseControl = None,
+        control: BaseControl | None = None,
         hide_value: bool = False,
         **kwargs,
     ):
@@ -902,7 +902,7 @@ def main():
 
     v = ui.View()
     v.background_color = "#1c1c1c"
-    v.frame = (0, 0, 400, 600)
+    v.frame = (0, 0, 400, 720)
 
     # ScrollView
     # scroll = ui.ScrollView()
@@ -936,42 +936,42 @@ def main():
                 format_func=lambda v: f"{int(v * 5)}",
             ),
         ),
-        make_row(
-            LabeledControl(
-                store,
-                "volume",
-                server,
-                label="Volume",
-                control=VSliderView(),
-            ),
-            LabeledControl(
-                store,
-                "tone",
-                server,
-                label="Tone",
-                control=VSliderView(style="ticks", steps=10, num_ticks=11),
-                format_func=lambda v: f"{int(v * 10)}",
-            ),
-            LabeledControl(
-                store,
-                "gain",
-                server,
-                label="Gain",
-                control=VSliderView(steps=5),
-                format_func=lambda v: f"{int(v * 5)}",
-            ),
-        ),
-        make_row(
-            LabeledControl(
-                store,
-                "tone",
-                server,
-                label="Tone",
-                control=HSliderView(style="ticks", steps=10, num_ticks=11),
-                format_func=lambda v: f"{int(v * 10)}",
-            ),
-            height=110,
-        ),
+        # make_row(
+        #     LabeledControl(
+        #         store,
+        #         "volume",
+        #         server,
+        #         label="Volume",
+        #         control=VSliderView(),
+        #     ),
+        #     LabeledControl(
+        #         store,
+        #         "tone",
+        #         server,
+        #         label="Tone",
+        #         control=VSliderView(style="ticks", steps=10, num_ticks=11),
+        #         format_func=lambda v: f"{int(v * 10)}",
+        #     ),
+        #     LabeledControl(
+        #         store,
+        #         "gain",
+        #         server,
+        #         label="Gain",
+        #         control=VSliderView(steps=5),
+        #         format_func=lambda v: f"{int(v * 5)}",
+        #     ),
+        # ),
+        # make_row(
+        #     LabeledControl(
+        #         store,
+        #         "tone",
+        #         server,
+        #         label="Tone",
+        #         control=HSliderView(style="ticks", steps=10, num_ticks=11),
+        #         format_func=lambda v: f"{int(v * 10)}",
+        #     ),
+        #     height=110,
+        # ),
         make_row(
             LabeledControl(
                 store,
@@ -999,17 +999,17 @@ def main():
             ),
             height=110,
         ),
-        make_row(
-            LabeledControl(
-                store,
-                "bypass",
-                server,
-                label="Bypass",
-                control=SegmentView(options=["Off", "On"]),
-                hide_value=True,
-            ),
-            height=90,
-        ),
+        # make_row(
+        #     LabeledControl(
+        #         store,
+        #         "bypass",
+        #         server,
+        #         label="Bypass",
+        #         control=SegmentView(options=["Off", "On"]),
+        #         hide_value=True,
+        #     ),
+        #     height=90,
+        # ),
         make_row(
             LabeledControl(
                 store,
@@ -1053,34 +1053,34 @@ def main():
             ),
             height=90,
         ),
-        make_row(
-            LabeledControl(
-                store,
-                "preset",
-                server,
-                label="Preset",
-                control=PickerView(
-                    options=["Clean", "Crunch", "Overdrive", "Distortion", "Fuzz"],
-                    values=[0.0, 0.25, 0.5, 0.75, 1.0],
-                    title="Select Preset",
-                ),
-                hide_value=True,
-            ),
-            LabeledControl(
-                store,
-                "channel",
-                server,
-                label="Channel",
-                control=PickerView(
-                    options=["Ch 1", "Ch 2", "Ch 3", "Ch 4"],
-                    values=[0.0, 0.25, 0.5, 0.75],
-                    match_mode="range",
-                    title="Select Channel",
-                ),
-                hide_value=True,
-            ),
-            height=90,
-        ),
+        # make_row(
+        #     LabeledControl(
+        #         store,
+        #         "preset",
+        #         server,
+        #         label="Preset",
+        #         control=PickerView(
+        #             options=["Clean", "Crunch", "Overdrive", "Distortion", "Fuzz"],
+        #             values=[0.0, 0.25, 0.5, 0.75, 1.0],
+        #             title="Select Preset",
+        #         ),
+        #         hide_value=True,
+        #     ),
+        #     LabeledControl(
+        #         store,
+        #         "channel",
+        #         server,
+        #         label="Channel",
+        #         control=PickerView(
+        #             options=["Ch 1", "Ch 2", "Ch 3", "Ch 4"],
+        #             values=[0.0, 0.25, 0.5, 0.75],
+        #             match_mode="range",
+        #             title="Select Channel",
+        #         ),
+        #         hide_value=True,
+        #     ),
+        #     height=90,
+        # ),
     ]
 
     def layout_content():

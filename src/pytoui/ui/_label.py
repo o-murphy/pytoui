@@ -26,7 +26,7 @@ __all__ = ("Label",)
 
 
 class Label(View):
-    __final__ = True
+    _final_ = True
 
     __slots__ = (
         "_alignment",
@@ -53,6 +53,7 @@ class Label(View):
         self._min_font_scale: float = 0.0  # 0.0 means use system default
 
         self.frame = Rect(0.0, 0.0, 100.0, 20.0)
+        self.touch_enabled = False
 
     @property
     def text(self) -> str | None:

@@ -5,9 +5,12 @@ from collections.abc import Sequence
 from threading import Event
 from typing import (
     TYPE_CHECKING,
+    Callable,
     Generic,
     TypeVar,
+    Union,
     cast,
+    overload,
 )
 from uuid import uuid4
 
@@ -30,60 +33,66 @@ from pytoui.ui._draw import (
     set_backend,
     set_color,
 )
-from pytoui.ui._types import (
-    Point,
-    Rect,
-    Size,
-    _ColorLike,
-    _PresentOrientation,
-)
+from pytoui.ui._types import Rect, Size, _ColorLike, _PresentOrientation
 
 if TYPE_CHECKING:
     from pytoui.ui._types import (
         _RGBA,
+        Point,
+        Touch,
         _PointLike,
         _PresentStyle,
         _RectLike,
         _ViewFlex,
     )
 
-__all__ = ("View", "_getset_descriptor", "_View", "_ViewMeta", "_ViewInternals")
+__all__ = ("View", "_getset_descriptor", "_View", "_ViewInternals")
 
 __ClassT = TypeVar("__ClassT")
 __PropT = TypeVar("__PropT")
 
 
 class _getset_descriptor(Generic[__ClassT, __PropT]):
-    def __init__(self, name: str):
+    def __init__(
+        self,
+        name: str,
+        factory: Callable[[__ClassT], __PropT] | None = None,
+        readonly: bool = True,
+    ):
         self._public_name = name
         self._mangled_name: str = f"__{name}"
+        self._factory = factory
+        self._readonly: bool = readonly
 
     def __set_name__(self, owner: type[__ClassT], name: str):
-        self._mangled_name = f"_{owner.__name__.lstrip('_')}__{name.lstrip('_')}"
+        self._mangled_name = (
+            f"_{owner.__name__.lstrip('_')}__{self._public_name.lstrip('_')}"
+        )
 
-    # @overload
-    # def __get__(
-    #     self, obj: None, objtype: Type[__ClassT]
-    # ) -> _getset_descriptor[__ClassT, __PropT]: ...
+    @overload
+    def __get__(
+        self, obj: None, objtype: type[__ClassT] | None = None
+    ) -> _getset_descriptor[__ClassT, __PropT]: ...
 
-    # @overload
-    # def __get__(self, obj: __ClassT, objtype: Type[__ClassT]) -> __PropT: ...
+    @overload
+    def __get__(
+        self, obj: __ClassT, objtype: type[__ClassT] | None = None
+    ) -> __PropT: ...
 
     def __get__(
         self, obj: __ClassT | None, objtype: type[__ClassT] | None = None
-    ) -> __PropT:
+    ) -> Union["_getset_descriptor"[__ClassT, __PropT], __PropT]:
         if obj is None:
             return self
-        val = getattr(obj, self._mangled_name, None)
-        if val is None:
-            objtype_name = objtype.__name__ if objtype is not None else None
-            raise AttributeError(
-                f"State not initialized for {objtype_name}. "
-                "Did you forget to call super().__new__ or use the metaclass?",
-            )
-        return val
+        if not hasattr(obj, self._mangled_name):
+            if self._factory is None:
+                raise AttributeError(f"{self._public_name} not initialized")
+            setattr(obj, self._mangled_name, self._factory(obj))
+        return getattr(obj, self._mangled_name)
 
     def __set__(self, obj: __ClassT, value: __PropT):
+        if self._readonly:
+            raise AttributeError()
         setattr(obj, self._mangled_name, value)
 
     def __delete__(self, obj: __ClassT):
@@ -95,7 +104,7 @@ class _ViewInternals:
 
     __slots__ = (
         # view ref
-        "view_ref",
+        "ref",
         # attributes
         "alpha",
         "background_color",
@@ -127,7 +136,7 @@ class _ViewInternals:
     )
 
     def __init__(self, view: _View):
-        self.view_ref: _View = view
+        self.ref: _View = view
         self.alpha: float = 1.0
         self.background_color: _RGBA | None = (0.0, 0.0, 0.0, 0.0)
         self.border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
@@ -139,8 +148,8 @@ class _ViewInternals:
         self.frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
         self.hidden: bool = False
         self.name: str = str(uuid4())
-        self.subviews: list[_View] = []
-        self.superview: _View | None = None
+        self.subviews: list[_ViewInternals] = []
+        self.superview: _ViewInternals | None = None
         self.tint_color: _RGBA | None = None
         self.transform: Transform | None = None
         self.update_interval: float = 0.0
@@ -155,8 +164,24 @@ class _ViewInternals:
         self.pytoui_last_update_t: float = 0.0
         self.pytoui_content_draw_size: Size = Size(0.0, 0.0)
 
+    @property
+    def pytoui_touch_began(self) -> Callable[[Touch], None] | None:
+        return getattr(self.ref, "touch_began", None)
+
+    @property
+    def pytoui_touch_moved(self) -> Callable[[Touch], None] | None:
+        return getattr(self.ref, "touch_moved", None)
+
+    @property
+    def pytoui_touch_ended(self) -> Callable[[Touch], None] | None:
+        return getattr(self.ref, "touch_ended", None)
+
     def pytoui_did_become_first_responder(self): ...
     def pytoui_did_resign_first_responder(self): ...
+
+    def pytoui_update(self):
+        if hasattr(self.ref, "update"):
+            self.ref.update()
 
     def pytoui_apply_autoresizing(self, old_w: float, old_h: float):
         """Resize subviews based on their flex flags after this view's size changed."""
@@ -166,10 +191,10 @@ class _ViewInternals:
         if dw == 0.0 and dh == 0.0:
             return
         for sv in self.subviews:
-            flex = sv._internals.flex
+            flex = sv.flex
             if not flex:
                 continue
-            f = sv._internals.frame
+            f = sv.frame
             h_flexible = sum(c in flex for c in "LWR")
             if h_flexible:
                 share = dw / h_flexible
@@ -186,21 +211,21 @@ class _ViewInternals:
                 y, h = f.y, f.h
             sv.frame = Rect(x, y, w, h)  # bypass setter to avoid recursion
 
-    def pytoui_hit_test(self, x: float, y: float) -> _View | None:
+    def pytoui_hit_test(self, x: float, y: float) -> _ViewInternals | None:
         """Recursively searches for the highest Z-index View
         that supports touch at the specified coordinates.
         """
         if self.hidden:
             return None
-        ox, oy = _screen_origin(self.view_ref)
+        ox, oy = _screen_origin(self.ref)
         fw, fh = self.frame.size
         if not (ox <= x < ox + fw and oy <= y < oy + fh):
             return None
         for child in reversed(self.subviews):
-            target = child._internals.pytoui_hit_test(x, y)
+            target = child.pytoui_hit_test(x, y)
             if target is not None and target.touch_enabled:
                 return target
-        return self.view_ref if self.touch_enabled else None
+        return self if self.touch_enabled else None
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
@@ -236,7 +261,7 @@ class _ViewInternals:
                 p.stroke()
 
             cm = self.content_mode
-            draw = getattr(self.view_ref, "draw", lambda: False)
+            draw = getattr(self.ref, "draw", lambda: False)
             if cm == CONTENT_REDRAW:
                 draw()
             else:
@@ -251,25 +276,25 @@ class _ViewInternals:
                         draw()
 
         for sv in self.subviews:
-            sv._internals.pytoui_render()
+            sv.pytoui_render()
 
-    def __getitem__(self, name: str) -> _View:
+    def __getitem__(self, name: str) -> _ViewInternals:
         for view in self.subviews:
             if view.name == name:
                 return view
         raise KeyError(name)
 
-    def add_subview(self, view: _View):
+    def add_subview(self, view: _ViewInternals):
         """Add another view as a child of this view."""
-        vst = view._internals
-        if vst.superview is self.view_ref:
+        vst = view
+        if vst.superview is self.ref:
             return
         if vst.superview is not None:
             vst.superview.remove_subview(view)
         self.subviews.append(view)
-        vst.superview = self.view_ref
+        vst.superview = self
 
-    def remove_subview(self, view: _View):
+    def remove_subview(self, view: _ViewInternals):
         """Remove a child view."""
         self.subviews.remove(view)
         view.superview = None
@@ -299,12 +324,8 @@ class _ViewInternals:
         """Resize to enclose all subviews."""
         if not self.subviews:
             return
-        max_w = max(
-            sv._internals.frame.x + sv._internals.frame.w for sv in self.subviews
-        )
-        max_h = max(
-            sv._internals.frame.y + sv._internals.frame.h for sv in self.subviews
-        )
+        max_w = max(sv.frame.x + sv.frame.w for sv in self.subviews)
+        max_h = max(sv.frame.y + sv.frame.h for sv in self.subviews)
         self.frame = Rect(self.frame.x, self.frame.y, max_w, max_h)
 
     def present(
@@ -359,13 +380,13 @@ class _ViewInternals:
                 self.pytoui_render()
                 set_backend(None)
 
-        launch_runtime(self.view_ref, _render_frame)
+        launch_runtime(self, _render_frame)
 
     def close(self):
         """Close a view that was presented via View.present()."""
         if not self.pytoui_presented:
             return
-        if hasattr(self.view_ref, "will_close"):
+        if hasattr(self.ref, "will_close"):
             self.will_close()
         self.on_screen = False
         self.pytoui_presented = False
@@ -378,45 +399,25 @@ class _ViewInternals:
         self.pytoui_close_event.wait()
 
 
-class _ViewMeta(type):
-    def __new__(mcls, name, bases, namespace, **kwargs):
-        for base in bases:
-            if getattr(base, "__final__", False):
-                raise TypeError(f"{base.__name__} cannot be subclassed")
-        return super().__new__(mcls, name, bases, namespace, **kwargs)
+class _View:
+    __slots__ = ("__internals_",)
 
-    def __call__(cls, *args, **kwargs):
-        instance = cls.__new__(cls, *args, **kwargs)
-
-        # if isinstance(instance, _View):
-        #     state = _ViewInternals(instance)
-        #     state.content_mode = (
-        #         CONTENT_REDRAW if cls is not _View else CONTENT_SCALE_TO_FILL
-        #     )
-        #     setattr(instance, "__internals", state)
-        #     setattr(instance, "_internals", state)
-
-        if hasattr(cls, "_internals") and isinstance(instance, _View):
-            state = _ViewInternals(instance)
-            state.content_mode = (
-                CONTENT_REDRAW if cls is not _View else CONTENT_SCALE_TO_FILL
-            )
-            _View._internals.__set__(instance, state)
-
-        if isinstance(instance, cls):
-            instance.__init__(*args, **kwargs)
-
-        return instance
-
-
-class _View(metaclass=_ViewMeta):
-    __final__ = False
-
-    __slots__ = ("__internals",)
-
-    _internals: _getset_descriptor[_View, _ViewInternals] = _getset_descriptor(
-        "internals"
+    _final_ = False
+    _internals_: _getset_descriptor["_View", "_ViewInternals"] = _getset_descriptor(
+        "internals_", factory=lambda obj: _ViewInternals(obj), readonly=True
     )
+
+    # ── overridable hooks ─────────────────────────────────────────────────────
+
+    # did_load: Callable[[], None]
+    # will_close: Callable[[], None]
+    # layout: Callable[[], None]
+    # draw: _Callable[[], None]
+    # touch_began: Callable[[Touch], None]
+    # touch_moved: Callable[[Touch], None]
+    # touch_ended: Callable[[Touch], None]
+    # keyboard_frame_will_change: Callable[[Rect], None]
+    # keyboard_frame_did_change: Callable[[Rect], None]
 
     # ── descriptor ────────────────────────────────────────────────────────────
     def __init__(self):
@@ -427,11 +428,11 @@ class _View(metaclass=_ViewMeta):
     @property
     def alpha(self) -> float:
         """The view's alpha value as a float in the range 0.0 to 1.0."""
-        return self._internals.alpha
+        return self._internals_.alpha
 
     @alpha.setter
     def alpha(self, value: float):
-        st = self._internals
+        st = self._internals_
         if _record(self, "alpha", st.alpha, value):
             return
         st.alpha = float(value)
@@ -440,12 +441,12 @@ class _View(metaclass=_ViewMeta):
     @property
     def background_color(self) -> _RGBA | None:
         """The view's background color, defaults to None (transparent)."""
-        return parse_color(self._internals.background_color)
+        return parse_color(self._internals_.background_color)
 
     @background_color.setter
     def background_color(self, value: _ColorLike):
         parsed = parse_color(value)
-        st = self._internals
+        st = self._internals_
         if _record(self, "background_color", st.background_color, parsed):
             return
         st.background_color = parsed
@@ -457,32 +458,32 @@ class _View(metaclass=_ViewMeta):
     @property
     def border_color(self) -> _RGBA | None:
         """The view's border color (only has effect if border_width > 0)."""
-        return parse_color(self._internals.border_color)
+        return parse_color(self._internals_.border_color)
 
     @border_color.setter
     def border_color(self, value: _ColorLike):
-        self._internals.border_color = parse_color(value)
+        self._internals_.border_color = parse_color(value)
         self.set_needs_display()
 
     @property
     def border_width(self) -> float:
         """The view's border width, defaults to zero (no border)."""
-        return self._internals.border_width
+        return self._internals_.border_width
 
     @border_width.setter
     def border_width(self, value: float):
-        self._internals.border_width = float(value)
+        self._internals_.border_width = float(value)
         self.set_needs_display()
 
     @property
     def bounds(self) -> Rect:
         """The view's location and size in its own coordinate system."""
-        return self._internals.bounds
+        return self._internals_.bounds
 
     @bounds.setter
     def bounds(self, value: _RectLike):
         new_bounds = Rect(*value)
-        st = self._internals
+        st = self._internals_
         old_w, old_h = st.bounds.size
         st.bounds = new_bounds
         new_w, new_h = new_bounds.size
@@ -496,62 +497,62 @@ class _View(metaclass=_ViewMeta):
     @property
     def center(self) -> Point:
         """The center of the view's frame as a Point."""
-        return self._internals.frame.center()
+        return self._internals_.frame.center()
 
     @center.setter
     def center(self, value: _PointLike):
         cx, cy = value
-        w, h = self._internals.frame.size
+        w, h = self._internals_.frame.size
         self.frame = Rect(cx - w / 2, cy - h / 2, w, h)
 
     @property
     def x(self) -> float:
         """Shortcut for the x component of the view's frame."""
-        return self._internals.frame.x
+        return self._internals_.frame.x
 
     @x.setter
     def x(self, value: float):
-        f = self._internals.frame
+        f = self._internals_.frame
         self.frame = Rect(value, f.y, f.w, f.h)
 
     @property
     def y(self) -> float:
         """Shortcut for the y component of the view's frame."""
-        return self._internals.frame.y
+        return self._internals_.frame.y
 
     @y.setter
     def y(self, value: float):
-        f = self._internals.frame
+        f = self._internals_.frame
         self.frame = Rect(f.x, value, f.w, f.h)
 
     @property
     def width(self) -> float:
         """Shortcut for the width component of the view's frame."""
-        return self._internals.frame.w
+        return self._internals_.frame.w
 
     @width.setter
     def width(self, value: float):
-        f = self._internals.frame
+        f = self._internals_.frame
         self.frame = Rect(f.x, f.y, value, f.h)
 
     @property
     def height(self) -> float:
         """Shortcut for the height component of the view's frame."""
-        return self._internals.frame.h
+        return self._internals_.frame.h
 
     @height.setter
     def height(self, value: float):
-        f = self._internals.frame
+        f = self._internals_.frame
         self.frame = Rect(f.x, f.y, f.w, value)
 
     @property
     def content_mode(self) -> int:
         """Determines how a view lays out its content when its bounds change."""
-        return self._internals.content_mode
+        return self._internals_.content_mode
 
     @content_mode.setter
     def content_mode(self, value: int):
-        st = self._internals
+        st = self._internals_
         st.content_mode = value
         st.pytoui_content_draw_size = Size(0.0, 0.0)
         self.set_needs_display()
@@ -559,21 +560,21 @@ class _View(metaclass=_ViewMeta):
     @property
     def corner_radius(self) -> float:
         """The view's corner radius."""
-        return self._internals.corner_radius
+        return self._internals_.corner_radius
 
     @corner_radius.setter
     def corner_radius(self, value: float):
-        self._internals.corner_radius = float(value)
+        self._internals_.corner_radius = float(value)
         self.set_needs_display()
 
     @property
     def flex(self) -> _ViewFlex:
         """The autoresizing behavior of the view."""
-        return self._internals.flex
+        return self._internals_.flex
 
     @flex.setter
     def flex(self, value: _ViewFlex):
-        self._internals.flex = value
+        self._internals_.flex = value
         self.set_needs_display()
 
     autoresizing = flex
@@ -581,12 +582,12 @@ class _View(metaclass=_ViewMeta):
     @property
     def frame(self) -> Rect:
         """The view's position and size in the coordinate system of its superview."""
-        return self._internals.frame
+        return self._internals_.frame
 
     @frame.setter
     def frame(self, value: _RectLike):
         new_frame = Rect(*value)
-        st = self._internals
+        st = self._internals_
         old_frame = st.frame
         if _record(self, "frame", old_frame, new_frame):
             return
@@ -603,80 +604,84 @@ class _View(metaclass=_ViewMeta):
     @property
     def hidden(self) -> bool:
         """Determines if the view is hidden."""
-        return self._internals.hidden
+        return self._internals_.hidden
 
     @hidden.setter
     def hidden(self, value: bool):
-        self._internals.hidden = value
+        self._internals_.hidden = value
         self.set_needs_display()
 
     @property
     def name(self) -> str:
         """A string that identifies the view."""
-        return self._internals.name
+        return self._internals_.name
 
     @name.setter
     def name(self, value: str):
-        self._internals.name = value
+        self._internals_.name = value
 
     @property
     def on_screen(self) -> bool:
         """(readonly) Whether the view is part of
         a view hierarchy currently on screen."""
-        return self._internals.on_screen
+        return self._internals_.on_screen
 
     @property
     def subviews(self) -> tuple[_View, ...]:
         """(readonly) A tuple of the view's children."""
-        return tuple(self._internals.subviews)
+        return tuple(sv.ref for sv in self._internals_.subviews)
 
     @property
     def superview(self) -> _View | None:
         """(readonly) The view's parent view."""
-        return self._internals.superview
+        sv = self._internals_.superview
+        if sv is not None:
+            return sv.ref
+        return None
 
     @property
     def tint_color(self) -> _RGBA:
         """The view's tint color, inherited from superview if None."""
         v: _View | None = self
         while v is not None:
-            st = v._internals
+            st = v._internals_
             if st.tint_color is not None:
                 return st.tint_color
-            v = st.superview
+            if st.superview is not None:
+                v = st.superview.ref
         return st.SYSTEM_TINT
 
     @tint_color.setter
     def tint_color(self, value: _ColorLike):
-        self._internals.tint_color = parse_color(value)
+        self._internals_.tint_color = parse_color(value)
         self.set_needs_display()
 
     @property
     def touch_enabled(self) -> bool:
-        return self._internals.touch_enabled
+        return self._internals_.touch_enabled
 
     @touch_enabled.setter
     def touch_enabled(self, value: bool):
-        self._internals.touch_enabled = value
+        self._internals_.touch_enabled = value
 
     @property
     def multitouch_enabled(self) -> bool:
         """If True, the view receives all simultaneous touches.
         If False (default), only the first touch is tracked."""
-        return self._internals.multitouch_enabled
+        return self._internals_.multitouch_enabled
 
     @multitouch_enabled.setter
     def multitouch_enabled(self, value: bool):
-        self._internals.multitouch_enabled = bool(value)
+        self._internals_.multitouch_enabled = bool(value)
 
     @property
     def transform(self) -> Transform | None:
         """The transform applied to the view relative to the center of its bounds."""
-        return self._internals.transform
+        return self._internals_.transform
 
     @transform.setter
     def transform(self, value: Transform | None):
-        st = self._internals
+        st = self._internals_
         if _record(self, "transform", st.transform, value):
             return
         st.transform = value
@@ -685,11 +690,11 @@ class _View(metaclass=_ViewMeta):
     @property
     def update_interval(self) -> float:
         """Interval between update() calls in seconds. 0 disables updates."""
-        return self._internals.update_interval
+        return self._internals_.update_interval
 
     @update_interval.setter
     def update_interval(self, value: float):
-        st = self._internals
+        st = self._internals_
         st.update_interval = float(value)
         if value > 0.0:
             st.pytoui_last_update_t = time.time()
@@ -697,33 +702,33 @@ class _View(metaclass=_ViewMeta):
     # ── subview management ────────────────────────────────────────────────────
 
     def __getitem__(self, name: str) -> _View:
-        return self._internals[name]
+        return self._internals_[name].ref
 
     def add_subview(self, view: _View):
         """Add another view as a child of this view."""
-        self._internals.add_subview(view)
+        self._internals_.add_subview(view._internals_)
 
     def remove_subview(self, view: _View):
         """Remove a child view."""
-        self._internals.remove_subview(self)
+        self._internals_.remove_subview(view._internals_)
 
     def bring_to_front(self):
         """Show the view on top of its sibling views."""
-        self._internals.bring_to_front()
+        self._internals_.bring_to_front()
 
     def send_to_back(self):
         """Put the view behind its sibling views."""
-        self._internals.send_to_back()
+        self._internals_.send_to_back()
 
     # ── layout ────────────────────────────────────────────────────────────────
 
     def set_needs_display(self):
         """Mark the view as needing to be redrawn."""
-        self._internals.set_need_display()
+        self._internals_.set_need_display()
 
     def size_to_fit(self):
         """Resize to enclose all subviews."""
-        self._internals.size_to_fit
+        self._internals_.size_to_fit
 
     # ── presentation ──────────────────────────────────────────────────────────
 
@@ -739,7 +744,7 @@ class _View(metaclass=_ViewMeta):
         hide_close_button: bool = False,
     ):
         """Present the view on screen."""
-        self._internals.present(
+        self._internals_.present(
             style,
             animated,
             popover_location,
@@ -752,11 +757,11 @@ class _View(metaclass=_ViewMeta):
 
     def close(self):
         """Close a view that was presented via View.present()."""
-        self._internals.close()
+        self._internals_.close()
 
     def wait_modal(self):
         """Block until the view is dismissed."""
-        self._internals.wait_modal()
+        self._internals_.wait_modal()
 
     def become_first_responder(self) -> bool:
         """Ask the owning window to make this view the first responder.
@@ -768,24 +773,11 @@ class _View(metaclass=_ViewMeta):
         """
         from pytoui._base_runtime import _get_runtime_for_view
 
-        rt = _get_runtime_for_view(self)
+        rt = _get_runtime_for_view(self._internals_)
         if rt is None:
             return False
-        rt._set_first_responder(self._internals)
+        rt._set_first_responder(self._internals_)
         return True
-
-    # ── overridable hooks ─────────────────────────────────────────────────────
-
-    # def did_load(self): ...
-    # def will_close(self): ...
-    # def draw(self): ...
-    # def layout(self): ...
-
-    # def touch_began(self, touch: Touch): ...
-    # def touch_moved(self, touch: Touch): ...
-    # def touch_ended(self, touch: Touch): ...
-    # def keyboard_frame_will_change(self, frame): ...
-    # def keyboard_frame_did_change(self, frame): ...
 
     def update(self): ...
 

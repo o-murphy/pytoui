@@ -14,9 +14,10 @@ from pytoui._platform import (
     _UI_RT_FPS,
 )
 from pytoui.ui._draw import _tick, _tick_delays
+from pytoui.ui._types import Rect
 
 if TYPE_CHECKING:
-    from pytoui.ui._view import View
+    from pytoui.ui._view import _ViewInternals
 
 
 __all__ = ("WinitRuntime",)
@@ -27,7 +28,7 @@ _LIB_PATH = str(Path(__file__).parent / "libwinitrt.so")
 class WinitRuntime(BaseRuntime):
     """Runtime using Rust-based winit for windowing and event handling."""
 
-    def __init__(self, root_view: View, width: int, height: int, render_fn):
+    def __init__(self, root_view: _ViewInternals, width: int, height: int, render_fn):
         super().__init__(root_view, width, height, render_fn)
 
         # Use ctypes for stable memory addresses used by the shared library
@@ -134,9 +135,9 @@ class WinitRuntime(BaseRuntime):
             self._fb.antialias = _UI_ANTIALIAS
             fb = self._fb
             rf = self.root.frame
-            self.root.frame = (rf.x, rf.y, float(w), float(h))
+            self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
 
-        if not self.root._internals.pytoui_presented:
+        if not self.root.pytoui_presented:
             return 1
 
         fb.draw_checkerboard(CHECKER_SIZE)

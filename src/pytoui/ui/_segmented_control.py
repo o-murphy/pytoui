@@ -18,7 +18,7 @@ __all__ = ("SegmentedControl",)
 
 
 class SegmentedControl(View):
-    __final__ = True
+    _final_ = True
 
     __slots__ = (
         "_action",

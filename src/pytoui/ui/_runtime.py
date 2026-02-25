@@ -28,7 +28,7 @@ from pytoui._platform import (
 )
 
 if TYPE_CHECKING:
-    from pytoui.ui._view import _View
+    from pytoui.ui._view import _ViewInternals
 
 
 # --- LOAD DEFAULT FONTS ---
@@ -124,7 +124,7 @@ def _get_runtime():
             return SDLRuntime
 
 
-def launch_runtime(root_view: _View, render_fn) -> None:
+def launch_runtime(root_view: _ViewInternals, render_fn) -> None:
     """Pick and run the appropriate runtime based on _UI_RUNTIME."""
     w = int(root_view.frame.w)
     h = int(root_view.frame.h)

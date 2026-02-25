@@ -33,13 +33,14 @@ class ImageView(View):
     View.content_mode attribute.
     """
 
-    __final__ = True
+    _final_ = True
 
     __slots__ = ("_image",)
 
     def __init__(self):
         self._image: Image | None = None
         self._content_mode = CONTENT_SCALE_TO_FILL
+        self.touch_enabled = False
 
     @property
     def image(self) -> Image | None:

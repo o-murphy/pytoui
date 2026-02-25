@@ -28,7 +28,7 @@ from pytoui._platform import (
 from pytoui.ui._draw import _tick, _tick_delays
 
 if TYPE_CHECKING:
-    from pytoui.ui._view import View
+    from pytoui.ui._view import _ViewInternals
 
 
 __all__ = ("SDLRuntime",)
@@ -156,7 +156,7 @@ class SDLRuntime(BaseRuntime):
     _sdl_ref_count = 0
     _sdl_lock = threading.Lock()
 
-    def __init__(self, root_view: View, width: int, height: int, render_fn):
+    def __init__(self, root_view: _ViewInternals, width: int, height: int, render_fn):
         super().__init__(root_view, width, height, render_fn)
 
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
@@ -273,7 +273,7 @@ class SDLRuntime(BaseRuntime):
         fb = FrameBuffer(self.pixel_data, self.width, self.height)
         fb.antialias = _UI_ANTIALIAS
         try:
-            while self.running and self.root._internals.pytoui_presented:
+            while self.running and self.root.pytoui_presented:
                 now = time.time()
 
                 if _UI_RT_FPS:

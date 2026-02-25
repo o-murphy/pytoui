@@ -15,7 +15,7 @@ __all__ = ("Switch",)
 
 
 class Switch(View):
-    __final__ = True
+    _final_ = True
 
     __slots__ = (
         "_action",

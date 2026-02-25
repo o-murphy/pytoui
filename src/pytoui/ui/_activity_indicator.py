@@ -14,7 +14,7 @@ from pytoui.ui._view import View
 
 
 class ActivityIndicator(View):
-    __final__ = True
+    _final_ = True
 
     __slots__ = (
         "_anim_step",

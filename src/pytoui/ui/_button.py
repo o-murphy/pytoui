@@ -21,7 +21,7 @@ __all__ = ("Button",)
 
 
 class Button(View):
-    __final__ = True
+    _final_ = True
 
     __slots__ = (
         "_action",

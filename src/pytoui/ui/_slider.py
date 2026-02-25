@@ -15,7 +15,7 @@ __all__ = ("Slider",)
 
 
 class Slider(View):
-    __final__ = True
+    _final_ = True
 
     __slots__ = (
         "_action",

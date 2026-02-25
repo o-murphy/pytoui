@@ -40,13 +40,13 @@ class getset_descriptor:
 class _ViewMeta(type):
     def __new__(mcls, name, bases, namespace, **kwargs):
         for base in bases:
-            if getattr(base, "__final__", False):
+            if getattr(base, "_final_", False):
                 raise TypeError(f"{base.__name__} cannot be subclassed")
         return super().__new__(mcls, name, bases, namespace, **kwargs)
 
 
 class _view:
-    __final__ = False
+    _final_ = False
     __slots__ = ("__alpha", "__beta")
 
     alpha: getset_descriptor = getset_descriptor("alpha", 1.0)
@@ -58,7 +58,7 @@ class _view:
 
 
 class View(_view, metaclass=_ViewMeta):
-    __final__ = False
+    _final_ = False
 
     @_view.beta.setter
     def __beta(self, value: str):
@@ -75,7 +75,7 @@ class Mixin:
 
 
 class View2(View, Mixin):
-    __final__ = True
+    _final_ = True
 
     def __init__(self):
         self.beta = "Bar"

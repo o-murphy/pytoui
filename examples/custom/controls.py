@@ -5,14 +5,15 @@ from collections.abc import Callable
 from pytoui import ui
 
 # --- Store / Model ---
+from pytoui._platform import IS_PYTHONISTA
 
+if not IS_PYTHONISTA:
 
-class MockScrollView(ui.View):
-    pass
+    class MockScrollView(ui.View):
+        pass
 
-
-if not hasattr(ui, "ScrollView"):
-    ui.ScrollView = MockScrollView
+    if not hasattr(ui, "ScrollView"):
+        ui.ScrollView = MockScrollView
 
 
 class ValueStore:
@@ -935,6 +936,7 @@ def main():
                 control=KnobView(style="minimal", steps=5),
                 format_func=lambda v: f"{int(v * 5)}",
             ),
+            height=150,
         ),
         make_row(
             LabeledControl(
@@ -944,33 +946,34 @@ def main():
                 label="Volume",
                 control=VSliderView(),
             ),
-        #     LabeledControl(
-        #         store,
-        #         "tone",
-        #         server,
-        #         label="Tone",
-        #         control=VSliderView(style="ticks", steps=10, num_ticks=11),
-        #         format_func=lambda v: f"{int(v * 10)}",
-        #     ),
-        #     LabeledControl(
-        #         store,
-        #         "gain",
-        #         server,
-        #         label="Gain",
-        #         control=VSliderView(steps=5),
-        #         format_func=lambda v: f"{int(v * 5)}",
-        #     ),
-        # ),
-        # make_row(
-        #     LabeledControl(
-        #         store,
-        #         "tone",
-        #         server,
-        #         label="Tone",
-        #         control=HSliderView(style="ticks", steps=10, num_ticks=11),
-        #         format_func=lambda v: f"{int(v * 10)}",
-        #     ),
-        #     height=110,
+            LabeledControl(
+                store,
+                "tone",
+                server,
+                label="Tone",
+                control=VSliderView(style="ticks", steps=10, num_ticks=11),
+                format_func=lambda v: f"{int(v * 10)}",
+            ),
+            LabeledControl(
+                store,
+                "gain",
+                server,
+                label="Gain",
+                control=VSliderView(steps=5),
+                format_func=lambda v: f"{int(v * 5)}",
+            ),
+            height=150,
+        ),
+        make_row(
+            LabeledControl(
+                store,
+                "tone",
+                server,
+                label="Tone",
+                control=HSliderView(style="ticks", steps=10, num_ticks=11),
+                format_func=lambda v: f"{int(v * 10)}",
+            ),
+            height=110,
         ),
         make_row(
             LabeledControl(
@@ -999,17 +1002,17 @@ def main():
             ),
             height=110,
         ),
-        # make_row(
-        #     LabeledControl(
-        #         store,
-        #         "bypass",
-        #         server,
-        #         label="Bypass",
-        #         control=SegmentView(options=["Off", "On"]),
-        #         hide_value=True,
-        #     ),
-        #     height=90,
-        # ),
+        make_row(
+            LabeledControl(
+                store,
+                "bypass",
+                server,
+                label="Bypass",
+                control=SegmentView(options=["Off", "On"]),
+                hide_value=True,
+            ),
+            height=90,
+        ),
         make_row(
             LabeledControl(
                 store,

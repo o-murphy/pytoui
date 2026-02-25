@@ -8,11 +8,16 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-  * separate logics in different rust modules
+  * ~~separate logics in different rust modules~~
   * ~~fix Path.add_clip~~
   * Adjust animating to Pythonista logic
-    * reimplement 'animate' and remove update form API
-  * default fonts lookup and loading
+    * reimplement 'animate' and it's internals
+    * if possible remove `update` cause it exists in API but not documented and imlicit form Components with saving thats current pretty animations
+  * Fonts upgrade
+    * built in lightweight font
+    * lookup fonts in env path by name, preload on first call
+    * fallback to default font if font not found
+    * map <font> tags to one real font, keep in account that iOS uses other fonts
   * add mouse wheel events to runtimes and simulate scrolls (touches) maybe via scroll view
   * add keyboard support
 

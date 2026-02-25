@@ -9,7 +9,7 @@ NOTE:
 
 HOT:
   * separate logics in different rust modules
-  * fix Path.add_clip
+  * ~~fix Path.add_clip~~
   * Adjust animating to Pythonista logic
     * reimplement 'animate' and remove update form API
   * default fonts lookup and loading

@@ -936,14 +936,14 @@ def main():
                 format_func=lambda v: f"{int(v * 5)}",
             ),
         ),
-        # make_row(
-        #     LabeledControl(
-        #         store,
-        #         "volume",
-        #         server,
-        #         label="Volume",
-        #         control=VSliderView(),
-        #     ),
+        make_row(
+            LabeledControl(
+                store,
+                "volume",
+                server,
+                label="Volume",
+                control=VSliderView(),
+            ),
         #     LabeledControl(
         #         store,
         #         "tone",
@@ -971,7 +971,7 @@ def main():
         #         format_func=lambda v: f"{int(v * 10)}",
         #     ),
         #     height=110,
-        # ),
+        ),
         make_row(
             LabeledControl(
                 store,

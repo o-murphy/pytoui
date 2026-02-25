@@ -372,6 +372,8 @@ def _save_gstate():
             "alpha": ctx.alpha,
         },
     )
+    if ctx.backend is not None:
+        ctx.backend.gstate_push()
 
 
 def _restore_gstate():
@@ -387,6 +389,8 @@ def _restore_gstate():
     ctx.ctm = state["ctm"]
     ctx.alpha = state["alpha"]
     _sync_ctm_to_rust(ctx)
+    if ctx.backend is not None:
+        ctx.backend.gstate_pop()
 
 
 class GState:

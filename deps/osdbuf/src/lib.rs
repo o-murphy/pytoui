@@ -2067,7 +2067,9 @@ pub extern "C" fn PathAddClip(fb_handle: i32, path_handle: i32) {
         if let Some(path) = build_path_from_cmds(&cmds) {
             let ctm = fb.ctm;
             let aa = fb.antialias;
-            if let Some(mut mask) = Mask::new(w, h) {
+            if let Some(existing) = &mut fb.clip_mask {
+                existing.intersect_path(&path, FillRule::Winding, aa, ctm);
+            } else if let Some(mut mask) = Mask::new(w, h) {
                 mask.fill_path(&path, FillRule::Winding, aa, ctm);
                 fb.clip_mask = Some(mask);
             }

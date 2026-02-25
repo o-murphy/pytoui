@@ -26,6 +26,7 @@ from pytoui._platform import (
     _UI_RT_SDL_MAX_DELAY,
 )
 from pytoui.ui._draw import _tick, _tick_delays
+from pytoui.ui._types import Rect
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -305,8 +306,8 @@ class SDLRuntime(BaseRuntime):
                     )
                     sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
                     self.width, self.height = w, h
-                    rf = self.root._frame
-                    self.root.frame = (rf.x, rf.y, float(w), float(h))
+                    rf = self.root.frame
+                    self.root.ref.frame = Rect(rf.x, rf.y, float(w), float(h))
 
                 needs_redraw = _any_dirty(self.root)
 

@@ -135,7 +135,7 @@ class WinitRuntime(BaseRuntime):
             self._fb.antialias = _UI_ANTIALIAS
             fb = self._fb
             rf = self.root.frame
-            self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
+            self.root.ref.frame = Rect(rf.x, rf.y, float(w), float(h))
 
         if not self.root.pytoui_presented:
             return 1

@@ -54,15 +54,7 @@ class Vector2:
     _x: float
     _y: float
 
-    def __init__(self, *args) -> None:
-        if len(args) == 2:
-            x, y = args
-        elif len(args) == 1:
-            x, y = args[0]
-        else:
-            raise TypeError(
-                f"{type(self).__name__}() takes 1 or 2 arguments ({len(args)} given)"
-            )
+    def __init__(self, x: float = 0, y: float = 0) -> None:
         object.__setattr__(self, "_x", float(x))
         object.__setattr__(self, "_y", float(y))
 
@@ -215,16 +207,7 @@ class Rect:
     _w: float
     _h: float
 
-    def __init__(self, *args) -> None:
-        if len(args) == 4:
-            x, y, w, h = args
-        elif len(args) == 1:
-            x, y, w, h = args[0]
-        elif len(args) == 2:
-            x, y = args[0]
-            w, h = args[1]
-        else:
-            raise TypeError(f"Rect() takes 1, 2, or 4 arguments ({len(args)} given)")
+    def __init__(self, x: float = 0, y: float = 0, w: float = 0, h: float = 0) -> None:
         object.__setattr__(self, "_x", float(x))
         object.__setattr__(self, "_y", float(y))
         object.__setattr__(self, "_w", float(w))
@@ -348,9 +331,28 @@ class Rect:
             and self.max_y >= r.max_y
         )
 
-    def inset(self, dx: float, dy: float) -> Rect:
+    def inset(self, *args) -> Rect:
         """Return a new rectangle inset by dx horizontally and dy vertically."""
-        return Rect(self._x + dx, self._y + dy, self._w - 2 * dx, self._h - 2 * dy)
+
+        dx = dy = dw = dh = 0.0
+
+        if len(args) >= 1:
+            dx = float(args[0])
+        if len(args) >= 2:
+            dy = float(args[1])
+        if len(args) >= 3:
+            dw = float(args[2])
+        if len(args) >= 4:
+            dh = float(args[3])
+        if len(args) > 4:
+            raise TypeError("inset() takes at most 4 arguments")
+
+        new_x = self._x + dy
+        new_y = self._y + dx
+        new_w = self._w - (2 * dy + dh)
+        new_h = self._h - (2 * dx + dw)
+
+        return Rect(new_x, new_y, new_w, new_h)
 
     def intersection(self, rect: _RectLike) -> Rect:
         """Return the intersection of this rectangle and the given rectangle.

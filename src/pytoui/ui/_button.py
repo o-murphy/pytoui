@@ -154,20 +154,23 @@ class Button(View):
         # Apply content insets to get the drawing rectangle
         inset_rect = self.bounds.inset(self._content_insets.x, self._content_insets.y)
 
-        _, font_size = self._font
-        # Measure text to get actual dimensions
-        try:
-            _, text_height = measure_string(
-                self._title,
-                max_width=inset_rect.w,
-                font=self._font,
-                alignment=ALIGN_CENTER,
-                line_break_mode=LB_TRUNCATE_TAIL,
-            )
-        except Exception:
-            text_height = font_size
+        # Measure text
+        _, text_height = measure_string(
+            self._title,
+            max_width=inset_rect.w,
+            font=self._font,
+            alignment=ALIGN_CENTER,
+            line_break_mode=LB_TRUNCATE_TAIL,
+        )
 
-        title_rect = inset_rect.inset(0, (inset_rect.height - text_height) / 2)
+        text_height = min(text_height, inset_rect.height)
+
+        title_rect = Rect(
+            inset_rect.x,
+            inset_rect.y + (inset_rect.height - text_height) / 2,
+            inset_rect.width,
+            text_height,
+        )
 
         # Draw text centered
         draw_string(

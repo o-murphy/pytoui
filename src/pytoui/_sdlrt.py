@@ -273,7 +273,7 @@ class SDLRuntime(BaseRuntime):
         fb = FrameBuffer(self.pixel_data, self.width, self.height)
         fb.antialias = _UI_ANTIALIAS
         try:
-            while self.running and self.root._pytoui_st.pytoui_presented:
+            while self.running and self.root._internals.pytoui_presented:
                 now = time.time()
 
                 if _UI_RT_FPS:

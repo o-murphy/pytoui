@@ -9,7 +9,8 @@ NOTE:
 
 HOT:
 * View
-* * Adjust animating to Pythonista logic
+  * Protect View's readonly methods/props
+  * Adjust animating to Pythonista logic
   * View.update is not in Pythonista signature
   * Proxify view_ref, do not give _view to runtime, use _view_state 
   * View.present.style

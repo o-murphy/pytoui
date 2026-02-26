@@ -9,10 +9,9 @@ NOTE:
 
 HOT:
   * Fonts upgrade
-    * built in lightweight font
-    * lookup fonts in env path by name, preload on first call
-    * fallback to default font if font not found
-    * map <font> tags to one real font, keep in account that iOS uses other fonts
+    * add fonts registry for FrameBufer class
+    * use _fonts.resolve_any_font() for draw string
+    * autoload font to rust registry or use loaded
   * add keyboard support
   * class RightMouseButton(Touch) right mouse button events
 

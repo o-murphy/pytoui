@@ -35,7 +35,7 @@ from collections.abc import Callable, Sequence
 from functools import lru_cache
 from re import fullmatch
 from threading import local
-from typing import TYPE_CHECKING, Dict, cast
+from typing import TYPE_CHECKING, cast
 
 from pytoui._platform import pytoui_desktop_only
 from pytoui.ui._constants import (
@@ -466,7 +466,7 @@ def set_alpha(alpha: float):
 
 # -- Public Pythonista-compatible API -----------------------------------------
 
-_CSS_COLORS_STANDARD: Dict[str, _RGBA] = {
+_CSS_COLORS_STANDARD: dict[str, _RGBA] = {
     "aliceblue": (0.94, 0.97, 1.0, 1.0),
     "antiquewhite": (0.98, 0.92, 0.84, 1.0),
     "aqua": (0.0, 1.0, 1.0, 1.0),
@@ -620,7 +620,7 @@ _CSS_COLORS_STANDARD: Dict[str, _RGBA] = {
 }
 
 
-_CSS_COLORS_UIKIT: Dict[str, _RGBA] = {
+_CSS_COLORS_UIKIT: dict[str, _RGBA] = {
     "aliceblue": (0.94, 0.97, 1.0, 1.0),
     "antiquewhite": (0.98, 0.92, 0.84, 1.0),
     "aqua": (0.0, 1.0, 1.0, 1.0),
@@ -774,7 +774,7 @@ _CSS_COLORS_UIKIT: Dict[str, _RGBA] = {
 }
 
 
-_UIKIT_SYSTEM_COLORS: Dict[str, _RGBA] = {
+_UIKIT_SYSTEM_COLORS: dict[str, _RGBA] = {
     # Основні системні кольори
     "systemblue": (0.0, 0.48, 1.0, 1.0),
     "systemgreen": (0.2, 0.78, 0.35, 1.0),
@@ -804,7 +804,7 @@ _UIKIT_SYSTEM_COLORS: Dict[str, _RGBA] = {
     "tertiarysystembackground": (1.0, 1.0, 1.0, 1.0),
 }
 
-_COLORS: Dict[str, _RGBA] = {}
+_COLORS: dict[str, _RGBA] = {}
 _COLORS.update(_CSS_COLORS_STANDARD)
 _COLORS.update(_CSS_COLORS_UIKIT)
 _COLORS.update(_UIKIT_SYSTEM_COLORS)

@@ -4,14 +4,39 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytoui"
+authors = [{ name = "o-murphy", email = "thehelixpg@gmail.com" }]
 dynamic = ["version"]
 description = "Pythonista UI simulator"
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = ["pillow>=12.1.1", "pysdl2>=0.9.17"]
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+    "pillow>=12.1.1",
+    "pysdl2>=0.9.17",
+    "pysdl2-dll>=2.32.0; platform_system == 'Windows'",
+]
 
-[project.optional-dependencies]
-dev = ["pytest"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/o-murphy/pytoui"
+"Documentation" = "https://o-murphy.github.io/pytoui"
+"Bug Reports" = "https://github.com/o-murphy/pytoui/issues"
+"Source" = "https://github.com/o-murphy/pytoui"
 
 [tool.hatch.version]
 source = "vcs"
@@ -21,8 +46,40 @@ version-file = "src/pytoui/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytoui"]
-include = [
-    "assets/**"
+artifacts = [
+    "src/pytoui/lib*.so",    # Linux
+    "src/pytoui/lib*.dylib", # macOS
+    "src/pytoui/*.dll",      # Windows
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+"assets" = "pytoui/assets"
+
+[tool.hatch.build.hooks.custom]
+path = "scripts/pre_build.py"
+
+[tool.cibuildwheel]
+# Default (Linux): install rustup + nightly toolchain inside the container
+before-all = [
+    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --profile minimal --no-modify-path",
+    "$HOME/.cargo/bin/rustup component add --toolchain nightly rust-src",
+]
+environment = { PATH = "$HOME/.cargo/bin:$PATH" }
+
+[tool.cibuildwheel.macos]
+# macOS: install rustup + both Apple-silicon and Intel targets for universal2
+before-all = [
+    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --profile minimal --no-modify-path",
+    "$HOME/.cargo/bin/rustup component add --toolchain nightly rust-src",
+    "$HOME/.cargo/bin/rustup target add --toolchain nightly aarch64-apple-darwin x86_64-apple-darwin",
+]
+environment = { PATH = "$HOME/.cargo/bin:$PATH" }
+
+[tool.cibuildwheel.windows]
+# Windows: rustup is pre-installed on GitHub Actions runners; just add nightly
+before-all = [
+    "rustup toolchain install nightly --profile minimal --component rust-src --no-self-update",
+    "rustup target add --toolchain nightly x86_64-pc-windows-msvc i686-pc-windows-msvc aarch64-pc-windows-msvc",
 ]
 
 [tool.pytest.ini_options]
@@ -52,6 +109,7 @@ disable_error_code = ["annotation-unchecked"]
 
 [dependency-groups]
 dev = [
+    "cibuildwheel>=2.23.3",
     "mypy>=1.19.1",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",

@@ -775,7 +775,6 @@ _CSS_COLORS_UIKIT: dict[str, _RGBA] = {
 
 
 _UIKIT_SYSTEM_COLORS: dict[str, _RGBA] = {
-    # Основні системні кольори
     "systemblue": (0.0, 0.48, 1.0, 1.0),
     "systemgreen": (0.2, 0.78, 0.35, 1.0),
     "systemindigo": (0.35, 0.34, 0.84, 1.0),
@@ -785,16 +784,14 @@ _UIKIT_SYSTEM_COLORS: dict[str, _RGBA] = {
     "systemred": (1.0, 0.23, 0.19, 1.0),
     "systemteal": (0.19, 0.69, 0.78, 1.0),
     "systemyellow": (1.0, 0.8, 0.0, 1.0),
-    "systemmint": (0.0, 0.78, 0.75, 1.0),  # Доступно з iOS 15
-    "systemcyan": (0.2, 0.71, 0.9, 1.0),  # Доступно з iOS 15
-    # Системні сірі (Adaptive Grays)
+    "systemmint": (0.0, 0.78, 0.75, 1.0),
+    "systemcyan": (0.2, 0.71, 0.9, 1.0),
     "systemgray": (0.56, 0.56, 0.58, 1.0),
     "systemgray2": (0.68, 0.68, 0.7, 1.0),
     "systemgray3": (0.78, 0.78, 0.8, 1.0),
     "systemgray4": (0.82, 0.82, 0.84, 1.0),
     "systemgray5": (0.89, 0.89, 0.91, 1.0),
     "systemgray6": (0.95, 0.95, 0.97, 1.0),
-    # Текст та фон (базові значення для світлої теми)
     "label": (0.0, 0.0, 0.0, 1.0),
     "secondarylabel": (0.24, 0.24, 0.26, 0.6),
     "tertiarylabel": (0.24, 0.24, 0.26, 0.3),

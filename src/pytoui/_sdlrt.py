@@ -11,7 +11,6 @@ per-window queues via _window_map. Each SDLRuntime drains its own queue.
 from __future__ import annotations
 
 import ctypes
-import os
 import queue
 import threading
 import time
@@ -177,8 +176,8 @@ class SDLRuntime(BaseRuntime):
     def __init__(self, root_view: _ViewInternals, width: int, height: int, render_fn):
         super().__init__(root_view, width, height, render_fn)
 
-        os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
-        os.environ.setdefault("PYSDL2_DLL_PATH", "/usr/lib")
+        # os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
+        # os.environ.setdefault("PYSDL2_DLL_PATH", "/usr/lib")
 
         import sdl2  # type: ignore[import-untyped]
 

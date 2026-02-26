@@ -1,11 +1,24 @@
 # osdbuf.py
 import ctypes
+import sys
 from collections.abc import Sequence
 from enum import IntEnum, IntFlag
 from pathlib import Path
 from typing import Any
 
-_OSDBUF_PATH = str(Path(__file__).parent / "libosdbuf.so")
+
+def _lib_filename(name: str) -> str:
+    if sys.platform.startswith("linux"):
+        return f"lib{name}.so"
+    elif sys.platform == "darwin":
+        return f"lib{name}.dylib"
+    elif sys.platform == "win32":
+        return f"{name}.dll"
+    else:
+        raise RuntimeError(f"Unsupported platform: {sys.platform}")
+
+
+_LIB_PATH = str(Path(__file__).parent / _lib_filename("osdbuf"))
 
 
 class LineCapStyle(IntEnum):
@@ -76,7 +89,7 @@ class FrameBuffer:
     @classmethod
     def _ensure_lib_loaded(cls, path: str | None = None):
         if cls._lib is None:
-            target_path = str(path) if path else _OSDBUF_PATH
+            target_path = str(path) if path else _LIB_PATH
             print(f"DEBUG: Loading CDLL into class from {target_path}...", flush=True)
             handle = ctypes.CDLL(target_path)
             cls._setup_argtypes_static(handle)
@@ -492,7 +505,7 @@ class FrameBuffer:
         ]
         L.MeasureStringCoreGraphics.restype = ctypes.c_int
 
-    def __init__(self, osd_ptr, width, height, lib_path=_OSDBUF_PATH):
+    def __init__(self, osd_ptr, width, height, lib_path=_LIB_PATH):
         if not osd_ptr:
             raise ValueError("osd_ptr is NULL! Cannot create FrameBuffer.")
 

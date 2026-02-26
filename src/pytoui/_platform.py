@@ -7,14 +7,29 @@ _pui             Reference to Pythonista's native `ui` module, or None on deskto
 from __future__ import annotations
 
 import os
+import re
+import sys
 
-try:
-    import ui as _pui  # type: ignore[import-not-found]
+PYTHONISTA_EXECUTABLE_REGEX = re.escape("Pythonista3.app")
 
-    IS_PYTHONISTA: bool = True
-except ImportError:
-    _pui = None  # type: ignore[assignment]
-    IS_PYTHONISTA: bool = False  # type: ignore[no-redef]
+
+def is_pythonista():
+    if sys.platform == "ios" and re.search(PYTHONISTA_EXECUTABLE_REGEX, sys.executable):
+        return True
+    return False
+
+
+if is_pythonista():
+    try:
+        import ui as _pui
+
+        IS_PYTHONISTA: bool = True
+    except (AssertionError, ImportError):
+        _pui = None  # type: ignore[no-redef,assignment]
+        IS_PYTHONISTA: bool = False  # type: ignore[no-redef,assignment]
+else:
+    _pui = None  # type: ignore[no-redef,assignment]
+    IS_PYTHONISTA: bool = False  # type: ignore[no-redef,assignment]
 
 
 __all__ = (

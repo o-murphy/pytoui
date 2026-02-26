@@ -143,7 +143,7 @@ class VerticalSlider(View):
 
         margin = 25.0
         available_height = self.height - (margin * 2)
-        # Розраховуємо Y: 0.0 внизу (height - margin), 1.0 вгорі (margin)
+        # Y: 0.0 bot (height - margin), 1.0 top (margin)
         pos_y = (self.height - margin) - (available_height * self._anim_value)
 
         # 1️⃣ Background track

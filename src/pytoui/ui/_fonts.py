@@ -79,6 +79,11 @@ def resolve_font(family: str, internal_name: str, size: int = 16) -> Path | None
 
 # ---------------- Universal resolver ----------------
 def resolve_any_font(font: str, size: int = 16) -> Path | None:
+    """
+    - SFUI/Apple-style
+    - <system> / <system-bold> / <system-italic>
+    - default Inter
+    """
     font = font.strip()
 
     known_families = ["Inter", "Roboto"]

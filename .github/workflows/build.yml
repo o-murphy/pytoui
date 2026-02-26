@@ -1,0 +1,163 @@
+name: Build and Upload Python Package to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      testpypi:
+        description: "Publish to test pypi"
+        required: false
+        type: boolean
+        default: false
+
+run-name: >
+  Build & Publish → ${{ github.event_name == 'release' && 'PyPI' ||
+      github.event_name == 'workflow_dispatch' && inputs.testpypi && 'TestPyPI' ||
+      'Build Only' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-pure:
+    name: Build pure Python wheel + sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          github-token: ${{ github.token }}
+          activate-environment: "true"
+
+      - name: Build pure wheel and sdist
+        run: PURE=1 uv build
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-pure
+          path: ./dist
+          retention-days: 14
+
+  build-native:
+    name: Build wheels on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64 (native) + i686 (QEMU)
+          - os: ubuntu-latest
+            cibw_archs: "x86_64,i686"
+            needs_qemu: true
+
+          # Linux aarch64 (native) + armv7l (aarch32 compat, no QEMU needed)
+          - os: ubuntu-24.04-arm
+            cibw_archs: "aarch64,armv7l"
+            needs_qemu: false
+
+          # Windows x86_64 (AMD64, native) + x86 (i686, cross-compiled)
+          - os: windows-latest
+            cibw_archs: "AMD64,x86"
+            needs_qemu: false
+
+          # Windows ARM64 (native)
+          - os: windows-11-arm
+            cibw_archs: "ARM64"
+            needs_qemu: false
+
+          # macOS arm64 (native) + universal2 (lipo arm64+x86_64)
+          - os: macos-15
+            cibw_archs: "arm64,universal2"
+            needs_qemu: false
+
+          # macOS x86_64 (native)
+          - os: macos-15-intel
+            cibw_archs: "x86_64"
+            needs_qemu: false
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU for emulated architectures
+        if: ${{ matrix.needs_qemu }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          github-token: ${{ github.token }}
+          activate-environment: "true"
+      
+      - name: Install cibuildwheel
+        run: uv tool install cibuildwheel
+        shell: bash
+
+      - name: Build wheels
+        run: cibuildwheel --output-dir dist --platform auto --archs "${{ matrix.cibw_archs }}"
+        shell: bash
+
+      - name: List dist
+        run: ls ./dist
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}-${{ matrix.cibw_archs }}
+          path: ./dist
+          retention-days: 14
+
+  publish:
+    needs: [build-pure, build-native]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'release' && 'pypi' || inputs.testpypi && 'testpypi' || 'build' }}
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: ./all-dist
+
+      - name: Combine artifacts
+        run: |
+          mkdir -p dist
+          find ./all-dist -type f -exec cp {} dist/ \;
+        shell: bash
+
+      - name: List dist
+        run: ls ./dist
+        shell: bash
+
+      - name: Upload combined artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+          retention-days: 14
+
+      - name: Publish to PyPI
+        if: ${{ github.event_name == 'release' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+      - name: Publish to TestPyPI
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.testpypi == true }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+          repository-url: https://test.pypi.org/legacy/

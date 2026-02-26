@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -22,7 +23,19 @@ if TYPE_CHECKING:
 
 __all__ = ("WinitRuntime",)
 
-_LIB_PATH = str(Path(__file__).parent / "libwinitrt.so")
+
+def _lib_filename(name: str) -> str:
+    if sys.platform.startswith("linux"):
+        return f"lib{name}.so"
+    elif sys.platform == "darwin":
+        return f"lib{name}.dylib"
+    elif sys.platform == "win32":
+        return f"{name}.dll"
+    else:
+        raise RuntimeError(f"Unsupported platform: {sys.platform}")
+
+
+_LIB_PATH = str(Path(__file__).parent / _lib_filename("winitrt"))
 
 
 class WinitRuntime(BaseRuntime):
@@ -94,7 +107,7 @@ class WinitRuntime(BaseRuntime):
     def get_screen_size(cls):
         """Retrieve the primary display bounds using the winit library."""
         lib = ctypes.CDLL(
-            str(Path(__file__).parent.parent / "winitrt" / "libwinitrt.so"),
+            _LIB_PATH,
         )
         lib.winit_screen_size.argtypes = [
             ctypes.POINTER(ctypes.c_uint32),

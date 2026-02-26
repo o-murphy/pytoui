@@ -24,89 +24,82 @@ features are implemented yet; check the examples for the current surface.
 	- `pytoui.ui` contains widget implementations such as labels, buttons,
 		images, sliders, and views.
 	- `_runtime` modules (internal) select and host platform backends.
-- `lib/` — Native helper crates (Rust) and bindings used by some backends.
-	- `lib/osdbuf` and `lib/winitrt` are Rust crates providing low-level support
-		for on-screen buffer and runtime glue. These are optional and can be built
-		with Cargo if you need native backends.
-- Backends: The package supports multiple runtime backends (SDL, winit, etc.).
-	Backends live under the package as internal modules (e.g. `_sdlrt`,
-	`_winitrt`) and are selected at runtime via the `UI_RT` environment variable.
+- `assets/` — Bundled font assets (Inter, Roboto). Included in wheels as `pytoui/assets/`.
+- Native libraries — Rust crates compiled to `.so` files placed in `src/pytoui/`:
+	- `libosdbuf.so` — on-screen framebuffer drawing via tiny-skia and fontdue.
+	- `libwinitrt.so` — winit-based windowing runtime.
+- Backends: Multiple runtime backends are supported (SDL, winit, framebuffer).
+	Selected at runtime via the `UI_RT` environment variable
+	(`sdl`, `winit`, `fb`; default: `winit`).
 
 ## Build and install
 
-Requirements and prerequisites:
+### Prerequisites
 
-- Python 3.11 or later, pip and a POSIX shell.
-- Recommended: Git for cloning and a C toolchain (build-essential) for native builds.
-- Rust toolchain with nightly toolchain (Makefile uses `cargo +nightly` and `-Z build-std`).
-- cbindgen (optional, required for `gen-headers`) — installable via cargo or distro package.
-- Optional: libsdl2-dev (or other dev packages) if your backend needs system libs.
+- Python 3.11 or later.
+- Rust toolchain with nightly channel (builds use `cargo +nightly` and `-Z build-std`).
+- `cbindgen` — optional, required for `make gen-headers`.
+- `libsdl2-dev` — required for the SDL backend.
 
-Example Debian/Ubuntu prerequisites (install Rust via rustup):
+Example (Debian/Ubuntu):
 
 ```bash
-sudo apt update
 sudo apt install -y build-essential pkg-config libssl-dev libsdl2-dev
-# install rustup (if not installed) and add nightly toolchain:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup toolchain install nightly
-# install cbindgen if you need gen-headers
-cargo install cbindgen
+cargo install cbindgen   # optional
 ```
 
-Makefile targets (actual targets provided in repository):
-
-- make build
-  - Builds both native helper crates (lib/osdbuf and lib/winitrt) using `cargo +nightly build --release -Z build-std=std,panic_abort`.
-  - Copies resulting shared libraries to `src/pytoui/` as `libosdbuf.so` and `libwinitrt.so`.
-- make gen-headers
-  - Runs `cbindgen` in each crate to generate C headers (`osdbuf.h`, `winitrt.h`).
-- make clean
-  - Runs `cargo clean` in the native crates and removes the copied .so files.
-
-Typical workflow using the Makefile:
+### Development setup
 
 ```bash
-# ensure rust nightly and cbindgen are available
-# build native libs and copy .so into the Python package
+# 1. Compile native libraries (Rust → .so in src/pytoui/)
 make build
 
-# generate C headers (optional)
-make gen-headers
-
-# clean build artifacts
-make clean
+# 2. Sync Python dependencies
+uv sync
 ```
 
-The package uses Hatch/hatchling as the build backend (see `pyproject.toml`).
+`uv sync` only installs Python dependencies — it does **not** compile the native libs.
+Run `make build` once after cloning, and again after changes to the Rust crates.
 
-Use uv to sync dependencies
+### Makefile targets
+
+| Target | Description |
+|---|---|
+| `make build` | Compile both Rust crates and copy `.so` files into `src/pytoui/` |
+| `make gen-headers` | Generate C headers via cbindgen (optional) |
+| `make clean` | Remove build artifacts and `.so` files |
+
+### Building a wheel
+
 ```bash
-uv sync 
+# Native wheel (compiles .so via make, platform-specific tag)
+uv build
+
+# Pure-Python wheel (no compilation, py3-none-any)
+PURE=1 uv build
 ```
 
 ## Running examples
 
-Small example programs are provided in the `examples/` folder. Example files
-include `demo.py`, `multi_window.py`, and `multitouch.py`.
-
-Run an example by selecting a backend and running the module. For example:
+Small example programs are in the `examples/` folder:
 
 ```bash
-# use SDL backend and run the demo example with standard python
-UI_RT=sdl python -m examples.demo
-
-# or if you have a tiny runner script named `uv` in your environment (optional)
-UI_RT=sdl uv run -m examples.demo
+UI_RT=sdl uv run python -m examples.demo
+UI_RT=winit uv run python -m examples.demo
 ```
-
-Adjust `UI_RT` to `winit` or other supported runtimes as available.
 
 ## Examples overview
 
-- `examples/demo.py` — demonstrates layout primitives and view hierarchy.
-- `examples/multi_window.py` — simple multi-window sample (backend permitting).
-- `examples/multitouch.py` — touches and gesture handling demo.
+- `examples/demo.py` — layout primitives and view hierarchy.
+- `examples/components/` — individual widget demos.
+- `examples/custom/` — custom view examples.
+- `examples/flex.py` — flex layout demo.
+- `examples/text.py` — text rendering demo.
+- `examples/mouse_wheel.py` — mouse wheel / scroll demo.
+- `examples/multi_window.py` — multi-window sample.
+- `examples/multitouch.py` — touch and gesture handling.
 
 ## Contributing
 
@@ -117,4 +110,4 @@ This project is experimental. If you'd like to contribute:
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file in this directory for details.
+This project is licensed under the MIT License. See the LICENSE file for details.

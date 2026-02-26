@@ -414,6 +414,13 @@ class _ViewInternals:
     def pytoui_touch_ended(self) -> Callable[[Touch], None] | None:
         return getattr(self._ref, "touch_ended", None)
 
+    @property
+    def pytoui_mouse_down(self) -> Callable[[Touch], None] | None:
+        cb = getattr(self._ref, "mouse_down", None)
+        if cb is None:
+            return self.pytoui_touch_began(Touch(...))
+        return cb
+
     def pytoui_did_become_first_responder(self): ...
     def pytoui_did_resign_first_responder(self): ...
 

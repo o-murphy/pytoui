@@ -8,18 +8,11 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-  * Fonts upgrade
-    * add fonts registry for FrameBufer class
-    * use _fonts.resolve_any_font() for draw string
-    * autoload font to rust registry or use loaded
   * add keyboard support
-  * class RightMouseButton(Touch) right mouse button events
 
 NEXT:
 * dialogs.alert() and other
 * View
-  * Adjust animating to Pythonista logic
-  * View.update is an implicit behaviour so better to use ui.animate
   * View.present.style
     * View.present("sheet") - default, uses popower location, on "present" as a second should be drawn in same window
     * View.present("fullscreen") - fullscreen

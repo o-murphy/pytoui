@@ -968,16 +968,22 @@ def _rgba_to_uint32(c: _RGBA) -> int:
     return (r << 24) | (g << 16) | (b << 8) | a
 
 
-# -- Font name → font_id mapping ----------------------------------------------
-
-_FONT_MAP = {
-    "<system>": 1,
-    "<system-bold>": 2,
-}
+# -- Font name → font_id (dynamic, cached via FrameBuffer._font_registry) -----
 
 
-def _font_id(font_name: str) -> int:
-    return _FONT_MAP.get(font_name, 1)
+def _get_font_id(font_name: str, size: float) -> int:
+    from pytoui._fonts import resolve_any_font
+    from pytoui._osdbuf import FrameBuffer
+
+    path = resolve_any_font(font_name, int(size))
+    if path is None:
+        fid = FrameBuffer.get_default_font()
+        return fid if fid > 0 else 1
+    try:
+        return FrameBuffer.load_font_cached(str(path))
+    except Exception:
+        fid = FrameBuffer.get_default_font()
+        return fid if fid > 0 else 1
 
 
 # -- Text measurement and layout helpers ---------------------------------------
@@ -1007,7 +1013,7 @@ def draw_string(
     w, h = rect.w, rect.h
 
     font_name, font_size = font
-    fid = _font_id(font_name)
+    fid = _get_font_id(font_name, font_size)
 
     _color = parse_color(color)
     if _color is None:
@@ -1042,7 +1048,7 @@ def measure_string(
         return (0.0, 0.0)
 
     font_name, font_size = font
-    fid = _font_id(font_name)
+    fid = _get_font_id(font_name, font_size)
 
     return type(backend).measure_string_core_graphics(
         s,

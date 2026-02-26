@@ -17,7 +17,6 @@ per-window queues via _window_map. Each SDLRuntime drains its own queue.
 from __future__ import annotations
 
 import ctypes
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pytoui._base_runtime import BaseRuntime
@@ -32,24 +31,18 @@ if TYPE_CHECKING:
 
 
 # --- LOAD DEFAULT FONTS ---
-_DEFAULT_FONTS_PATH = Path(__file__).parent.parent
 
 
 def _load_default_fonts():
-    def _try_with_fallback(font, fallback):
-        try:
-            FrameBuffer.load_font(font)
-        except RuntimeError:
-            FrameBuffer.load_font(fallback)
+    from pytoui._fonts import resolve_any_font
 
-    _try_with_fallback(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans.ttf"),
-    )
-    _try_with_fallback(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        str(_DEFAULT_FONTS_PATH / "fonts" / "DejaVuSans-Bold.ttf"),
-    )
+    for name, size in [("<system>", 17), ("<system-bold>", 17)]:
+        path = resolve_any_font(name, size)
+        if path:
+            try:
+                FrameBuffer.load_font_cached(str(path))
+            except Exception:
+                pass
 
 
 _load_default_fonts()

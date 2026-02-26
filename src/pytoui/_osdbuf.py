@@ -544,6 +544,8 @@ class FrameBuffer:
 
     # ============= Font API (global, class-level) =============
 
+    _font_registry: dict[str, int] = {}  # path_str → rust font_id
+
     @classmethod
     def load_font(cls, font_path: str) -> int:
         """Load TTF/OTF font, returns font handle."""
@@ -551,6 +553,16 @@ class FrameBuffer:
         fid = lib.LoadFont(font_path.encode("utf-8"))
         if fid <= 0:
             raise RuntimeError(f"Failed to load font: {font_path}")
+        return fid
+
+    @classmethod
+    def load_font_cached(cls, path_str: str) -> int:
+        """Load font if not already in registry; return font_id."""
+        fid = cls._font_registry.get(path_str)
+        if fid is not None:
+            return fid
+        fid = cls.load_font(path_str)
+        cls._font_registry[path_str] = fid
         return fid
 
     @classmethod

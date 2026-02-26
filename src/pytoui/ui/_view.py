@@ -131,7 +131,7 @@ class _ViewInternals:
         "_pytoui_presented",
         "_pytoui_needs_display",
         "_pytoui_last_update_time",
-        # pytoui attributes
+        "_pytoui_mouse_scroll_enabled",
         "_pytoui_close_event",
         "_pytoui_content_draw_size",
     )
@@ -157,6 +157,7 @@ class _ViewInternals:
         self._on_screen: bool = False
         self._touch_enabled: bool = True
         self._multitouch_enabled: bool = False
+        self._pytoui_mouse_scroll_enabled: bool = False
 
         # CUSTOM
         self._pytoui_presented: bool = False
@@ -327,6 +328,15 @@ class _ViewInternals:
         self._multitouch_enabled = bool(value)
 
     @property
+    def mouse_scroll_enabled(self) -> bool:
+        """If False, the view ignores mouse wheel / scroll events."""
+        return self._pytoui_mouse_scroll_enabled
+
+    @mouse_scroll_enabled.setter
+    def mouse_scroll_enabled(self, value: bool):
+        self._pytoui_mouse_scroll_enabled = bool(value)
+
+    @property
     def frame(self) -> Rect:
         """The view's position and size in the coordinate system of its superview."""
         return self._frame
@@ -495,6 +505,26 @@ class _ViewInternals:
             if target is not None and target._touch_enabled:
                 return target
         return self if self._touch_enabled else None
+
+    def pytoui_scroll_hit_test(self, x: float, y: float) -> _ViewInternals | None:
+        """Like pytoui_hit_test but filters by _pytoui_mouse_scroll_enabled.
+
+        A view with scroll_enabled=False is transparent to scroll events
+        (the event passes through to the parent), independently of touch_enabled.
+        """
+        if self._hidden:
+            return None
+        ox, oy = _screen_origin(self._ref)
+        fw, fh = self._frame.size
+        if not (ox <= x < ox + fw and oy <= y < oy + fh):
+            return None
+        for child in reversed(self._subviews):
+            target = child.pytoui_scroll_hit_test(x, y)
+            if target is not None and getattr(
+                target, "_pytoui_mouse_scroll_enabled", False
+            ):
+                return target
+        return self if getattr(self, "_pytoui_mouse_scroll_enabled", False) else None
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
@@ -898,6 +928,15 @@ class _View:
         self._internals_.multitouch_enabled = value
 
     @property
+    def scroll_enabled(self) -> bool:
+        """If False, the view ignores mouse wheel / scroll events."""
+        return self._internals_.mouse_scroll_enabled
+
+    @scroll_enabled.setter
+    def scroll_enabled(self, value: bool):
+        self._internals_.mouse_scroll_enabled = value
+
+    @property
     def transform(self) -> Transform | None:
         """The transform applied to the view relative to the center of its bounds."""
         return self._internals_.transform
@@ -1020,6 +1059,14 @@ if IS_PYTHONISTA:
         @pytoui_desktop_only
         def _internals(self, value: _ViewInternals):
             raise NotImplementedError
+
+        @property
+        def mouse_scroll_enabled(self) -> bool:
+            return False
+
+        @mouse_scroll_enabled.setter
+        def mouse_scroll_enabled(self, value: bool):
+            pass
 
 
 if __name__ == "__main__":

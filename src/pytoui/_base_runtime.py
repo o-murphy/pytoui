@@ -317,7 +317,7 @@ class BaseRuntime:
         """
         from pytoui.ui._types import MouseWheel
 
-        target = self.root.pytoui_hit_test(cursor_x, cursor_y)
+        target = self.root.pytoui_scroll_hit_test(cursor_x, cursor_y)
         if not target:
             return
         cb = target.pytoui_mouse_wheel

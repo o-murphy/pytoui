@@ -54,6 +54,7 @@ class VerticalSlider(View):
 
         # Standard iOS slider size
         self.frame = Rect(0, 0, 31, 200)
+        self.mouse_scroll_enabled = True
 
     @property
     def action(self) -> _Action | None:
@@ -247,6 +248,16 @@ class VerticalSlider(View):
                 self._update_value_from_touch(touch)
                 self._ensure_action_and_call(self)  # type: ignore[attr-defined]
             self.set_needs_display()
+
+    def mouse_wheel(self, touch):
+        if not self.enabled:
+            return
+        available = self.height - 50.0  # 2 * margin (25px each side)
+        if available <= 0:
+            return
+        self.value = self._value + touch.scroll_dy / available
+        if self.continuous:
+            self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 
     def _slider_bounds(self):
         w = self._LOGICAL_WIDTH

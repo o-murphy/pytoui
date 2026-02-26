@@ -59,6 +59,7 @@ class SegmentedControl(View):
         self._tracked = False
 
         self.frame = Rect(0.00, 0.00, 120.0, 32.0)
+        self.mouse_scroll_enabled = True
 
     @property
     def action(self) -> _Action | None:
@@ -279,6 +280,24 @@ class SegmentedControl(View):
                 self.update_interval = 1.0 / 60.0
 
         self.set_needs_display()
+
+    def mouse_wheel(self, touch):
+        if not self.enabled:
+            return
+        count = len(self._segments)
+        if count == 0:
+            return
+        # Dominant axis: dy up (+) = prev segment, dx right (+) = next segment
+        if abs(touch.scroll_dy) >= abs(touch.scroll_dx):
+            delta = -1 if touch.scroll_dy > 0 else (1 if touch.scroll_dy < 0 else 0)
+        else:
+            delta = 1 if touch.scroll_dx > 0 else (-1 if touch.scroll_dx < 0 else 0)
+        if delta == 0:
+            return
+        new_index = max(0, min(self._selected_index + delta, count - 1))
+        if new_index != self._selected_index:
+            self.selected_index = new_index
+            self._ensure_action_and_call(self)
 
     def touch_ended(self, touch: Touch):
         if not (self._tracked and self.enabled):

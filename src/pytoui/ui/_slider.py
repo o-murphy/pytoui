@@ -47,7 +47,7 @@ class Slider(View):
         self._tracked = False
         self._last_time = time.time()
 
-        # overrides
+        # Overrides
         self._anim_disabled = _UI_DISABLE_ANIMATIONS
         self._progress_color = self._IOS_BLUE
         self._track_color = self._IOS_TRACK

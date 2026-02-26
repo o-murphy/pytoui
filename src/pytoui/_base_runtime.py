@@ -18,14 +18,13 @@ import time
 from typing import TYPE_CHECKING
 
 from pytoui.ui._draw import convert_point
-from pytoui.ui._types import Touch
+from pytoui.ui._types import _MOUSE_LEFT_ID, Touch
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import _TouchPhase
     from pytoui.ui._view import _View, _ViewInternals
 
 __all__ = (
-    "CHECKER_SIZE",
+    "_CHECKER_SIZE",
     "BaseRuntime",
     "_any_dirty",
     "_get_runtime_for_view",
@@ -34,7 +33,7 @@ __all__ = (
 
 _SCROLL_LINE_PX: float = 20.0  # pixels per scroll "line" (for LineDelta)
 
-CHECKER_SIZE = 8
+_CHECKER_SIZE = 8
 
 # id(root_view) → runtime  (used by View.become_first_responder)
 _root_to_runtime: dict[int, BaseRuntime] = {}
@@ -73,10 +72,12 @@ class BaseRuntime:
         # touch_id → tracked view / last screen position
         # -1 = left mouse (MOUSE_LEFT_ID)
         # -2 = right mouse (MOUSE_RIGHT_ID)
-        # -3 = scroll wheel (SCROLL_TOUCH_ID, synthetic only)
+        # -3 = middle mouse (MOUSE_MIDDLE_ID)
+        # -4 = scroll wheel (SCROLL_TOUCH_ID, synthetic only)
         # >= 0 = real touch fingers
         self._tracked: dict[int, _ViewInternals] = {}
         self._last_pos: dict[int, tuple[float, float]] = {}
+        self._held_mouse_buttons: set[int] = set()
 
         # Per-window first responder
         self._first_responder: _ViewInternals | None = None
@@ -182,55 +183,158 @@ class BaseRuntime:
         )
 
     # ------------------------------------------------------------------
-    # Scroll (mouse wheel / trackpad) — synthetic touch events
+    # Mouse handling (desktop-only — never called on real Pythonista)
     # ------------------------------------------------------------------
 
-    def _make_scroll_touch(
-        self,
-        view,
-        cursor_x: float,
-        cursor_y: float,
-        prev_x: float,
-        prev_y: float,
-        phase: _TouchPhase,
-        dx: float,
-        dy: float,
-    ):
-        from pytoui.ui._types import MouseWheel
+    def _create_mouse_event(self, view, x, y, phase, button_id, prev, buttons):
+        from pytoui.ui._types import MouseEvent
 
-        local = convert_point((cursor_x, cursor_y), to_view=view)
-        prev_local = convert_point((prev_x, prev_y), to_view=view)
-        return MouseWheel(
+        local = convert_point((x, y), to_view=view)
+        prev_local = convert_point(prev, to_view=view)
+        return MouseEvent(
             location=(local.x, local.y),
             phase=phase,
             prev_location=(prev_local.x, prev_local.y),
             timestamp=int(time.time() * 1000),
-            scroll_dx=dx,
-            scroll_dy=dy,
+            touch_id=button_id,
+            buttons=buttons,
+        )
+
+    def _mouse_down(self, x, y, button_id: int):
+        self._held_mouse_buttons.add(button_id)
+        self._last_pos[button_id] = (x, y)
+        target = self.root.pytoui_hit_test(x, y)
+        if not target:
+            return
+        cb = target.pytoui_mouse_down
+        if not cb:
+            return
+        self._tracked[button_id] = target
+        cb(
+            self._create_mouse_event(
+                target,
+                x,
+                y,
+                "began",
+                button_id,
+                (x, y),
+                frozenset(self._held_mouse_buttons),
+            )
+        )
+
+    def _mouse_up(self, x, y, button_id: int):
+        self._held_mouse_buttons.discard(button_id)
+        prev = self._last_pos.pop(button_id, (x, y))
+        target = self._tracked.pop(button_id, None)
+        if not target:
+            return
+        cb = target.pytoui_mouse_up
+        if not cb:
+            return
+        current = self.root.pytoui_hit_test(x, y)
+        phase = "ended" if current is target else "cancelled"
+        cb(
+            self._create_mouse_event(
+                target,
+                x,
+                y,
+                phase,
+                button_id,
+                prev,
+                frozenset(self._held_mouse_buttons),
+            )
+        )
+
+    def _mouse_dragged(self, x, y, button_id: int):
+        prev = self._last_pos.get(button_id, (x, y))
+        self._last_pos[button_id] = (x, y)
+        target = self._tracked.get(button_id)
+        if not target:
+            return
+        cb = target.pytoui_mouse_dragged
+        if not cb:
+            return
+        phase = "moved" if (x, y) != prev else "stationary"
+        cb(
+            self._create_mouse_event(
+                target,
+                x,
+                y,
+                phase,
+                button_id,
+                prev,
+                frozenset(self._held_mouse_buttons),
+            )
+        )
+
+    def _mouse_moved(self, x, y):
+        target = self.root.pytoui_hit_test(x, y)
+        if not target:
+            return
+        cb = target.pytoui_mouse_moved
+        if not cb:
+            return
+        cb(
+            self._create_mouse_event(
+                target,
+                x,
+                y,
+                "moved",
+                _MOUSE_LEFT_ID,
+                (x, y),
+                frozenset(),
+            )
+        )
+
+    def _mouse_cancel(self, button_id: int):
+        self._held_mouse_buttons.discard(button_id)
+        x, y = self._last_pos.pop(button_id, (0.0, 0.0))
+        target = self._tracked.pop(button_id, None)
+        if not target:
+            return
+        cb = target.pytoui_mouse_up
+        if not cb:
+            return
+        cb(
+            self._create_mouse_event(
+                target,
+                x,
+                y,
+                "cancelled",
+                button_id,
+                (x, y),
+                frozenset(self._held_mouse_buttons),
+            )
         )
 
     def _scroll_event(
         self, cursor_x: float, cursor_y: float, dx: float, dy: float
     ) -> None:
-        """Dispatch synthetic MouseWheel touch events at the given cursor position.
+        """Dispatch a MouseWheel event to the view under the cursor.
 
         cursor_x/y — screen coords of the mouse cursor (supplied by the runtime).
         dx/dy      — scroll delta in pixels (positive dy = scroll up).
         """
+        from pytoui.ui._types import MouseWheel
+
         target = self.root.pytoui_hit_test(cursor_x, cursor_y)
         if not target:
             return
-        x1, y1 = cursor_x + dx, cursor_y + dy
-        began = target.pytoui_touch_began
-        moved = target.pytoui_touch_moved
-        ended = target.pytoui_touch_ended
-        mk = self._make_scroll_touch
-        if began:
-            began(mk(target, cursor_x, cursor_y, cursor_x, cursor_y, "began", dx, dy))
-        if moved:
-            moved(mk(target, x1, y1, cursor_x, cursor_y, "moved", dx, dy))
-        if ended:
-            ended(mk(target, x1, y1, x1, y1, "ended", dx, dy))
+        cb = target.pytoui_mouse_wheel
+        if not cb:
+            return
+        local = convert_point((cursor_x, cursor_y), to_view=target)
+        cb(
+            MouseWheel(
+                location=(local.x, local.y),
+                phase="moved",
+                prev_location=(local.x, local.y),
+                timestamp=int(time.time() * 1000),
+                buttons=frozenset(self._held_mouse_buttons),
+                scroll_dx=dx,
+                scroll_dy=dy,
+            )
+        )
 
     # ------------------------------------------------------------------
     # Update loop

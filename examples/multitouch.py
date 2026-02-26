@@ -1,47 +1,62 @@
-"""Demo3: multitouch visualizer.
+"""Input event visualizer.
 
-Shows touch points as colored circles; each finger gets a unique color.
-Panels are named sub-views — the header shows which view each finger is on.
+Demonstrates all desktop input event types:
 
-Run: python -m pytoui.ui.demo3
+  Finger touch / drag    — coloured circles, numeric ID
+  Mouse click (L/R/M)    — coloured circle, letter label, persists while held
+  Mouse drag             — same circle follows the cursor
+  Mouse hover            — thin ring + crosshair, no fill
+  Mouse wheel / trackpad — arrow at cursor showing scroll delta
+
+Run: python examples/multitouch.py
 """
 
 from pytoui import ui
 
 _FINGER_COLORS = [
     (1.0, 0.30, 0.30, 0.90),  # red
-    (0.25, 0.60, 1.00, 0.90),  # blue
     (0.20, 0.85, 0.35, 0.90),  # green
     (1.00, 0.80, 0.10, 0.90),  # yellow
     (0.85, 0.25, 0.95, 0.90),  # magenta
     (0.15, 0.90, 0.90, 0.90),  # cyan
 ]
 
-RADIUS = 26
+_MOUSE_COLORS = {
+    ui._MOUSE_LEFT_ID: (0.30, 0.65, 1.00, 0.90),  # blue
+    ui._MOUSE_RIGHT_ID: (1.00, 0.45, 0.20, 0.90),  # orange
+    ui._MOUSE_MIDDLE_ID: (0.75, 0.30, 0.95, 0.90),  # purple
+}
+_MOUSE_LABELS = {
+    ui._MOUSE_LEFT_ID: "L",
+    ui._MOUSE_RIGHT_ID: "R",
+    ui._MOUSE_MIDDLE_ID: "M",
+}
+
+R = 26  # circle radius for press events
+RH = 16  # ring radius for hover
 
 
-class _TouchInfo:
-    __slots__ = ("color", "touch_id", "view_name", "x", "y")
+class _Info:
+    __slots__ = ("x", "y", "color", "label")
 
-    def __init__(self, x, y, color, view_name, touch_id):
+    def __init__(self, x, y, color, label):
         self.x = x
         self.y = y
         self.color = color
-        self.view_name = view_name
-        self.touch_id = touch_id
+        self.label = label
 
 
 class Panel(ui.View):
-    """Named colored rectangle that forwards all touches to the root."""
+    """Named sub-view — forwards every event to the root."""
 
-    def __init__(self, name: str, color: tuple, root: "TouchDemoView"):
+    def __init__(self, name: str, color: tuple, root: "DemoView"):
         self.name = name
         self.background_color = color
         self._root = root
 
         lbl = ui.Label()
         lbl.text = name
-        lbl.text_color = (1, 1, 1, 0.75)
+        lbl.text_color = (1, 1, 1, 0.65)
         lbl.font = ("<system-bold>", 18.0)
         lbl.alignment = ui.ALIGN_CENTER
         lbl.touch_enabled = False
@@ -51,41 +66,62 @@ class Panel(ui.View):
     def layout(self):
         self._lbl.frame = (0, self.height / 2 - 14, self.width, 28)
 
-    def touch_began(self, touch):
-        self._root.record_touch(touch, "began", self)
+    # ── finger touch ─────────────────────────────────────────────────────────
+    def touch_began(self, t):
+        self._root.on_press(t, "began", self)
 
-    def touch_moved(self, touch):
-        self._root.record_touch(touch, "moved", self)
+    def touch_moved(self, t):
+        self._root.on_press(t, "moved", self)
 
-    def touch_ended(self, touch):
-        self._root.record_touch(touch, "ended", self)
+    def touch_ended(self, t):
+        self._root.on_press(t, "ended", self)
+
+    # ── mouse button ─────────────────────────────────────────────────────────
+    def mouse_down(self, t):
+        self._root.on_press(t, "began", self)
+
+    def mouse_dragged(self, t):
+        self._root.on_press(t, "moved", self)
+
+    def mouse_up(self, t):
+        self._root.on_press(t, "ended", self)
+
+    # ── hover & scroll ───────────────────────────────────────────────────────
+    def mouse_moved(self, t):
+        self._root.on_hover(t, self)
+
+    def mouse_wheel(self, t):
+        self._root.on_scroll(t, self)
 
 
-class TouchDemoView(ui.View):
+class DemoView(ui.View):
     def __init__(self):
-        self.name = "Demo3 — Multitouch"
+        self.name = "Input Event Visualizer"
         self.background_color = (0.07, 0.07, 0.10, 1.0)
 
-        self._touches: dict[int, _TouchInfo] = {}
-        self._color_pool: dict[int, tuple] = {}
+        self._active: dict[int, _Info] = {}  # touch_id → press info
+        self._finger_colors: dict[int, tuple] = {}
         self._color_idx = 0
 
-        # Header bar
+        self._hover: tuple[float, float] | None = None  # cursor pos (hover)
+        self._scroll: tuple[float, float, float, float] | None = None  # x,y,dx,dy
+
+        # Header
         self._header = ui.Label()
         self._header.background_color = (0.0, 0.0, 0.0, 0.55)
         self._header.text_color = (0.9, 0.9, 0.9, 1.0)
         self._header.font = ("<system>", 15.0)
         self._header.alignment = ui.ALIGN_CENTER
-        self._header.text = "Touch the screen"
+        self._header.text = "Touch / click / hover / scroll"
         self._header.touch_enabled = False
         self.add_subview(self._header)
 
-        # 4 colored panels in a 2×2 grid
+        # 4 panels
         specs = [
-            ("Red", (0.55, 0.10, 0.10, 0.85)),
-            ("Green", (0.10, 0.42, 0.15, 0.85)),
-            ("Blue", (0.10, 0.18, 0.58, 0.85)),
-            ("Yellow", (0.48, 0.42, 0.05, 0.85)),
+            ("Red", (0.55, 0.10, 0.10, 0.80)),
+            ("Green", (0.10, 0.42, 0.15, 0.80)),
+            ("Blue", (0.10, 0.18, 0.58, 0.80)),
+            ("Yellow", (0.48, 0.42, 0.05, 0.80)),
         ]
         self._panels = [Panel(n, c, self) for n, c in specs]
         for p in self._panels:
@@ -93,97 +129,167 @@ class TouchDemoView(ui.View):
 
     def layout(self):
         w, h = self.width, self.height
-        header_h = 44
-        self._header.frame = (0, 0, w, header_h)
-
-        # 2×2 grid occupies the full remaining area
-        pw, ph = w / 2, (h - header_h) / 2
+        self._header.frame = (0, 0, w, 44)
+        pw, ph = w / 2, (h - 44) / 2
         for i, p in enumerate(self._panels):
-            col, row = i % 2, i // 2
-            p.frame = (col * pw, header_h + row * ph, pw, ph)
+            p.frame = (i % 2 * pw, 44 + i // 2 * ph, pw, ph)
 
-    # ── Touch tracking ────────────────────────────────────────────────────────
+    # ── press tracking (finger + mouse button) ────────────────────────────────
 
-    def record_touch(self, touch, phase: str, source: ui.View):
+    def on_press(self, touch, phase: str, source: ui.View):
         tid = touch.touch_id
-        # Convert touch location from source-view space to root (self) space
-        root_pt = ui.convert_point(touch.location, from_view=source, to_view=self)
+        pt = ui.convert_point(touch.location, from_view=source, to_view=self)
 
         if phase == "began":
-            if tid not in self._color_pool:
-                self._color_pool[tid] = _FINGER_COLORS[
-                    self._color_idx % len(_FINGER_COLORS)
-                ]
-                self._color_idx += 1
-            self._touches[tid] = _TouchInfo(
-                root_pt.x,
-                root_pt.y,
-                self._color_pool[tid],
-                source.name,
-                tid,
-            )
-        elif phase in ("moved", "stationary"):
-            if tid in self._touches:
-                self._touches[tid].x = root_pt.x
-                self._touches[tid].y = root_pt.y
-                self._touches[tid].view_name = source.name
-        else:  # ended / cancelled
-            self._touches.pop(tid, None)
-            self._color_pool.pop(tid, None)
+            if tid >= 0:
+                # finger
+                if tid not in self._finger_colors:
+                    self._finger_colors[tid] = _FINGER_COLORS[
+                        self._color_idx % len(_FINGER_COLORS)
+                    ]
+                    self._color_idx += 1
+                color = self._finger_colors[tid]
+                label = str(tid % 100)
+            else:
+                # mouse button
+                color = _MOUSE_COLORS.get(tid, (0.7, 0.7, 0.7, 0.9))
+                label = _MOUSE_LABELS.get(tid, "?")
+            self._active[tid] = _Info(pt.x, pt.y, color, label)
 
-        self._update_header()
+        elif phase in ("moved", "stationary"):
+            if tid in self._active:
+                self._active[tid].x = pt.x
+                self._active[tid].y = pt.y
+
+        else:  # ended / cancelled
+            self._active.pop(tid, None)
+            self._finger_colors.pop(tid, None)
+
+        self._refresh_header()
         self.set_needs_display()
 
-    def _update_header(self):
-        n = len(self._touches)
-        if n == 0:
-            self._header.text = "Touch the screen — 0 fingers"
-        else:
-            views = ", ".join(sorted({t.view_name for t in self._touches.values()}))
-            label = "finger" if n == 1 else "fingers"
-            self._header.text = f"{n} {label}  |  {views}"
+    # ── hover ─────────────────────────────────────────────────────────────────
 
-    # ── Self-touch (background area not covered by panels) ───────────────────
+    def on_hover(self, touch, source: ui.View):
+        pt = ui.convert_point(touch.location, from_view=source, to_view=self)
+        self._hover = (pt.x, pt.y)
+        self.set_needs_display()
 
-    def touch_began(self, touch):
-        self.record_touch(touch, "began", self)
+    # ── scroll ────────────────────────────────────────────────────────────────
 
-    def touch_moved(self, touch):
-        self.record_touch(touch, "moved", self)
+    def on_scroll(self, touch: ui.MouseWheel, source: ui.View):
+        pt = ui.convert_point(touch.location, from_view=source, to_view=self)
+        self._scroll = (pt.x, pt.y, touch.scroll_dx, touch.scroll_dy)
+        self._refresh_header()
+        self.set_needs_display()
 
-    def touch_ended(self, touch):
-        self.record_touch(touch, "ended", self)
+    # ── self-events (background area between panels) ──────────────────────────
 
-    # ── Drawing ───────────────────────────────────────────────────────────────
+    def touch_began(self, t):
+        self.on_press(t, "began", self)
+
+    def touch_moved(self, t):
+        self.on_press(t, "moved", self)
+
+    def touch_ended(self, t):
+        self.on_press(t, "ended", self)
+
+    def mouse_down(self, t):
+        self.on_press(t, "began", self)
+
+    def mouse_dragged(self, t):
+        self.on_press(t, "moved", self)
+
+    def mouse_up(self, t):
+        self.on_press(t, "ended", self)
+
+    def mouse_moved(self, t):
+        self.on_hover(t, self)
+
+    def mouse_wheel(self, t):
+        self.on_scroll(t, self)
+
+    # ── header ────────────────────────────────────────────────────────────────
+
+    def _refresh_header(self):
+        fingers = sum(1 for tid in self._active if tid >= 0)
+        btns = [_MOUSE_LABELS.get(tid, "?") for tid in self._active if tid < 0]
+        parts = []
+        if fingers:
+            parts.append(f"{fingers} finger{'s' if fingers != 1 else ''}")
+        if btns:
+            parts.append("btn " + "+".join(btns))
+        if self._scroll:
+            dx, dy = self._scroll[2], self._scroll[3]
+            parts.append(f"scroll dx={dx:+.0f} dy={dy:+.0f}")
+        self._header.text = (
+            "  |  ".join(parts) if parts else "Touch / click / hover / scroll"
+        )
+
+    # ── drawing ───────────────────────────────────────────────────────────────
 
     def draw(self):
-        for info in self._touches.values():
+        # Active presses (finger + mouse button)
+        for info in self._active.values():
             cx, cy = info.x, info.y
-            r = RADIUS
 
-            # Filled circle
             ui.set_color(info.color)
-            ui.Path.oval(cx - r, cy - r, r * 2, r * 2).fill()
+            ui.Path.oval(cx - R, cy - R, R * 2, R * 2).fill()
 
-            # White ring
-            ring = ui.Path.oval(cx - r, cy - r, r * 2, r * 2)
+            ring = ui.Path.oval(cx - R, cy - R, R * 2, R * 2)
             ring.line_width = 2.5
             ui.set_color((1, 1, 1, 0.85))
             ring.stroke()
 
-            # Label: "M" for mouse, numeric id for real touch
-            tag = "M" if info.touch_id < 0 else str(info.touch_id % 100)
             ui.draw_string(
-                tag,
-                rect=(cx - r, cy - 10, r * 2, 20),
+                info.label,
+                rect=(cx - R, cy - 10, R * 2, 20),
                 font=("<system-bold>", 15.0),
                 color=(1, 1, 1, 1),
                 alignment=ui.ALIGN_CENTER,
             )
 
+        # Hover cursor
+        if self._hover:
+            cx, cy = self._hover
+
+            ring = ui.Path.oval(cx - RH, cy - RH, RH * 2, RH * 2)
+            ring.line_width = 1.5
+            ui.set_color((1, 1, 1, 0.55))
+            ring.stroke()
+
+            # crosshair
+            arm = RH + 4
+            for x0, y0, x1, y1 in [
+                (cx - arm, cy, cx + arm, cy),
+                (cx, cy - arm, cx, cy + arm),
+            ]:
+                p = ui.Path()
+                p.move_to(x0, y0)
+                p.line_to(x1, y1)
+                p.line_width = 1.0
+                p.stroke()
+
+        # Last scroll indicator
+        if self._scroll:
+            sx, sy, dx, dy = self._scroll
+            ui.set_color((1.0, 0.85, 0.20, 0.75))
+            sr = 10
+            ui.Path.oval(sx - sr, sy - sr, sr * 2, sr * 2).fill()
+
+            # Arrow showing direction
+            scale = 0.4
+            ex, ey = sx + dx * scale, sy - dy * scale  # dy flipped: up = positive
+            p = ui.Path()
+            p.move_to(sx, sy)
+            p.line_to(ex, ey)
+            p.line_width = 2.0
+            ui.set_color((1, 1, 1, 0.80))
+            p.stroke()
+
 
 def main():
-    root = TouchDemoView()
+    root = DemoView()
     root.frame = (0, 0, 700, 520)
     root.present()
 

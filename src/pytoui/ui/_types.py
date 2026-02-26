@@ -433,16 +433,16 @@ class Touch:
         self.touch_id = touch_id
 
 
-MOUSE_LEFT_ID: int = -1
+_MOUSE_LEFT_ID: int = -1
 """touch_id for the left mouse button (mouse pointer)."""
 
-MOUSE_RIGHT_ID: int = -2
+_MOUSE_RIGHT_ID: int = -2
 """touch_id for right mouse button events.
 
 Never appears on real Pythonista.  Check with ``touch.touch_id == MOUSE_RIGHT_ID``.
 """
 
-MOUSE_MIDDLE_ID: int = -3
+_MOUSE_MIDDLE_ID: int = -3
 """touch_id for middle (center) mouse button events.
 
 Never appears on real Pythonista.  Check with ``touch.touch_id == MOUSE_MIDDLE_ID``.

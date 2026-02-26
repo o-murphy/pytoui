@@ -38,6 +38,8 @@ from pytoui.ui._types import Rect, Size, _ColorLike, _PresentOrientation
 if TYPE_CHECKING:
     from pytoui.ui._types import (
         _RGBA,
+        MouseEvent,
+        MouseWheel,
         Point,
         Touch,
         _PointLike,
@@ -415,11 +417,33 @@ class _ViewInternals:
         return getattr(self._ref, "touch_ended", None)
 
     @property
-    def pytoui_mouse_down(self) -> Callable[[Touch], None] | None:
+    def pytoui_mouse_down(self) -> Callable[[MouseEvent], None] | None:
         cb = getattr(self._ref, "mouse_down", None)
         if cb is None:
-            return self.pytoui_touch_began(Touch(...))
+            return getattr(self._ref, "touch_began", None)
         return cb
+
+    @property
+    def pytoui_mouse_up(self) -> Callable[[MouseEvent], None] | None:
+        cb = getattr(self._ref, "mouse_up", None)
+        if cb is None:
+            return getattr(self._ref, "touch_ended", None)
+        return cb
+
+    @property
+    def pytoui_mouse_dragged(self) -> Callable[[MouseEvent], None] | None:
+        cb = getattr(self._ref, "mouse_dragged", None)
+        if cb is None:
+            return getattr(self._ref, "touch_moved", None)
+        return cb
+
+    @property
+    def pytoui_mouse_moved(self) -> Callable[[MouseEvent], None] | None:
+        return getattr(self._ref, "mouse_moved", None)
+
+    @property
+    def pytoui_mouse_wheel(self) -> Callable[[MouseWheel], None] | None:
+        return getattr(self._ref, "mouse_wheel", None)
 
     def pytoui_did_become_first_responder(self): ...
     def pytoui_did_resign_first_responder(self): ...

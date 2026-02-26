@@ -1,12 +1,11 @@
 """Mouse wheel / trackpad scroll demo.
 
-Demonstrates MouseWheel touch events: scroll the mouse wheel or swipe on
-a trackpad while hovering over the view.
+Demonstrates mouse_wheel events: scroll the mouse wheel or swipe on a
+trackpad while hovering over the view.
 
 - The log panel (bottom) shows the last scroll events.
-- The colored indicator strip (top) shifts horizontally/vertically to
-  visualise accumulated scroll.
-- Regular mouse clicks do NOT produce MouseWheel events.
+- The colored indicator shifts horizontally/vertically with accumulated scroll.
+- Regular mouse clicks do NOT produce mouse_wheel events.
 
 Run:
     python examples/mouse_wheel.py
@@ -53,38 +52,36 @@ class ScrollView(ui.View):
         log_h = _MAX_LOG * 18 + 12
         self._log_label.frame = (8, h - log_h - 8, w - 16, log_h)
 
-    # ── Touch handlers ─────────────────────────────────────────────────────────
+    # ── Mouse handlers ─────────────────────────────────────────────────────────
 
-    def touch_began(self, touch):
-        if isinstance(touch, ui.MouseWheel):
-            self._handle_scroll(touch, "began")
+    def mouse_wheel(self, touch: ui.MouseWheel):
+        self._offset_x += touch.scroll_dx
+        self._offset_y += touch.scroll_dy
 
-    def touch_moved(self, touch):
-        if isinstance(touch, ui.MouseWheel):
-            self._handle_scroll(touch, "moved")
-
-    def touch_ended(self, touch):
-        if isinstance(touch, ui.MouseWheel):
-            self._handle_scroll(touch, "ended")
-
-    def _handle_scroll(self, touch: ui.MouseWheel, phase: str):
-        if phase == "moved":
-            self._offset_x += touch.scroll_dx
-            self._offset_y += touch.scroll_dy
-
+        held = (
+            "+"
+            + "+".join(
+                {
+                    ui._MOUSE_LEFT_ID: "L",
+                    ui._MOUSE_RIGHT_ID: "R",
+                    ui._MOUSE_MIDDLE_ID: "M",
+                }[b]
+                for b in sorted(touch.buttons)
+                if b in {ui._MOUSE_LEFT_ID, ui._MOUSE_RIGHT_ID, ui._MOUSE_MIDDLE_ID}
+            )
+            if touch.buttons
+            else ""
+        )
         entry = (
-            f"{phase:6s}  dx={touch.scroll_dx:+7.1f}  dy={touch.scroll_dy:+7.1f}"
-            f"  @({touch.location.x:.0f},{touch.location.y:.0f})"
+            f"dx={touch.scroll_dx:+7.1f}  dy={touch.scroll_dy:+7.1f}"
+            f"  @({touch.location.x:.0f},{touch.location.y:.0f}){held}"
         )
         self._log.append(entry)
         if len(self._log) > _MAX_LOG:
             self._log.pop(0)
 
         self._log_label.text = "\n".join(self._log)
-        self._header.text = (
-            f"offset  x={self._offset_x:+.0f}  y={self._offset_y:+.0f}  "
-            f"(id={touch.touch_id})"
-        )
+        self._header.text = f"offset  x={self._offset_x:+.0f}  y={self._offset_y:+.0f}"
         self.set_needs_display()
 
     # ── Drawing ────────────────────────────────────────────────────────────────
@@ -143,7 +140,7 @@ class ScrollView(ui.View):
 
 def main():
     v = ScrollView()
-    v.frame = (0, 0, 640, 520)
+    v.frame = (0, 0, 400, 600)
     v.present()
 
 

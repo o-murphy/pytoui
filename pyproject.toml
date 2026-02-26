@@ -21,6 +21,9 @@ version-file = "src/pytoui/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytoui"]
+include = [
+    "assets/**"
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

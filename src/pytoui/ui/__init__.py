@@ -146,9 +146,9 @@ from pytoui.ui._segmented_control import SegmentedControl
 from pytoui.ui._slider import Slider
 from pytoui.ui._switch import Switch
 from pytoui.ui._types import (
-    MOUSE_LEFT_ID,
-    MOUSE_MIDDLE_ID,
-    MOUSE_RIGHT_ID,
+    _MOUSE_LEFT_ID,
+    _MOUSE_MIDDLE_ID,
+    _MOUSE_RIGHT_ID,
     SCROLL_TOUCH_ID,
     MouseEvent,
     MouseWheel,
@@ -172,9 +172,9 @@ __all__ = (
     "Touch",
     "MouseEvent",
     "MouseWheel",
-    "MOUSE_LEFT_ID",
-    "MOUSE_MIDDLE_ID",
-    "MOUSE_RIGHT_ID",
+    "_MOUSE_LEFT_ID",
+    "_MOUSE_MIDDLE_ID",
+    "_MOUSE_RIGHT_ID",
     "SCROLL_TOUCH_ID",
     "Size",
     "autoreleasepool",

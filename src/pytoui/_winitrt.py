@@ -7,14 +7,14 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pytoui._base_runtime import CHECKER_SIZE, BaseRuntime
+from pytoui._base_runtime import _CHECKER_SIZE, BaseRuntime
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
 )
 from pytoui.ui._draw import _tick, _tick_delays
-from pytoui.ui._types import Rect
+from pytoui.ui._types import _MOUSE_LEFT_ID, _MOUSE_MIDDLE_ID, _MOUSE_RIGHT_ID, Rect
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -141,7 +141,7 @@ class WinitRuntime(BaseRuntime):
         if not self.root.pytoui_presented:
             return 1
 
-        fb.draw_checkerboard(CHECKER_SIZE)
+        fb.draw_checkerboard(_CHECKER_SIZE)
         self.render_fn(fb)
         return 0
 
@@ -149,19 +149,39 @@ class WinitRuntime(BaseRuntime):
         """Internal callback for mouse/touch events from the native window.
 
         etype: 0=Down, 1=Up, 2=Move, 3=Cancel/Leave, 4=Scroll
-        touch_id: -1 = left mouse, -2 = right mouse, >= 0 = real touch fingers
-        For etype=4: x=dx pixels, y=dy pixels (touch_id unused)
+        touch_id: -1=left mouse, -2=right mouse, -3=middle mouse,
+                  >= 0=real touch fingers
+        For etype=2 (CursorMoved): touch_id is always -1 regardless of buttons.
+        For etype=4: x=dx pixels, y=dy pixels (touch_id unused).
         """
         match etype:
             case 0:
-                self._touch_down(x, y, touch_id)
+                if touch_id < 0:
+                    self._mouse_down(x, y, touch_id)
+                else:
+                    self._touch_down(x, y, touch_id)
             case 1:
-                self._touch_up(x, y, touch_id)
+                if touch_id < 0:
+                    self._mouse_up(x, y, touch_id)
+                else:
+                    self._touch_up(x, y, touch_id)
             case 2:
                 self._cursor_pos = (x, y)
-                self._touch_move(x, y, touch_id)
+                if touch_id < 0:
+                    any_drag = False
+                    for bid in (_MOUSE_LEFT_ID, _MOUSE_RIGHT_ID, _MOUSE_MIDDLE_ID):
+                        if bid in self._tracked:
+                            self._mouse_dragged(x, y, bid)
+                            any_drag = True
+                    if not any_drag:
+                        self._mouse_moved(x, y)
+                else:
+                    self._touch_move(x, y, touch_id)
             case 3:
-                self._touch_cancel(touch_id)
+                if touch_id < 0:
+                    self._mouse_cancel(touch_id)
+                else:
+                    self._touch_cancel(touch_id)
             case 4:
                 cx, cy = self._cursor_pos
                 self._scroll_event(cx, cy, x, y)

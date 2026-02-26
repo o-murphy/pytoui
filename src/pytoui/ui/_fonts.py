@@ -11,10 +11,10 @@ def get_fonts() -> dict[str, Path]:
 
         root = Path(pytoui.__file__).parent
     except ImportError:
-        root = Path(__file__).parent
+        root = Path(__file__).parent.parent
 
     candidates = [
-        root / "ui" / "assets" / "fonts",
+        root / "assets" / "fonts",
         root / ".." / ".." / "assets" / "fonts",
     ]
     mapping: dict[str, Path] = {}

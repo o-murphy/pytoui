@@ -17,7 +17,7 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-from pytoui._base_runtime import _SCROLL_LINE_PX, CHECKER_SIZE, BaseRuntime, _any_dirty
+from pytoui._base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, _any_dirty
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
@@ -26,7 +26,7 @@ from pytoui._platform import (
     _UI_RT_SDL_MAX_DELAY,
 )
 from pytoui.ui._draw import _tick, _tick_delays
-from pytoui.ui._types import Rect
+from pytoui.ui._types import _MOUSE_LEFT_ID, _MOUSE_MIDDLE_ID, _MOUSE_RIGHT_ID, Rect
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -259,31 +259,38 @@ class SDLRuntime(BaseRuntime):
                     self._current_w, self._current_h = msg[1], msg[2]
                 case "windowevent":
                     if msg[1] == sdl2.SDL_WINDOWEVENT_LEAVE:
-                        self._touch_cancel(-1)
+                        for bid in (_MOUSE_LEFT_ID, _MOUSE_RIGHT_ID, _MOUSE_MIDDLE_ID):
+                            self._mouse_cancel(bid)
                 case "mousedown":
                     match msg[1]:
                         case sdl2.SDL_BUTTON_LEFT:
-                            self._touch_down(msg[2], msg[3], -1)
+                            self._mouse_down(msg[2], msg[3], _MOUSE_LEFT_ID)
                         case sdl2.SDL_BUTTON_RIGHT:
-                            self._touch_down(msg[2], msg[3], -2)
+                            self._mouse_down(msg[2], msg[3], _MOUSE_RIGHT_ID)
                         case sdl2.SDL_BUTTON_MIDDLE:
-                            self._touch_down(msg[2], msg[3], -3)
+                            self._mouse_down(msg[2], msg[3], _MOUSE_MIDDLE_ID)
                 case "mouseup":
                     match msg[1]:
                         case sdl2.SDL_BUTTON_LEFT:
-                            self._touch_up(msg[2], msg[3], -1)
+                            self._mouse_up(msg[2], msg[3], _MOUSE_LEFT_ID)
                         case sdl2.SDL_BUTTON_RIGHT:
-                            self._touch_up(msg[2], msg[3], -2)
+                            self._mouse_up(msg[2], msg[3], _MOUSE_RIGHT_ID)
                         case sdl2.SDL_BUTTON_MIDDLE:
-                            self._touch_up(msg[2], msg[3], -3)
+                            self._mouse_up(msg[2], msg[3], _MOUSE_MIDDLE_ID)
                 case "mousemove":
                     self._cursor_pos = (float(msg[2]), float(msg[3]))
+                    any_drag = False
                     if msg[1] & sdl2.SDL_BUTTON_LMASK:
-                        self._touch_move(msg[2], msg[3], -1)
+                        self._mouse_dragged(msg[2], msg[3], _MOUSE_LEFT_ID)
+                        any_drag = True
                     if msg[1] & sdl2.SDL_BUTTON_RMASK:
-                        self._touch_move(msg[2], msg[3], -2)
+                        self._mouse_dragged(msg[2], msg[3], _MOUSE_RIGHT_ID)
+                        any_drag = True
                     if msg[1] & sdl2.SDL_BUTTON_MMASK:
-                        self._touch_move(msg[2], msg[3], -3)
+                        self._mouse_dragged(msg[2], msg[3], _MOUSE_MIDDLE_ID)
+                        any_drag = True
+                    if not any_drag:
+                        self._mouse_moved(msg[2], msg[3])
                 case "mousewheel":
                     dx, dy, is_precise = msg[1], msg[2], msg[3]
                     if not is_precise:
@@ -352,7 +359,7 @@ class SDLRuntime(BaseRuntime):
                 needs_redraw = _any_dirty(self.root)
 
                 if needs_redraw:
-                    fb.draw_checkerboard(CHECKER_SIZE)
+                    fb.draw_checkerboard(_CHECKER_SIZE)
                     self.render_fn(fb)
 
                     pixels_ptr = ctypes.c_void_p()

@@ -8,13 +8,12 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-  * View background is not transparent by default
   * Fonts upgrade
     * built in lightweight font
     * lookup fonts in env path by name, preload on first call
     * fallback to default font if font not found
     * map <font> tags to one real font, keep in account that iOS uses other fonts
-  * add mouse wheel events to runtimes and simulate scrolls (touches) maybe via scroll view
+  * add mouse wheel events to runtimes and simulate scrolls (touches)
   * add keyboard support
 
 NEXT:

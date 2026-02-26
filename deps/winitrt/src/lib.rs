@@ -242,6 +242,21 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                         }
                     }
 
+                    // Mouse wheel / trackpad scroll
+                    // etype=4: x=dx pixels, y=dy pixels, touch_id unused (0)
+                    WindowEvent::MouseWheel { delta, .. } => {
+                        if let Some(st) = windows.get(&window_id) {
+                            const LINE_PX: f64 = 20.0;
+                            let (dx, dy) = match delta {
+                                MouseScrollDelta::LineDelta(x, y) => {
+                                    (x as f64 * LINE_PX, y as f64 * LINE_PX)
+                                }
+                                MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y),
+                            };
+                            (st.event_cb)(4, dx, dy, 0);
+                        }
+                    }
+
                     // Touch (multitouch touchscreen / touchpad)
                     WindowEvent::Touch(touch) => {
                         if let Some(st) = windows.get(&window_id) {

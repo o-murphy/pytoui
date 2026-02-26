@@ -11,6 +11,7 @@ __all__ = (
     "Rect",
     "Size",
     "Touch",
+    "MouseWheel",
     "Vector2",
     "_Action",
     "_ColorLike",
@@ -429,6 +430,44 @@ class Touch:
         self.prev_location = Point(*prev_location)
         self.timestamp = timestamp
         self.touch_id = touch_id
+
+
+SCROLL_TOUCH_ID: int = -2
+"""Reserved touch_id for synthetic mouse-wheel / trackpad scroll events.
+
+Never appears on real Pythonista (iOS has no mouse wheel), so checking
+``isinstance(touch, MouseWheel)`` or ``touch.touch_id == SCROLL_TOUCH_ID``
+is safe for cross-platform code.
+"""
+
+
+class MouseWheel(Touch):
+    """Synthetic Touch subclass delivered for mouse-wheel / trackpad scroll.
+
+    Passed to ``touch_began``, ``touch_moved``, ``touch_ended`` on the view
+    under the cursor.  Never appears on real Pythonista.
+
+    Attributes:
+        scroll_dx: horizontal scroll delta in pixels (positive = scroll right)
+        scroll_dy: vertical scroll delta in pixels (positive = scroll up)
+        location:  cursor position at gesture start (began) / end (moved/ended)
+        prev_location: cursor position before the move step
+    """
+
+    __slots__ = (*Touch.__slots__, "scroll_dx", "scroll_dy")
+
+    def __init__(
+        self,
+        location: _PointLike,
+        phase: _TouchPhase,
+        prev_location: _PointLike,
+        timestamp: int,
+        scroll_dx: float,
+        scroll_dy: float,
+    ):
+        super().__init__(location, phase, prev_location, timestamp, SCROLL_TOUCH_ID)
+        self.scroll_dx = scroll_dx
+        self.scroll_dy = scroll_dy
 
 
 class autoreleasepool:

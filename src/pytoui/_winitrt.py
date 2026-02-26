@@ -46,6 +46,7 @@ class WinitRuntime(BaseRuntime):
 
         # Keep FrameBuffer alive for the duration of the runtime
         self._fb: FrameBuffer | None = None
+        self._cursor_pos: tuple[float, float] = (0.0, 0.0)
 
         self._lib = ctypes.CDLL(_LIB_PATH)
 
@@ -147,17 +148,22 @@ class WinitRuntime(BaseRuntime):
     def _internal_event(self, etype, x, y, touch_id: int):
         """Internal callback for mouse/touch events from the native window.
 
-        etype: 0=Down, 1=Up, 2=Move, 3=Cancel/Leave
+        etype: 0=Down, 1=Up, 2=Move, 3=Cancel/Leave, 4=Scroll
         touch_id: -1 for mouse pointer, >= 0 for real touch fingers
+        For etype=4: x=dx pixels, y=dy pixels (touch_id unused)
         """
         if etype == 0:
             self._touch_down(x, y, touch_id)
         elif etype == 1:
             self._touch_up(x, y, touch_id)
         elif etype == 2:
+            self._cursor_pos = (x, y)
             self._touch_move(x, y, touch_id)
         elif etype == 3:
             self._touch_cancel(touch_id)
+        elif etype == 4:
+            cx, cy = self._cursor_pos
+            self._scroll_event(cx, cy, x, y)
 
     def run(self):
         """Start the runtime loop and initialize the native window."""

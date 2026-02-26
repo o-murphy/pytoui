@@ -146,6 +146,8 @@ from pytoui.ui._segmented_control import SegmentedControl
 from pytoui.ui._slider import Slider
 from pytoui.ui._switch import Switch
 from pytoui.ui._types import (
+    SCROLL_TOUCH_ID,
+    MouseWheel,
     Point,
     Rect,
     Size,
@@ -164,6 +166,8 @@ __all__ = (
     "Rect",
     "Point",
     "Touch",
+    "MouseWheel",
+    "SCROLL_TOUCH_ID",
     "Size",
     "autoreleasepool",
     # View

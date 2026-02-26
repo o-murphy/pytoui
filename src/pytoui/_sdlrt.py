@@ -17,7 +17,7 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-from pytoui._base_runtime import CHECKER_SIZE, BaseRuntime, _any_dirty
+from pytoui._base_runtime import _SCROLL_LINE_PX, CHECKER_SIZE, BaseRuntime, _any_dirty
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
@@ -136,6 +136,23 @@ def _route_event(sdl2, event) -> None:
                 float(event.tfinger.y),
             ),
         )
+    elif t == sdl2.SDL_MOUSEWHEEL:
+        wid = event.wheel.windowID
+        # SDL 2.0.18+ exposes preciseX/Y (float, already in "lines" with sub-line
+        # precision — suitable for smooth trackpad scroll).  Older SDL has only
+        # the integer x/y fields.  We pass an is_precise flag so the dispatch
+        # side knows whether to multiply by _SCROLL_LINE_PX.
+        try:
+            dx = float(event.wheel.preciseX)
+            dy = float(event.wheel.preciseY)
+            is_precise = True
+        except AttributeError:
+            dx = float(event.wheel.x)
+            dy = float(event.wheel.y)
+            is_precise = False
+        if event.wheel.direction == sdl2.SDL_MOUSEWHEEL_FLIPPED:
+            dx, dy = -dx, -dy
+        _send(wid, ("mousewheel", dx, dy, is_precise))
     elif t == sdl2.SDL_KEYDOWN:
         wid = event.key.windowID
         _send(wid, ("keydown", event.key.keysym.sym))
@@ -172,6 +189,7 @@ class SDLRuntime(BaseRuntime):
         self._current_h = height
 
         self._event_queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._cursor_pos: tuple[float, float] = (0.0, 0.0)
 
         with SDLRuntime._sdl_lock:
             if SDLRuntime._sdl_ref_count == 0:
@@ -249,8 +267,16 @@ class SDLRuntime(BaseRuntime):
                 if msg[1] == sdl2.SDL_BUTTON_LEFT:
                     self._touch_up(msg[2], msg[3], -1)
             elif kind == "mousemove":
+                self._cursor_pos = (float(msg[2]), float(msg[3]))
                 if msg[1] & sdl2.SDL_BUTTON_LMASK:
                     self._touch_move(msg[2], msg[3], -1)
+            elif kind == "mousewheel":
+                dx, dy, is_precise = msg[1], msg[2], msg[3]
+                if not is_precise:
+                    dx *= _SCROLL_LINE_PX
+                    dy *= _SCROLL_LINE_PX
+                cx, cy = self._cursor_pos
+                self._scroll_event(cx, cy, dx, dy)
             elif kind == "fingerdown":
                 fid, nx, ny = msg[1], msg[2], msg[3]
                 self._touch_down(nx * self._current_w, ny * self._current_h, fid)

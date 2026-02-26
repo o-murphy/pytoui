@@ -13,8 +13,8 @@ HOT:
     * lookup fonts in env path by name, preload on first call
     * fallback to default font if font not found
     * map <font> tags to one real font, keep in account that iOS uses other fonts
-  * add mouse wheel events to runtimes and simulate scrolls (touches)
   * add keyboard support
+  * class RightMouseButton(Touch) right mouse button events
 
 NEXT:
 * dialogs.alert() and other

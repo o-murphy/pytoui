@@ -228,11 +228,15 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                     }
 
                     WindowEvent::MouseInput { state: btn, button, .. } => {
-                        if button == MouseButton::Left {
-                            if let Some(st) = windows.get(&window_id) {
-                                let t = if btn == ElementState::Pressed { 0 } else { 1 };
-                                (st.event_cb)(t, st.cursor_pos.0, st.cursor_pos.1, -1);
-                            }
+                        let tid: i64 = match button {
+                            MouseButton::Left   => -1,
+                            MouseButton::Right  => -2,
+                            MouseButton::Middle => -3,
+                            _ => return,
+                        };
+                        if let Some(st) = windows.get(&window_id) {
+                            let t = if btn == ElementState::Pressed { 0 } else { 1 };
+                            (st.event_cb)(t, st.cursor_pos.0, st.cursor_pos.1, tid);
                         }
                     }
 

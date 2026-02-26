@@ -71,7 +71,10 @@ class BaseRuntime:
         self.render_fn = render_fn
 
         # touch_id → tracked view / last screen position
-        # touch_id == -1 is the mouse pointer; >= 0 are real touch fingers
+        # -1 = left mouse (MOUSE_LEFT_ID)
+        # -2 = right mouse (MOUSE_RIGHT_ID)
+        # -3 = scroll wheel (SCROLL_TOUCH_ID, synthetic only)
+        # >= 0 = real touch fingers
         self._tracked: dict[int, _ViewInternals] = {}
         self._last_pos: dict[int, tuple[float, float]] = {}
 

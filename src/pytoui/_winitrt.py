@@ -149,21 +149,22 @@ class WinitRuntime(BaseRuntime):
         """Internal callback for mouse/touch events from the native window.
 
         etype: 0=Down, 1=Up, 2=Move, 3=Cancel/Leave, 4=Scroll
-        touch_id: -1 for mouse pointer, >= 0 for real touch fingers
+        touch_id: -1 = left mouse, -2 = right mouse, >= 0 = real touch fingers
         For etype=4: x=dx pixels, y=dy pixels (touch_id unused)
         """
-        if etype == 0:
-            self._touch_down(x, y, touch_id)
-        elif etype == 1:
-            self._touch_up(x, y, touch_id)
-        elif etype == 2:
-            self._cursor_pos = (x, y)
-            self._touch_move(x, y, touch_id)
-        elif etype == 3:
-            self._touch_cancel(touch_id)
-        elif etype == 4:
-            cx, cy = self._cursor_pos
-            self._scroll_event(cx, cy, x, y)
+        match etype:
+            case 0:
+                self._touch_down(x, y, touch_id)
+            case 1:
+                self._touch_up(x, y, touch_id)
+            case 2:
+                self._cursor_pos = (x, y)
+                self._touch_move(x, y, touch_id)
+            case 3:
+                self._touch_cancel(touch_id)
+            case 4:
+                cx, cy = self._cursor_pos
+                self._scroll_event(cx, cy, x, y)
 
     def run(self):
         """Start the runtime loop and initialize the native window."""

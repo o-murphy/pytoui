@@ -249,43 +249,57 @@ class SDLRuntime(BaseRuntime):
                 msg = self._event_queue.get_nowait()
             except queue.Empty:
                 break
-            kind = msg[0]
-            if kind == "quit" or kind == "window_close":
-                self.running = False
-            elif kind == "keydown":
-                if msg[1] == sdl2.SDLK_ESCAPE:
+            match msg[0]:
+                case "quit" | "window_close":
                     self.running = False
-            elif kind == "window_resize":
-                self._current_w, self._current_h = msg[1], msg[2]
-            elif kind == "windowevent":
-                if msg[1] == sdl2.SDL_WINDOWEVENT_LEAVE:
-                    self._touch_cancel(-1)
-            elif kind == "mousedown":
-                if msg[1] == sdl2.SDL_BUTTON_LEFT:
-                    self._touch_down(msg[2], msg[3], -1)
-            elif kind == "mouseup":
-                if msg[1] == sdl2.SDL_BUTTON_LEFT:
-                    self._touch_up(msg[2], msg[3], -1)
-            elif kind == "mousemove":
-                self._cursor_pos = (float(msg[2]), float(msg[3]))
-                if msg[1] & sdl2.SDL_BUTTON_LMASK:
-                    self._touch_move(msg[2], msg[3], -1)
-            elif kind == "mousewheel":
-                dx, dy, is_precise = msg[1], msg[2], msg[3]
-                if not is_precise:
-                    dx *= _SCROLL_LINE_PX
-                    dy *= _SCROLL_LINE_PX
-                cx, cy = self._cursor_pos
-                self._scroll_event(cx, cy, dx, dy)
-            elif kind == "fingerdown":
-                fid, nx, ny = msg[1], msg[2], msg[3]
-                self._touch_down(nx * self._current_w, ny * self._current_h, fid)
-            elif kind == "fingerup":
-                fid, nx, ny = msg[1], msg[2], msg[3]
-                self._touch_up(nx * self._current_w, ny * self._current_h, fid)
-            elif kind == "fingermotion":
-                fid, nx, ny = msg[1], msg[2], msg[3]
-                self._touch_move(nx * self._current_w, ny * self._current_h, fid)
+                case "keydown":
+                    if msg[1] == sdl2.SDLK_ESCAPE:
+                        self.running = False
+                case "window_resize":
+                    self._current_w, self._current_h = msg[1], msg[2]
+                case "windowevent":
+                    if msg[1] == sdl2.SDL_WINDOWEVENT_LEAVE:
+                        self._touch_cancel(-1)
+                case "mousedown":
+                    match msg[1]:
+                        case sdl2.SDL_BUTTON_LEFT:
+                            self._touch_down(msg[2], msg[3], -1)
+                        case sdl2.SDL_BUTTON_RIGHT:
+                            self._touch_down(msg[2], msg[3], -2)
+                        case sdl2.SDL_BUTTON_MIDDLE:
+                            self._touch_down(msg[2], msg[3], -3)
+                case "mouseup":
+                    match msg[1]:
+                        case sdl2.SDL_BUTTON_LEFT:
+                            self._touch_up(msg[2], msg[3], -1)
+                        case sdl2.SDL_BUTTON_RIGHT:
+                            self._touch_up(msg[2], msg[3], -2)
+                        case sdl2.SDL_BUTTON_MIDDLE:
+                            self._touch_up(msg[2], msg[3], -3)
+                case "mousemove":
+                    self._cursor_pos = (float(msg[2]), float(msg[3]))
+                    if msg[1] & sdl2.SDL_BUTTON_LMASK:
+                        self._touch_move(msg[2], msg[3], -1)
+                    if msg[1] & sdl2.SDL_BUTTON_RMASK:
+                        self._touch_move(msg[2], msg[3], -2)
+                    if msg[1] & sdl2.SDL_BUTTON_MMASK:
+                        self._touch_move(msg[2], msg[3], -3)
+                case "mousewheel":
+                    dx, dy, is_precise = msg[1], msg[2], msg[3]
+                    if not is_precise:
+                        dx *= _SCROLL_LINE_PX
+                        dy *= _SCROLL_LINE_PX
+                    cx, cy = self._cursor_pos
+                    self._scroll_event(cx, cy, dx, dy)
+                case "fingerdown":
+                    fid, nx, ny = msg[1], msg[2], msg[3]
+                    self._touch_down(nx * self._current_w, ny * self._current_h, fid)
+                case "fingerup":
+                    fid, nx, ny = msg[1], msg[2], msg[3]
+                    self._touch_up(nx * self._current_w, ny * self._current_h, fid)
+                case "fingermotion":
+                    fid, nx, ny = msg[1], msg[2], msg[3]
+                    self._touch_move(nx * self._current_w, ny * self._current_h, fid)
 
     # ------------------------------------------------------------------
     # Main loop

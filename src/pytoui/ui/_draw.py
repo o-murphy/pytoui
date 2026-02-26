@@ -1605,7 +1605,10 @@ def _tick(now: float | None = None) -> None:
         return
     if now is None:
         now = time.time()
-    ctx.active = [a for a in ctx.active if not a.tick(now)]
+    snapshot = ctx.active
+    ctx.active = []  # completions can append safely
+    remaining = [a for a in snapshot if not a.tick(now)]
+    ctx.active = remaining + ctx.active  # new anims go to end
 
 
 def animate(
@@ -1660,6 +1663,8 @@ def animate(
             completion()
 
     cb = _completion_once if completion else None
+    keys = {(view, attr) for view, attr, _, _ in records}
+    ctx.active = [a for a in ctx.active if (a.view, a.attr) not in keys]
     for view, attr, start, end in records:
         ctx.active.append(_Anim(view, attr, start, end, start_t, duration, cb))
 

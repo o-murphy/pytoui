@@ -140,7 +140,7 @@ class Slider(View):
         track_h = 4.0
         thumb_radius = 14.0 * self._thumb_scale
 
-        margin = 15.0
+        margin = 25.0
         available_width = self.width - (margin * 2)
         pos_x = margin + (available_width * self._anim_value)
 

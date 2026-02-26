@@ -140,7 +140,7 @@ class VerticalSlider(View):
         track_w = 4.0
         thumb_radius = 14.0 * self._thumb_scale
 
-        margin = 15.0
+        margin = 25.0
         available_height = self.height - (margin * 2)
         # Розраховуємо Y: 0.0 внизу (height - margin), 1.0 вгорі (margin)
         pos_y = (self.height - margin) - (available_height * self._anim_value)

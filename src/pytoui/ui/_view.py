@@ -977,6 +977,9 @@ if IS_PYTHONISTA:
         # __init__ assignments (e.g. self.frame = Rect(...)) immediately update
         # the native frame and reads always reflect the current geometry.
 
+        def __init__(self):
+            pass
+
         @property
         @pytoui_desktop_only
         def _internals(self) -> _ViewInternals:

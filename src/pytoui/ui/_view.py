@@ -507,7 +507,7 @@ class _ViewInternals:
         return self if self._touch_enabled else None
 
     def pytoui_scroll_hit_test(self, x: float, y: float) -> _ViewInternals | None:
-        """Like pytoui_hit_test but filters by _pytoui_mouse_scroll_enabled.
+        """Like pytoui_hit_test but filters by mouse_scroll_enabled.
 
         A view with scroll_enabled=False is transparent to scroll events
         (the event passes through to the parent), independently of touch_enabled.
@@ -928,12 +928,12 @@ class _View:
         self._internals_.multitouch_enabled = value
 
     @property
-    def scroll_enabled(self) -> bool:
-        """If False, the view ignores mouse wheel / scroll events."""
+    def mouse_scroll_enabled(self) -> bool:
+        """Alias for scroll_enabled."""
         return self._internals_.mouse_scroll_enabled
 
-    @scroll_enabled.setter
-    def scroll_enabled(self, value: bool):
+    @mouse_scroll_enabled.setter
+    def mouse_scroll_enabled(self, value: bool):
         self._internals_.mouse_scroll_enabled = value
 
     @property

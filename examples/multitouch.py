@@ -106,6 +106,8 @@ class DemoView(ui.View):
         self._hover: tuple[float, float] | None = None  # cursor pos (hover)
         self._scroll: tuple[float, float, float, float] | None = None  # x,y,dx,dy
 
+        self.mouse_scroll_enabled = True
+
         # Header
         self._header = ui.Label()
         self._header.background_color = (0.0, 0.0, 0.0, 0.55)

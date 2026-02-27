@@ -22,6 +22,8 @@ class ScrollView(ui.View):
         self.name = "Mouse Wheel Demo"
         self.background_color = (0.07, 0.07, 0.10, 1.0)
 
+        self.mouse_scroll_enabled = True
+
         self._offset_x = 0.0
         self._offset_y = 0.0
         self._log: list[str] = []

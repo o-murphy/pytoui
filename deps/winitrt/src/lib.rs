@@ -247,17 +247,17 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                     }
 
                     // Mouse wheel / trackpad scroll
-                    // etype=4: x=dx pixels, y=dy pixels, touch_id unused (0)
+                    // etype=4: x=dx lines, y=dy lines (LineDelta) or pixels (PixelDelta)
+                    // Python side multiplies by _SCROLL_LINE_PX for LineDelta.
                     WindowEvent::MouseWheel { delta, .. } => {
                         if let Some(st) = windows.get(&window_id) {
-                            const LINE_PX: f64 = 20.0;
-                            let (dx, dy) = match delta {
+                            let (dx, dy, is_pixel) = match delta {
                                 MouseScrollDelta::LineDelta(x, y) => {
-                                    (x as f64 * LINE_PX, y as f64 * LINE_PX)
+                                    (x as f64, y as f64, 0i64)
                                 }
-                                MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y),
+                                MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y, 1i64),
                             };
-                            (st.event_cb)(4, dx, dy, 0);
+                            (st.event_cb)(4, dx, dy, is_pixel);
                         }
                     }
 

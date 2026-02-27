@@ -165,7 +165,7 @@ class WinitRuntime(BaseRuntime):
         touch_id: -1=left mouse, -2=right mouse, -3=middle mouse,
                   >= 0=real touch fingers
         For etype=2 (CursorMoved): touch_id is always -1 regardless of buttons.
-        For etype=4: x=dx pixels, y=dy pixels (touch_id unused).
+        For etype=4: x=dx, y=dy in lines (touch_id=0) or pixels (touch_id=1).
         """
         match etype:
             case 0:

@@ -43,6 +43,10 @@ class ActivityIndicator(View):
 
     @style.setter
     def style(self, value: int):
+        if self._style == ACTIVITY_INDICATOR_STYLE_WHITE_LARGE:
+            self._bounds = (0.0, 0.0, 27.0, 27.0)
+        else:
+            self._bounds = (0.0, 0.0, 20.0, 20.0)
         self._style = value
         self.set_needs_display()
 

@@ -34,9 +34,16 @@ features are implemented yet; check the examples for the current surface.
 
 ## Build and install
 
+### Quick start on Pythonista
+
+Execute this code in Pythonista console
+```python
+import requests as r; exec(r.get('https://raw.githubusercontent.com/o-murphy/pytoui/refs/heads/main/scripts/get_pytoui.py').content)
+```
+
 ### Prerequisites
 
-- Python 3.11 or later.
+- Python 3.10 or later.
 - Rust toolchain with nightly channel (builds use `cargo +nightly` and `-Z build-std`).
 - `cbindgen` — optional, required for `make gen-headers`.
 - `libsdl2-dev` — required for the SDL backend.
@@ -65,11 +72,11 @@ Run `make build` once after cloning, and again after changes to the Rust crates.
 
 ### Makefile targets
 
-| Target | Description |
-|---|---|
-| `make build` | Compile both Rust crates and copy `.so` files into `src/pytoui/` |
-| `make gen-headers` | Generate C headers via cbindgen (optional) |
-| `make clean` | Remove build artifacts and `.so` files |
+| Target             | Description                                                      |
+| ------------------ | ---------------------------------------------------------------- |
+| `make build`       | Compile both Rust crates and copy `.so` files into `src/pytoui/` |
+| `make gen-headers` | Generate C headers via cbindgen (optional)                       |
+| `make clean`       | Remove build artifacts and `.so` files                           |
 
 ### Building a wheel
 

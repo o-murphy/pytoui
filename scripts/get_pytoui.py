@@ -12,10 +12,10 @@ import zipfile
 import requests
 
 
-def fetch_and_move_pytoui(user, repo, branch="main"):
+def fetch_pytoui(user, repo, branch="main"):
     url = f"https://github.com/{user}/{repo}/archive/refs/heads/{branch}.zip"
-    dest_path = os.path.expanduser("~/Documents/pytoui-demo/pytoui")
-    dest_path2 = os.path.expanduser("~/Documents/pytoui-demo")
+    dest_path = os.path.expanduser("~/Documents/site-packages/pytoui")
+    dest_path2 = os.path.expanduser("~/Documents/pytoui_examples")
     temp_extract_dir = f"{repo}-{branch}"
 
     print(f"Fetching {url}...")
@@ -60,4 +60,4 @@ def fetch_and_move_pytoui(user, repo, branch="main"):
 
 
 # Usage
-fetch_and_move_pytoui("o-murphy", "pytoui", "main")
+fetch_pytoui("o-murphy", "pytoui", "main")

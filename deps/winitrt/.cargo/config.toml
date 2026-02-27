@@ -1,6 +1,6 @@
 [target.mipsel-unknown-linux-gnu]
-linker = "/home/murphy/pyproj/pytoui/mips32el--glibc--stable-2018.11-1/bin/mipsel-linux-gcc"
-ar = "/home/murphy/pyproj/pytoui/mips32el--glibc--stable-2018.11-1/bin/mipsel-linux-ar"
+linker = "./mips32el--glibc--stable-2018.11-1/bin/mipsel-linux-gcc"
+ar = "./mips32el--glibc--stable-2018.11-1/bin/mipsel-linux-ar"
 
 rustflags = [
     "-C", "link-arg=-lc",

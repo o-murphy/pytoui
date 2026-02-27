@@ -60,7 +60,7 @@ path = "scripts/pre_build.py"
 
 [tool.cibuildwheel]
 # i686/armv7l musl: no rustup bootstrap binary available for these platforms
-skip = ["*-musllinux_*_i686", "*-musllinux_*_armv7l"]
+skip = ["*-musllinux_i686", "*-musllinux_armv7l"]
 # Default (Linux): install rustup; rust-toolchain.toml in each crate handles
 # the nightly channel and rust-src component automatically.
 before-all = [

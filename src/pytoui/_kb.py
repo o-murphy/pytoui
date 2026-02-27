@@ -137,6 +137,84 @@ def _sdl_mods_to_set(sdl2, mod_flags: int) -> frozenset[str]:
     return frozenset(mods)
 
 
+# ---------------------------------------------------------------------------
+# Winit key code → KEY_INPUT_* lookup table
+# Integer codes match key_to_code() in deps/winitrt/src/lib.rs.
+# Named keys: 1-15 and 101-112; character keys: Unicode codepoint (lowercase).
+# Used internally by WinitRuntime; not part of the public API.
+# ---------------------------------------------------------------------------
+
+_WINIT_MOD_SHIFT: int = 1
+_WINIT_MOD_CTRL:  int = 2
+_WINIT_MOD_ALT:   int = 4
+_WINIT_MOD_SUPER: int = 8
+
+_WINIT_KEY_MAP: dict[int, str] = {
+    1:  KEY_INPUT_UP,
+    2:  KEY_INPUT_DOWN,
+    3:  KEY_INPUT_LEFT,
+    4:  KEY_INPUT_RIGHT,
+    5:  KEY_INPUT_ESC,
+    6:  KEY_INPUT_RETURN,
+    7:  KEY_INPUT_BACKSPACE,
+    8:  KEY_INPUT_TAB,
+    9:  KEY_INPUT_SPACE,
+    10: KEY_INPUT_DELETE,
+    11: KEY_INPUT_HOME,
+    12: KEY_INPUT_END,
+    13: KEY_INPUT_PAGE_UP,
+    14: KEY_INPUT_PAGE_DOWN,
+    15: KEY_INPUT_INSERT,
+    101: KEY_INPUT_F1,
+    102: KEY_INPUT_F2,
+    103: KEY_INPUT_F3,
+    104: KEY_INPUT_F4,
+    105: KEY_INPUT_F5,
+    106: KEY_INPUT_F6,
+    107: KEY_INPUT_F7,
+    108: KEY_INPUT_F8,
+    109: KEY_INPUT_F9,
+    110: KEY_INPUT_F10,
+    111: KEY_INPUT_F11,
+    112: KEY_INPUT_F12,
+}
+
+
+def _winit_key_to_str(code: int) -> str:
+    """Map a winit key code (etype=5 event x field) to a KEY_INPUT_* string."""
+    if code in _WINIT_KEY_MAP:
+        return _WINIT_KEY_MAP[code]
+    if 32 <= code <= 0x10FFFF:
+        return chr(code)
+    return ""
+
+
+def _winit_mods_to_set(flags: int) -> frozenset[str]:
+    """Convert winit modifier bitmask to a frozenset of KEY_MOD_* strings.
+
+    Transparent mapping: on macOS the Super (Cmd) key maps to KEY_MOD_CMD;
+    on Linux/Windows the Ctrl key maps to KEY_MOD_CMD.
+    """
+    import sys
+
+    mods: set[str] = set()
+    if flags & _WINIT_MOD_SHIFT:
+        mods.add(KEY_MOD_SHIFT)
+    if flags & _WINIT_MOD_ALT:
+        mods.add(KEY_MOD_ALT)
+    if sys.platform == "darwin":
+        if flags & _WINIT_MOD_SUPER:
+            mods.add(KEY_MOD_CMD)
+        if flags & _WINIT_MOD_CTRL:
+            mods.add(KEY_MOD_CTRL)
+    else:  # Linux / Windows: Ctrl is the "command" modifier
+        if flags & _WINIT_MOD_CTRL:
+            mods.add(KEY_MOD_CMD)
+        if flags & _WINIT_MOD_SUPER:
+            mods.add(KEY_MOD_CTRL)
+    return frozenset(mods)
+
+
 __all__ = (
     # Special inputs (Pythonista-compatible)
     "KEY_INPUT_UP",

@@ -141,7 +141,7 @@ from pytoui.ui._draw import (
 )
 from pytoui.ui._image import Image
 from pytoui.ui._imageview import ImageView
-from pytoui.ui._kb import (
+from pytoui._kb import (
     KEY_INPUT_BACKSPACE,
     KEY_INPUT_DELETE,
     KEY_INPUT_DOWN,

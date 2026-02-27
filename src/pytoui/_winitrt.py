@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pytoui._base_runtime import _CHECKER_SIZE, BaseRuntime
+from pytoui._kb import KEY_INPUT_ESC, _winit_key_to_str, _winit_mods_to_set
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
@@ -198,6 +199,14 @@ class WinitRuntime(BaseRuntime):
             case 4:
                 cx, cy = self._cursor_pos
                 self._scroll_event(cx, cy, x, y)
+            case 5:
+                key_str = _winit_key_to_str(int(x))
+                handled = False
+                if key_str:
+                    mods = _winit_mods_to_set(int(y))
+                    handled = self._key_down(key_str, mods)
+                if not handled and key_str == KEY_INPUT_ESC:
+                    self.root.close()
 
     def run(self):
         """Start the runtime loop and initialize the native window."""

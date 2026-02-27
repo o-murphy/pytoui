@@ -337,6 +337,35 @@ class BaseRuntime:
         )
 
     # ------------------------------------------------------------------
+    # Keyboard shortcut dispatch
+    # ------------------------------------------------------------------
+
+    def _key_down(self, key_input: str, modifiers: frozenset[str]) -> bool:
+        """Dispatch a key-down event through the responder chain.
+
+        Walks from the current first_responder up the superview hierarchy,
+        checking get_key_commands() on each view.  The first matching
+        key command wins and key_command(sender) is called on that view.
+
+        Returns True if a command was matched and dispatched, False otherwise.
+        """
+        target = self._first_responder
+        while target is not None:
+            for cmd in target.pytoui_get_key_commands():
+                cmd_input = cmd.get("input", "")
+                raw_mods = cmd.get("modifiers", "")
+                cmd_mods = frozenset(
+                    m.strip() for m in raw_mods.split(",") if m.strip()
+                )
+                if cmd_input.lower() == key_input.lower() and cmd_mods == modifiers:
+                    cb = target.pytoui_key_command
+                    if cb is not None:
+                        cb(cmd)
+                    return True
+            target = target.superview
+        return False
+
+    # ------------------------------------------------------------------
     # Update loop
     # ------------------------------------------------------------------
 

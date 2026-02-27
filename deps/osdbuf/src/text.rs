@@ -114,7 +114,7 @@ fn truncate_head(font: &fontdue::Font, text: &str, max_width: f32, size: f32) ->
         return text.to_string();
     }
 
-    for i in 0..text.len() {
+    for (i, _) in text.char_indices() {
         let slice = &text[i..];
         if measure_text_width(font, slice, size) + ellipsis_width <= max_width {
             return format!("{}{}", ellipsis, slice);
@@ -131,7 +131,9 @@ fn truncate_tail(font: &fontdue::Font, text: &str, max_width: f32, size: f32) ->
         return text.to_string();
     }
 
-    for i in (0..=text.len()).rev() {
+    let mut positions: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
+    positions.push(text.len());
+    for i in positions.into_iter().rev() {
         let slice = &text[..i];
         if measure_text_width(font, slice, size) + ellipsis_width <= max_width {
             return format!("{}{}", slice, ellipsis);
@@ -142,23 +144,29 @@ fn truncate_tail(font: &fontdue::Font, text: &str, max_width: f32, size: f32) ->
 
 fn truncate_middle(font: &fontdue::Font, text: &str, max_width: f32, size: f32) -> String {
     let ellipsis = "\u{2026}";
-    let _ellipsis_width = measure_text_width(font, ellipsis, size);
 
     if measure_text_width(font, text, size) <= max_width {
         return text.to_string();
     }
 
-    let len = text.len();
-    for cut in 1..len {
-        let left_len = (len / 2).saturating_sub((cut + 1) / 2);
-        let right_len = len / 2 + cut / 2;
+    // Collect char-boundary byte positions for safe slicing
+    let boundaries: Vec<usize> = text
+        .char_indices()
+        .map(|(i, _)| i)
+        .chain(std::iter::once(text.len()))
+        .collect();
+    let num_chars = boundaries.len() - 1;
 
-        if right_len > len {
+    for cut in 1..num_chars {
+        let left_chars = (num_chars / 2).saturating_sub((cut + 1) / 2);
+        let right_chars = num_chars / 2 + cut / 2;
+
+        if right_chars >= num_chars {
             continue;
         }
 
-        let left = &text[..left_len];
-        let right = &text[right_len..];
+        let left = &text[..boundaries[left_chars]];
+        let right = &text[boundaries[right_chars]..];
         let candidate = format!("{}{}{}", left, ellipsis, right);
 
         if measure_text_width(font, &candidate, size) <= max_width {

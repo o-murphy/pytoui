@@ -154,7 +154,7 @@ def _route_event(sdl2, event) -> None:
         _send(wid, ("mousewheel", dx, dy, is_precise))
     elif t == sdl2.SDL_KEYDOWN:
         wid = event.key.windowID
-        _send(wid, ("keydown", event.key.keysym.sym))
+        _send(wid, ("keydown", event.key.keysym.sym, int(event.key.keysym.mod)))
 
 
 def _send(wid: int, msg: tuple) -> None:
@@ -252,7 +252,14 @@ class SDLRuntime(BaseRuntime):
                 case "quit" | "window_close":
                     self.running = False
                 case "keydown":
-                    if msg[1] == sdl2.SDLK_ESCAPE:
+                    sym, mod = msg[1], msg[2]
+                    from pytoui._kb import _build_sdl_map, _sdl_mods_to_set
+                    key_str = _build_sdl_map(sdl2).get(sym, "")
+                    handled = False
+                    if key_str:
+                        mods = _sdl_mods_to_set(sdl2, mod)
+                        handled = self._key_down(key_str, mods)
+                    if sym == sdl2.SDLK_ESCAPE and not handled:
                         self.running = False
                 case "window_resize":
                     self._current_w, self._current_h = msg[1], msg[2]

@@ -455,6 +455,16 @@ class _ViewInternals:
     def pytoui_mouse_wheel(self) -> Callable[[MouseWheel], None] | None:
         return getattr(self._ref, "mouse_wheel", None)
 
+    def pytoui_get_key_commands(self) -> list[dict]:
+        fn = getattr(self._ref, "get_key_commands", None)
+        if fn is None:
+            return []
+        return fn() or []
+
+    @property
+    def pytoui_key_command(self) -> Callable[[dict], None] | None:
+        return getattr(self._ref, "key_command", None)
+
     def pytoui_did_become_first_responder(self): ...
     def pytoui_did_resign_first_responder(self): ...
 
@@ -1033,6 +1043,33 @@ class _View:
             return False
         rt._set_first_responder(self._internals_)
         return True
+
+    def get_key_commands(self) -> list[dict]:
+        """Override to return hardware keyboard shortcuts for this view.
+
+        Returns a list of dicts, each with:
+          'input'     (required) – key string, e.g. 'a', KEY_INPUT_UP, KEY_INPUT_ESC
+          'modifiers' (optional) – comma-separated modifier string, e.g. 'cmd,shift'
+          'title'     (optional) – label shown in the keyboard shortcut HUD
+
+        When the user presses a matching shortcut, key_command() is called
+        with the matching dict as the sender argument.
+
+        Example::
+
+            def get_key_commands(self):
+                return [
+                    {'input': 'n', 'modifiers': 'cmd', 'title': 'New'},
+                    {'input': KEY_INPUT_ESC, 'title': 'Cancel'},
+                ]
+        """
+        return []
+
+    def key_command(self, sender: dict) -> None:
+        """Called when a registered keyboard shortcut is triggered.
+
+        sender – the dict returned by get_key_commands() that matched.
+        """
 
 
 class View(_View):

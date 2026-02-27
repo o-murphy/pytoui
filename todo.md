@@ -8,11 +8,12 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-  * add keyboard and shortcuts support
-  * get_key_commands
-  * key_command
+  * fix unicode issues, we should support unicode fully with no problems in our osdbuf
+    * what about emojis? so we need add some other fonts? can we use additional libs for it?
 
 NEXT:
+* possibly: add Numpad / punctuation keys support (maybe optional through env variable)
+* add keyboard input support (for future text input functionality)
 * dialogs.alert() and other
 * View
   * View.present.style

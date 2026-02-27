@@ -30,9 +30,13 @@ CRATES = ["osdbuf", "winitrt"]
 # ---------------------------------------------------------------------------
 
 
-def _run(*cmd: str | Path, cwd: Path | None = None) -> None:
+def _run(*cmd: str | Path, cwd: Path | None = None, env: dict | None = None) -> None:
     print(f"  $ {' '.join(str(c) for c in cmd)}", flush=True)
-    subprocess.run([str(c) for c in cmd], check=True, cwd=cwd)
+    merged_env = None
+    if env:
+        merged_env = os.environ.copy()
+        merged_env.update(env)
+    subprocess.run([str(c) for c in cmd], check=True, cwd=cwd, env=merged_env)
 
 
 def _find_tool(name: str) -> str:
@@ -139,6 +143,12 @@ def _detect_targets() -> list[str]:
                 if is_musl
                 else "armv7-unknown-linux-gnueabihf"
             ),
+            # armv8l = 32-bit userland on AArch64 hardware (e.g. Raspberry Pi OS)
+            "armv8l": (
+                "armv7-unknown-linux-musleabihf"
+                if is_musl
+                else "armv7-unknown-linux-gnueabihf"
+            ),
         }
         target = arch_map.get(arch)
         if not target:
@@ -154,9 +164,15 @@ def _detect_targets() -> list[str]:
 
 
 def _ensure_targets(targets: list[str]) -> None:
-    """Add required Rust targets and rust-src component via rustup."""
-    rustup = _find_tool("rustup")
-    _run(rustup, "component", "add", "--toolchain", "nightly", "rust-src")
+    """Register Rust targets via rustup (needed for cross-compilation).
+
+    rust-src and the nightly toolchain are handled by rust-toolchain.toml.
+    build-std is handled by [unstable] in .cargo/config.toml.
+    """
+    try:
+        rustup = _find_tool("rustup")
+    except RuntimeError:
+        return
     for target in targets:
         _run(rustup, "target", "add", "--toolchain", "nightly", target)
 
@@ -167,19 +183,14 @@ def _ensure_targets(targets: list[str]) -> None:
 
 
 def _build_crate(crate: str, target: str) -> Path:
-    """Compile one cdylib for *target* and return the output path."""
+    """Compile one cdylib for *target* and return the output path.
+
+    Toolchain (nightly) comes from rust-toolchain.toml.
+    build-std and musl rustflags come from .cargo/config.toml.
+    """
     cargo = _find_tool("cargo")
     crate_dir = DEPS_DIR / crate
-    _run(
-        cargo,
-        "+nightly",
-        "build",
-        "--release",
-        f"--target={target}",
-        "-Z",
-        "build-std=std,panic_abort",
-        cwd=crate_dir,
-    )
+    _run(cargo, "build", "--release", f"--target={target}", cwd=crate_dir)
     lib = _lib_file_for_target(crate, target)
     return crate_dir / "target" / target / "release" / lib
 
@@ -199,11 +210,11 @@ def _build_all() -> None:
             # macOS universal2: compile both slices then lipo them together
             libs = [_build_crate(crate, t) for t in targets]
             _run("lipo", "-create", "-output", dest, *libs)
-            print(f"==> lipo → {dest}", flush=True)
+            print(f"==> lipo -> {dest}", flush=True)
         else:
             src = _build_crate(crate, targets[0])
             shutil.copy2(src, dest)
-            print(f"==> {src.name} → {dest}", flush=True)
+            print(f"==> {src.name} -> {dest}", flush=True)
 
 
 # ---------------------------------------------------------------------------

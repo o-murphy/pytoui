@@ -8,7 +8,7 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-  * add keyboard support
+  * add keyboard and shortcuts support
   * get_key_commands
   * key_command
 

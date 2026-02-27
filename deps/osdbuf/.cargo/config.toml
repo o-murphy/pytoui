@@ -19,6 +19,10 @@ rustflags = [
 [unstable]
 build-std = ["std", "panic_abort"]
 
+# Musl targets: disable crt-static to allow cdylib (.so) production.
+[target.'cfg(target_env = "musl")']
+rustflags = ["-C", "target-feature=-crt-static"]
+
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
     "-C", "link-arg=-lm",

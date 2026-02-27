@@ -59,21 +59,23 @@ artifacts = [
 path = "scripts/pre_build.py"
 
 [tool.cibuildwheel]
-# Default (Linux): install rustup + nightly toolchain inside the container
+# i686/armv7l musl: no rustup bootstrap binary available for these platforms
+skip = ["*-musllinux_*_i686", "*-musllinux_*_armv7l"]
+# Default (Linux): install rustup; rust-toolchain.toml in each crate handles
+# the nightly channel and rust-src component automatically.
 before-all = [
     "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --profile minimal --no-modify-path",
-    "$HOME/.cargo/bin/rustup component add --toolchain nightly rust-src",
 ]
 environment = { PATH = "$HOME/.cargo/bin:$PATH" }
 
 [tool.cibuildwheel.macos]
-# macOS: install rustup + both Apple-silicon and Intel targets for universal2
+# macOS: install rustup; rust-toolchain.toml handles nightly + rust-src.
+# Both Apple-silicon and Intel targets are needed for universal2.
 before-all = [
     "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --profile minimal --no-modify-path",
-    "$HOME/.cargo/bin/rustup component add --toolchain nightly rust-src",
     "$HOME/.cargo/bin/rustup target add --toolchain nightly aarch64-apple-darwin x86_64-apple-darwin",
 ]
-environment = { PATH = "$HOME/.cargo/bin:$PATH" }
+environment = { PATH = "$HOME/.cargo/bin:$PATH", MACOSX_DEPLOYMENT_TARGET = "10.12" }
 
 [tool.cibuildwheel.windows]
 # Windows: rustup is pre-installed on GitHub Actions runners; just add nightly
@@ -81,6 +83,7 @@ before-all = [
     "rustup toolchain install nightly --profile minimal --component rust-src --no-self-update",
     "rustup target add --toolchain nightly x86_64-pc-windows-msvc i686-pc-windows-msvc aarch64-pc-windows-msvc",
 ]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

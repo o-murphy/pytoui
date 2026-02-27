@@ -12,6 +12,7 @@ HOT:
     * what about emojis? so we need add some other fonts? can we use additional libs for it?
 
 NEXT:
+* possibly: add Numpad / punctuation keys support (maybe optional through env variable)
 * add keyboard input support (for future text input functionality)
 * dialogs.alert() and other
 * View

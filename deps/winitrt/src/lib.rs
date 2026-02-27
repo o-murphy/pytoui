@@ -66,12 +66,57 @@ struct WinState {
 // ── Keyboard helpers ──────────────────────────────────────────────────────────
 
 /// Map winit key event fields to an integer code for etype=5 events.
-/// Named keys → codes 1-15 / 101-112; letter/digit keys → lowercase codepoint.
+/// Letter/digit keys → lowercase ASCII codepoint (physical_key wins, checked first).
+/// Named special keys → codes 1-15 / 1001-1012 (logical_key, checked second).
 ///
-/// physical_key is used for letter/digit keys so the result is modifier- and
-/// layout-independent (Ctrl+N always yields 'n', not the control character).
+/// Checking physical_key first ensures that modifier combos like Ctrl+J don't get
+/// dispatched as Enter (NamedKey::Enter) — they always yield 'j' (KeyCode::KeyJ).
 fn key_to_code(logical_key: &Key, physical_key: &PhysicalKey) -> Option<i64> {
-    // Named keys are not affected by modifier state — use logical_key.
+    // Physical key for letter/digit positions always wins — modifier- and
+    // layout-independent (Ctrl+J stays 'j', Ctrl+H stays 'h', etc.).
+    if let PhysicalKey::Code(code) = physical_key {
+        match code {
+            KeyCode::KeyA => return Some(b'a' as i64),
+            KeyCode::KeyB => return Some(b'b' as i64),
+            KeyCode::KeyC => return Some(b'c' as i64),
+            KeyCode::KeyD => return Some(b'd' as i64),
+            KeyCode::KeyE => return Some(b'e' as i64),
+            KeyCode::KeyF => return Some(b'f' as i64),
+            KeyCode::KeyG => return Some(b'g' as i64),
+            KeyCode::KeyH => return Some(b'h' as i64),
+            KeyCode::KeyI => return Some(b'i' as i64),
+            KeyCode::KeyJ => return Some(b'j' as i64),
+            KeyCode::KeyK => return Some(b'k' as i64),
+            KeyCode::KeyL => return Some(b'l' as i64),
+            KeyCode::KeyM => return Some(b'm' as i64),
+            KeyCode::KeyN => return Some(b'n' as i64),
+            KeyCode::KeyO => return Some(b'o' as i64),
+            KeyCode::KeyP => return Some(b'p' as i64),
+            KeyCode::KeyQ => return Some(b'q' as i64),
+            KeyCode::KeyR => return Some(b'r' as i64),
+            KeyCode::KeyS => return Some(b's' as i64),
+            KeyCode::KeyT => return Some(b't' as i64),
+            KeyCode::KeyU => return Some(b'u' as i64),
+            KeyCode::KeyV => return Some(b'v' as i64),
+            KeyCode::KeyW => return Some(b'w' as i64),
+            KeyCode::KeyX => return Some(b'x' as i64),
+            KeyCode::KeyY => return Some(b'y' as i64),
+            KeyCode::KeyZ => return Some(b'z' as i64),
+            KeyCode::Digit0 => return Some(b'0' as i64),
+            KeyCode::Digit1 => return Some(b'1' as i64),
+            KeyCode::Digit2 => return Some(b'2' as i64),
+            KeyCode::Digit3 => return Some(b'3' as i64),
+            KeyCode::Digit4 => return Some(b'4' as i64),
+            KeyCode::Digit5 => return Some(b'5' as i64),
+            KeyCode::Digit6 => return Some(b'6' as i64),
+            KeyCode::Digit7 => return Some(b'7' as i64),
+            KeyCode::Digit8 => return Some(b'8' as i64),
+            KeyCode::Digit9 => return Some(b'9' as i64),
+            _ => {}
+        }
+    }
+
+    // Named keys for special positions (arrows, Esc, Enter, Backspace, F-keys, etc.)
     if let Key::Named(named) = logical_key {
         return match named {
             NamedKey::ArrowUp    => Some(1),
@@ -102,49 +147,6 @@ fn key_to_code(logical_key: &Key, physical_key: &PhysicalKey) -> Option<i64> {
             NamedKey::F11        => Some(1011),
             NamedKey::F12        => Some(1012),
             _                    => None,
-        };
-    }
-
-    // For letter/digit keys use physical_key — modifier- and layout-independent.
-    if let PhysicalKey::Code(code) = physical_key {
-        return match code {
-            KeyCode::KeyA => Some(b'a' as i64),
-            KeyCode::KeyB => Some(b'b' as i64),
-            KeyCode::KeyC => Some(b'c' as i64),
-            KeyCode::KeyD => Some(b'd' as i64),
-            KeyCode::KeyE => Some(b'e' as i64),
-            KeyCode::KeyF => Some(b'f' as i64),
-            KeyCode::KeyG => Some(b'g' as i64),
-            KeyCode::KeyH => Some(b'h' as i64),
-            KeyCode::KeyI => Some(b'i' as i64),
-            KeyCode::KeyJ => Some(b'j' as i64),
-            KeyCode::KeyK => Some(b'k' as i64),
-            KeyCode::KeyL => Some(b'l' as i64),
-            KeyCode::KeyM => Some(b'm' as i64),
-            KeyCode::KeyN => Some(b'n' as i64),
-            KeyCode::KeyO => Some(b'o' as i64),
-            KeyCode::KeyP => Some(b'p' as i64),
-            KeyCode::KeyQ => Some(b'q' as i64),
-            KeyCode::KeyR => Some(b'r' as i64),
-            KeyCode::KeyS => Some(b's' as i64),
-            KeyCode::KeyT => Some(b't' as i64),
-            KeyCode::KeyU => Some(b'u' as i64),
-            KeyCode::KeyV => Some(b'v' as i64),
-            KeyCode::KeyW => Some(b'w' as i64),
-            KeyCode::KeyX => Some(b'x' as i64),
-            KeyCode::KeyY => Some(b'y' as i64),
-            KeyCode::KeyZ => Some(b'z' as i64),
-            KeyCode::Digit0 => Some(b'0' as i64),
-            KeyCode::Digit1 => Some(b'1' as i64),
-            KeyCode::Digit2 => Some(b'2' as i64),
-            KeyCode::Digit3 => Some(b'3' as i64),
-            KeyCode::Digit4 => Some(b'4' as i64),
-            KeyCode::Digit5 => Some(b'5' as i64),
-            KeyCode::Digit6 => Some(b'6' as i64),
-            KeyCode::Digit7 => Some(b'7' as i64),
-            KeyCode::Digit8 => Some(b'8' as i64),
-            KeyCode::Digit9 => Some(b'9' as i64),
-            _ => None,
         };
     }
 

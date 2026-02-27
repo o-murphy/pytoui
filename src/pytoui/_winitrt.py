@@ -203,8 +203,6 @@ class WinitRuntime(BaseRuntime):
                 code, flags = int(x), int(y)
                 key_str = _winit_key_to_str(code)
                 mods = _winit_mods_to_set(flags)
-                fr = self._first_responder is not None
-                print(f"[key] {code} {key_str!r} {mods} fr={fr}", flush=True)
                 handled = False
                 if key_str:
                     handled = self._key_down(key_str, mods)

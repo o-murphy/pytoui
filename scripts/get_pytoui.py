@@ -30,13 +30,15 @@ def fetch_pytoui(user, repo, branch="main"):
         examples_dir = os.path.join(temp_extract_dir, "examples")
 
         try:
-            # Move src/pytoui to ~/Documents/pytoui-demo/pytoui
+            # Move src/pytoui to ~/Documents/site-packages/pytoui
+            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             if os.path.exists(dest_path):
                 shutil.rmtree(dest_path)
             shutil.copytree(src_dir, dest_path)
 
-            # Copy all files from examples to ~/Documents/pytoui-demo
+            # Copy all files from examples to ~/Documents/pytoui_examples
             if os.path.exists(examples_dir):
+                os.makedirs(dest_path2, exist_ok=True)
                 for item in os.listdir(examples_dir):
                     s = os.path.join(examples_dir, item)
                     d = os.path.join(dest_path2, item)

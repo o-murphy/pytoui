@@ -436,6 +436,54 @@ impl FrameBuffer {
         }
     }
 
+    /// Like `blit`, but scales the source to `(dst_w × dst_h)` in the destination.
+    pub(crate) fn blit_scaled(
+        &mut self,
+        src_pixels: &[u8],
+        src_w: i32,
+        src_h: i32,
+        dst_x: i32,
+        dst_y: i32,
+        dst_w: i32,
+        dst_h: i32,
+        blend: bool,
+    ) {
+        if src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0 {
+            return;
+        }
+        let len = (src_w * src_h * 4) as usize;
+        let mut premul = vec![0u8; len];
+        for i in (0..len).step_by(4) {
+            let r = src_pixels[i] as u16;
+            let g = src_pixels[i + 1] as u16;
+            let b = src_pixels[i + 2] as u16;
+            let a = src_pixels[i + 3] as u16;
+            premul[i]     = ((r * a) / 255) as u8;
+            premul[i + 1] = ((g * a) / 255) as u8;
+            premul[i + 2] = ((b * a) / 255) as u8;
+            premul[i + 3] = a as u8;
+        }
+        if let Some(src_pm) = PixmapMut::from_bytes(&mut premul, src_w as u32, src_h as u32) {
+            if let Some(mut dst_pm) = self.pixmap_mut() {
+                let mode = if blend { BlendMode::SourceOver } else { BlendMode::Source };
+                let sx = dst_w as f32 / src_w as f32;
+                let sy = dst_h as f32 / src_h as f32;
+                dst_pm.draw_pixmap(
+                    dst_x,
+                    dst_y,
+                    src_pm.as_ref(),
+                    &tiny_skia::PixmapPaint {
+                        opacity: 1.0,
+                        blend_mode: mode,
+                        quality: tiny_skia::FilterQuality::Bilinear,
+                    },
+                    Transform::from_scale(sx, sy),
+                    None,
+                );
+            }
+        }
+    }
+
     pub(crate) fn scroll(&mut self, dx: i32, dy: i32) {
         if dx == 0 && dy == 0 {
             return;

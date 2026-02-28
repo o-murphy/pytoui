@@ -154,6 +154,19 @@ class FrameBuffer:
         ]
         L.BlitRGBA.restype = None
 
+        L.BlitRGBAScaled.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_ubyte),
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        L.BlitRGBAScaled.restype = None
+
         L.Scroll.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
         L.Scroll.restype = None
 
@@ -900,6 +913,29 @@ class FrameBuffer:
             src_height,
             dst_x,
             dst_y,
+            1 if blend else 0,
+        )
+
+    def blit_scaled(
+        self,
+        src_data,  # ctypes.POINTER(ctypes.c_ubyte)
+        src_width: int,
+        src_height: int,
+        dst_x: int,
+        dst_y: int,
+        dst_width: int,
+        dst_height: int,
+        blend: bool = True,
+    ) -> None:
+        self._lib.BlitRGBAScaled(
+            self._handle,
+            src_data,
+            src_width,
+            src_height,
+            dst_x,
+            dst_y,
+            dst_width,
+            dst_height,
             1 if blend else 0,
         )
 

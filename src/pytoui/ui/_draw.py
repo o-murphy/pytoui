@@ -165,11 +165,19 @@ class ImageContext:
 
         if self._buf is None:
             return Image()
-        # FrameBuffer stores pixels as ARGB8888 → BGRA bytes on little-endian.
-        # Convert to RGBA so Image._data and blit() use consistent byte order.
-        raw = bytearray(self._buf)
-        # FrameBuffer fills pixels as RGBA8888 (same order as BlitRGBA expects),
-        # so no byte-swap is needed here.
+        pw = int(self.width * self.scale)
+        ph = int(self.height * self.scale)
+        # FrameBuffer stores premultiplied RGBA (tiny-skia requirement).
+        # Image._data must be straight (non-premultiplied) RGBA, as expected by blit().
+        raw = bytearray(self._buf[: pw * ph * 4])
+        for i in range(0, len(raw), 4):
+            a = raw[i + 3]
+            if a == 0:
+                raw[i] = raw[i + 1] = raw[i + 2] = 0
+            elif a < 255:
+                raw[i] = min(255, raw[i] * 255 // a)
+                raw[i + 1] = min(255, raw[i + 1] * 255 // a)
+                raw[i + 2] = min(255, raw[i + 2] * 255 // a)
         return Image(
             width=self.width,
             height=self.height,

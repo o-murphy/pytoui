@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from pytoui.ui._activity_indicator import ActivityIndicator
 from pytoui.ui._button import Button
+from pytoui.ui._button_item import ButtonItem
 from pytoui.ui._constants import (
     # --- Activity Indicator Styles ---
     ACTIVITY_INDICATOR_STYLE_GRAY,
@@ -218,6 +219,8 @@ __all__ = (
     "Label",
     # Button
     "Button",
+    # ButtonItem
+    "ButtonItem",
     # Switch
     "Switch",
     # SegmentedControl

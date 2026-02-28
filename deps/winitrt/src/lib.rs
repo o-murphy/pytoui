@@ -112,7 +112,28 @@ fn key_to_code(logical_key: &Key, physical_key: &PhysicalKey) -> Option<i64> {
             KeyCode::Digit7 => return Some(b'7' as i64),
             KeyCode::Digit8 => return Some(b'8' as i64),
             KeyCode::Digit9 => return Some(b'9' as i64),
+            KeyCode::Numpad0 => return Some(b'0' as i64),
+            KeyCode::Numpad1 => return Some(b'1' as i64),
+            KeyCode::Numpad2 => return Some(b'2' as i64),
+            KeyCode::Numpad3 => return Some(b'3' as i64),
+            KeyCode::Numpad4 => return Some(b'4' as i64),
+            KeyCode::Numpad5 => return Some(b'5' as i64),
+            KeyCode::Numpad6 => return Some(b'6' as i64),
+            KeyCode::Numpad7 => return Some(b'7' as i64),
+            KeyCode::Numpad8 => return Some(b'8' as i64),
+            KeyCode::Numpad9 => return Some(b'9' as i64),
             _ => {}
+        }
+    }
+
+    // Printable ASCII punctuation/symbol keys — use logical_key Character.
+    // Punctuation is not remapped by Ctrl (unlike letters which become control chars),
+    // and Shift changes the character (Shift+, → '<' on QWERTY), matching SDL behaviour.
+    if let Key::Character(ch) = logical_key {
+        if let Some(c) = ch.chars().next() {
+            if c.is_ascii_graphic() && !c.is_ascii_alphanumeric() {
+                return Some(c as i64);
+            }
         }
     }
 

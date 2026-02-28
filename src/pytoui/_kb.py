@@ -106,6 +106,12 @@ def _build_sdl_map(sdl2) -> dict[int, str]:
     # Digits 0-9
     for c in range(ord("0"), ord("9") + 1):
         m[c] = chr(c)
+    # Printable ASCII punctuation/symbols (SDL SDLK values == ASCII codepoints).
+    # Shift changes the symbol (Shift+, → '<' on QWERTY), so the shifted char
+    # arrives directly as a different SDLK value — no normalisation needed.
+    for c in range(33, 127):
+        if c not in m:
+            m[c] = chr(c)
     _sdl_map_cache = m
     return m
 
@@ -140,7 +146,7 @@ def _sdl_mods_to_set(sdl2, mod_flags: int) -> frozenset[str]:
 # ---------------------------------------------------------------------------
 # Winit key code → KEY_INPUT_* lookup table
 # Integer codes match key_to_code() in deps/winitrt/src/lib.rs.
-# Named keys: 1-15 and 101-112; character keys: Unicode codepoint (lowercase).
+# Named keys: 1-15 and 1001-1012; character keys: ASCII codepoint (a-z lowercase, printable punctuation).
 # Used internally by WinitRuntime; not part of the public API.
 # ---------------------------------------------------------------------------
 

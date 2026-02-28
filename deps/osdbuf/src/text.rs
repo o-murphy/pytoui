@@ -18,6 +18,13 @@ pub(crate) const LB_TRUNCATE_HEAD: u32 = 3;
 pub(crate) const LB_TRUNCATE_TAIL: u32 = 4;
 pub(crate) const LB_TRUNCATE_MIDDLE: u32 = 5;
 
+/// Returns true if the character has a glyph in the font and should be rendered.
+/// Skips control characters and characters not present in the font (.notdef).
+#[inline]
+fn is_renderable(font: &fontdue::Font, c: char) -> bool {
+    !c.is_control() && font.lookup_glyph_index(c) != 0
+}
+
 pub(crate) fn calculate_anchor_pos(
     anchor: u32,
     base_x: f32,
@@ -57,7 +64,7 @@ pub(crate) fn get_text_layout(
     let mut width = 0.0;
     let mut count = 0u32;
     for c in text.chars() {
-        if !c.is_control() {
+        if is_renderable(font, c) {
             width += font.metrics(c, size).advance_width;
             count += 1;
         }
@@ -77,7 +84,7 @@ pub(crate) fn get_text_layout(
 pub(crate) fn measure_text_width(font: &fontdue::Font, text: &str, size: f32) -> f32 {
     let mut width = 0.0;
     for c in text.chars() {
-        if !c.is_control() {
+        if is_renderable(font, c) {
             width += font.metrics(c, size).advance_width;
         }
     }
@@ -181,7 +188,7 @@ fn clip_text(font: &fontdue::Font, text: &str, max_width: f32, size: f32) -> Str
     let mut current_width = 0.0;
 
     for c in text.chars() {
-        if c.is_control() {
+        if !is_renderable(font, c) {
             continue;
         }
         let char_width = font.metrics(c, size).advance_width;
@@ -268,7 +275,7 @@ fn wrap_chars(font: &fontdue::Font, text: &str, max_width: f32, size: f32) -> Ve
             continue;
         }
 
-        if c.is_control() {
+        if !is_renderable(font, c) {
             continue;
         }
 
@@ -309,7 +316,7 @@ impl FrameBuffer {
         let mut curr_x = start_x;
 
         for c in text.chars() {
-            if c.is_control() {
+            if !is_renderable(font, c) {
                 continue;
             }
             let (metrics, bitmap) = font.rasterize(c, size);
@@ -442,7 +449,7 @@ impl FrameBuffer {
 
             let mut line_width = 0.0;
             for c in line.chars() {
-                if !c.is_control() {
+                if is_renderable(font, c) {
                     line_width += font.metrics(c, size).advance_width;
                 }
             }
@@ -457,7 +464,7 @@ impl FrameBuffer {
 
             let mut curr_x = start_x;
             for c in line.chars() {
-                if c.is_control() {
+                if !is_renderable(font, c) {
                     continue;
                 }
 

@@ -312,6 +312,25 @@ pub unsafe extern "C" fn BlitRGBA(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn BlitRGBAScaled(
+    handle: i32,
+    src_data: *const u8,
+    src_w: i32,
+    src_h: i32,
+    dst_x: i32,
+    dst_y: i32,
+    dst_w: i32,
+    dst_h: i32,
+    blend: i32,
+) {
+    let size = (src_w * src_h * 4) as usize;
+    let src_pixels = std::slice::from_raw_parts(src_data, size);
+    with_fb(handle, |fb| {
+        fb.blit_scaled(src_pixels, src_w, src_h, dst_x, dst_y, dst_w, dst_h, blend != 0)
+    });
+}
+
+#[no_mangle]
 pub extern "C" fn Scroll(handle: i32, dx: i32, dy: i32) {
     with_fb(handle, |fb| fb.scroll(dx, dy));
 }

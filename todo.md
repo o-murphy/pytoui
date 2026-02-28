@@ -7,10 +7,6 @@ NOTE:
 * original Pythonista.ui references, inspected stubs are in the src/ui/resources
 * osdbuf.py is in src/osdbuf/__init__.py
 
-HOT:
-  * fix unicode issues, we should support unicode fully with no problems in our osdbuf
-    * what about emojis? so we need add some other fonts? can we use additional libs for it?
-
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through env variable)
 * add keyboard input support (for future text input functionality)
@@ -42,8 +38,8 @@ _a public classes that is full/partially or not implemented bellow, after core p
 View classes:
 * ~~View~~
 * ~~Button~~
-* ButtonItem
-* ImageView - _make_test_image works only on PC
+* ButtonItem (not yet implemented in View)
+* ~~ImageView - _make_test_image works only on PC~~
 * ~~Label~~
 * NavigationView
 * ScrollView
@@ -59,8 +55,8 @@ View classes:
 * ~~ActivityIndicator~~
 
 Other Classes:
-* Image
-* ImageContext
+* ~~Image~~
+* ~~ImageContext~~
 * ~~Path~~
 * ~~Touch~~
 * ~~Transform~~

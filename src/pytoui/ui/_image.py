@@ -103,7 +103,11 @@ class Image:
     def draw(self, *args):
         """Draw the image into the current drawing context.
 
-        Accepts draw(x, y, w, h) or draw(rect).
+        Signatures:
+            draw()                 — draw at (0, 0) with natural size
+            draw(x, y)             — draw at (x, y) with natural size
+            draw(x, y, width, height) — draw at (x, y) scaled to (width, height)
+            draw(rect)             — draw in rect (Rect / 4-tuple), scaled to fit
         """
         if self._data is None:
             return
@@ -117,24 +121,34 @@ class Image:
         if fb is None:
             return
 
-        # Parse arguments: (x, y, w, h) or (rect,)
-        # w, h reserved for future scaling support
-        if len(args) == 4:
-            x, y, _w, _h = args
+        pw = int(self._size.w * self._scale)
+        ph = int(self._size.h * self._scale)
+
+        # Parse arguments
+        if len(args) == 0:
+            x, y, dw, dh = 0.0, 0.0, float(pw), float(ph)
+        elif len(args) == 2:
+            x, y = float(args[0]), float(args[1])
+            dw, dh = float(pw), float(ph)
+        elif len(args) == 4:
+            x, y, dw, dh = float(args[0]), float(args[1]), float(args[2]), float(args[3])
         elif len(args) == 1:
-            x, y, _w, _h = args[0]
+            r = args[0]
+            x, y, dw, dh = float(r[0]), float(r[1]), float(r[2]), float(r[3])
         else:
-            x, y = 0.0, 0.0
+            x, y, dw, dh = 0.0, 0.0, float(pw), float(ph)
 
         ox, oy = ctx.origin
         dst_x = int(ox + x)
         dst_y = int(oy + y)
-
-        pw = int(self._size.w * self._scale)
-        ph = int(self._size.h * self._scale)
+        dst_w = int(dw)
+        dst_h = int(dh)
 
         buf = (ctypes.c_ubyte * len(self._data)).from_buffer_copy(self._data)
-        fb.blit(buf, pw, ph, dst_x, dst_y, blend=True)
+        if dst_w == pw and dst_h == ph:
+            fb.blit(buf, pw, ph, dst_x, dst_y, blend=True)
+        else:
+            fb.blit_scaled(buf, pw, ph, dst_x, dst_y, dst_w, dst_h, blend=True)
 
     def clip_to_mask(self, x, y, width, height):
         """Use the image as a mask for following drawing operations."""
@@ -148,6 +162,24 @@ class Image:
     def show(self):
         """Show the image in the console (stub)."""
         print(f"<Image {self._size.w}x{self._size.h} scale={self._scale}>")
+
+    def to_jpeg(self, quality: int = 75) -> bytes:
+        """Return the image as JPEG bytes."""
+        if self._data is None:
+            return b""
+        try:
+            import io
+
+            from PIL import Image as _PILImage
+
+            pw = int(self._size.w * self._scale)
+            ph = int(self._size.h * self._scale)
+            pil = _PILImage.frombytes("RGBA", (pw, ph), self._data).convert("RGB")
+            buf = io.BytesIO()
+            pil.save(buf, format="JPEG", quality=quality)
+            return buf.getvalue()
+        except ImportError:
+            return b""
 
     def to_png(self) -> bytes:
         """Return the image as PNG bytes."""

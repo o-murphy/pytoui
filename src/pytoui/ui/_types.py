@@ -24,10 +24,6 @@ __all__ = (
     "_SizeLike",
     "_TouchPhase",
     "_ViewFlex",
-    "_SCROLL_TOUCH_ID",
-    "_MOUSE_LEFT_ID",
-    "_MOUSE_RIGHT_ID",
-    "_MOUSE_MIDDLE_ID",
     "autoreleasepool",
 )
 
@@ -437,28 +433,7 @@ class Touch:
         self.touch_id = touch_id
 
 
-_MOUSE_LEFT_ID: int = -1
-"""touch_id for the left mouse button (mouse pointer)."""
-
-_MOUSE_RIGHT_ID: int = -2
-"""touch_id for right mouse button events.
-
-Never appears on real Pythonista.  Check with ``touch.touch_id == MOUSE_RIGHT_ID``.
-"""
-
-_MOUSE_MIDDLE_ID: int = -3
-"""touch_id for middle (center) mouse button events.
-
-Never appears on real Pythonista.  Check with ``touch.touch_id == MOUSE_MIDDLE_ID``.
-"""
-
-_SCROLL_TOUCH_ID: int = -4
-"""Reserved touch_id for synthetic mouse-wheel / trackpad scroll events.
-
-Never appears on real Pythonista (iOS has no mouse wheel), so checking
-``isinstance(touch, MouseWheel)`` or ``touch.touch_id == SCROLL_TOUCH_ID``
-is safe for cross-platform code.
-"""
+from pytoui._hid import MOUSE_SCROLL_ID
 
 
 class MouseEvent(Touch):
@@ -512,7 +487,7 @@ class MouseWheel(MouseEvent):
         scroll_dy: float,
     ):
         super().__init__(
-            location, phase, prev_location, timestamp, _SCROLL_TOUCH_ID, buttons
+            location, phase, prev_location, timestamp, MOUSE_SCROLL_ID, buttons
         )
         self.scroll_dx = scroll_dx
         self.scroll_dy = scroll_dy

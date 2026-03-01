@@ -17,8 +17,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
+from pytoui._hid import MOUSE_LEFT_ID
 from pytoui.ui._draw import convert_point
-from pytoui.ui._types import _MOUSE_LEFT_ID, Touch
+from pytoui.ui._types import Touch
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _View, _ViewInternals
@@ -280,7 +281,7 @@ class BaseRuntime:
                 x,
                 y,
                 "moved",
-                _MOUSE_LEFT_ID,
+                MOUSE_LEFT_ID,
                 (x, y),
                 frozenset(),
             )

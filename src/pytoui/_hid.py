@@ -1,10 +1,18 @@
-"""Keyboard input constants for use with get_key_commands().
+"""HID (Human Interface Device) constants for pytoui's desktop runtimes.
 
-'input' values — pass as the 'input' key in key-command dicts.
-'modifiers' values — pass (comma-separated) as the 'modifiers' key.
+Covers keyboard input constants (Pythonista-compatible) and mouse button IDs
+(desktop-only, never appear on real Pythonista/iOS).
 
-Pythonista-compatible inputs are marked with (P).
-Desktop-only inputs (SDL/Winit, no-op on Pythonista) are marked with (D).
+Keyboard:
+  'input' values — pass as the 'input' key in key-command dicts.
+  'modifiers' values — pass (comma-separated) as the 'modifiers' key.
+
+  Pythonista-compatible inputs are marked with (P).
+  Desktop-only inputs (SDL/Winit, no-op on Pythonista) are marked with (D).
+
+Mouse:
+  _MOUSE_*_ID and _SCROLL_TOUCH_ID — synthetic touch_id values used internally
+  by SDLRuntime, WinitRuntime, and BaseRuntime.
 """
 
 from __future__ import annotations
@@ -55,6 +63,33 @@ KEY_MOD_CMD: str = "cmd"  # ⌘ on iOS/macOS; mapped to Ctrl on Linux/Windows
 KEY_MOD_CTRL: str = "ctrl"  # Control key (literal, all platforms)
 KEY_MOD_ALT: str = "alt"  # Option/Alt
 KEY_MOD_SHIFT: str = "shift"  # Shift
+
+# ---------------------------------------------------------------------------
+# Mouse button IDs — synthetic touch_id values (desktop-only)
+# ---------------------------------------------------------------------------
+
+MOUSE_LEFT_ID: int = -1
+"""touch_id for the left mouse button (mouse pointer)."""
+
+MOUSE_RIGHT_ID: int = -2
+"""touch_id for right mouse button events.
+
+Never appears on real Pythonista.  Check with ``touch.touch_id == MOUSE_RIGHT_ID``.
+"""
+
+MOUSE_MIDDLE_ID: int = -3
+"""touch_id for middle (center) mouse button events.
+
+Never appears on real Pythonista.  Check with ``touch.touch_id == MOUSE_MIDDLE_ID``.
+"""
+
+MOUSE_SCROLL_ID: int = -4
+"""Reserved touch_id for synthetic mouse-wheel / trackpad scroll events.
+
+Never appears on real Pythonista (iOS has no mouse wheel), so checking
+``isinstance(touch, MouseWheel)`` or ``touch.touch_id == SCROLL_TOUCH_ID``
+is safe for cross-platform code.
+"""
 
 # ---------------------------------------------------------------------------
 # SDL keycode → KEY_INPUT_* lookup table (populated lazily on first import)
@@ -257,4 +292,9 @@ __all__ = (
     "KEY_MOD_CTRL",
     "KEY_MOD_ALT",
     "KEY_MOD_SHIFT",
+    # Mouse IDs
+    "MOUSE_LEFT_ID",
+    "MOUSE_RIGHT_ID",
+    "MOUSE_MIDDLE_ID",
+    "MOUSE_SCROLL_ID",
 )

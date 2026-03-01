@@ -14,7 +14,7 @@ Usage:
 
 from __future__ import annotations
 
-from pytoui._kb import (
+from pytoui._hid import (
     KEY_INPUT_BACKSPACE,
     KEY_INPUT_DELETE,
     KEY_INPUT_DOWN,
@@ -350,7 +350,7 @@ __all__ = (
     "RENDERING_MODE_AUTOMATIC",
     "RENDERING_MODE_ORIGINAL",
     "RENDERING_MODE_TEMPLATE",
-    # --- Key Inputs ---
+    # Special inputs (Pythonista-compatible)
     "KEY_INPUT_UP",
     "KEY_INPUT_DOWN",
     "KEY_INPUT_LEFT",
@@ -360,6 +360,7 @@ __all__ = (
     "KEY_INPUT_BACKSPACE",
     "KEY_INPUT_TAB",
     "KEY_INPUT_SPACE",
+    # Extended inputs (desktop + iOS 13.4+)
     "KEY_INPUT_DELETE",
     "KEY_INPUT_HOME",
     "KEY_INPUT_END",
@@ -378,9 +379,14 @@ __all__ = (
     "KEY_INPUT_F10",
     "KEY_INPUT_F11",
     "KEY_INPUT_F12",
-    # --- Key Modifiers ---
+    # Modifiers
     "KEY_MOD_CMD",
     "KEY_MOD_CTRL",
     "KEY_MOD_ALT",
     "KEY_MOD_SHIFT",
+    # Mouse IDs
+    "MOUSE_LEFT_ID",
+    "MOUSE_RIGHT_ID",
+    "MOUSE_MIDDLE_ID",
+    "MOUSE_SCROLL_ID",
 )

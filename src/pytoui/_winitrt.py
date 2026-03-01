@@ -9,14 +9,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pytoui._base_runtime import _CHECKER_SIZE, BaseRuntime
-from pytoui._kb import KEY_INPUT_ESC, _winit_key_to_str, _winit_mods_to_set
+from pytoui._hid import (
+    KEY_INPUT_ESC,
+    MOUSE_LEFT_ID,
+    MOUSE_MIDDLE_ID,
+    MOUSE_RIGHT_ID,
+    _winit_key_to_str,
+    _winit_mods_to_set,
+)
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
 )
 from pytoui.ui._draw import _tick, _tick_delays
-from pytoui.ui._types import _MOUSE_LEFT_ID, _MOUSE_MIDDLE_ID, _MOUSE_RIGHT_ID, Rect
+from pytoui.ui._types import Rect
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -183,7 +190,7 @@ class WinitRuntime(BaseRuntime):
                 self._cursor_pos = (x, y)
                 if touch_id < 0:
                     any_drag = False
-                    for bid in (_MOUSE_LEFT_ID, _MOUSE_RIGHT_ID, _MOUSE_MIDDLE_ID):
+                    for bid in (MOUSE_LEFT_ID, MOUSE_RIGHT_ID, MOUSE_MIDDLE_ID):
                         if bid in self._tracked:
                             self._mouse_dragged(x, y, bid)
                             any_drag = True

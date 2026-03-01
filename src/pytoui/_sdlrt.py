@@ -17,6 +17,7 @@ import time
 from typing import TYPE_CHECKING
 
 from pytoui._base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, _any_dirty
+from pytoui._hid import MOUSE_LEFT_ID, MOUSE_MIDDLE_ID, MOUSE_RIGHT_ID
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
@@ -25,7 +26,7 @@ from pytoui._platform import (
     _UI_RT_SDL_MAX_DELAY,
 )
 from pytoui.ui._draw import _tick, _tick_delays
-from pytoui.ui._types import _MOUSE_LEFT_ID, _MOUSE_MIDDLE_ID, _MOUSE_RIGHT_ID, Rect
+from pytoui.ui._types import Rect
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -253,7 +254,7 @@ class SDLRuntime(BaseRuntime):
                     self.running = False
                 case "keydown":
                     sym, mod = msg[1], msg[2]
-                    from pytoui._kb import _build_sdl_map, _sdl_mods_to_set
+                    from pytoui._hid import _build_sdl_map, _sdl_mods_to_set
 
                     key_str = _build_sdl_map(sdl2).get(sym, "")
                     handled = False
@@ -266,35 +267,35 @@ class SDLRuntime(BaseRuntime):
                     self._current_w, self._current_h = msg[1], msg[2]
                 case "windowevent":
                     if msg[1] == sdl2.SDL_WINDOWEVENT_LEAVE:
-                        for bid in (_MOUSE_LEFT_ID, _MOUSE_RIGHT_ID, _MOUSE_MIDDLE_ID):
+                        for bid in (MOUSE_LEFT_ID, MOUSE_RIGHT_ID, MOUSE_MIDDLE_ID):
                             self._mouse_cancel(bid)
                 case "mousedown":
                     match msg[1]:
                         case sdl2.SDL_BUTTON_LEFT:
-                            self._mouse_down(msg[2], msg[3], _MOUSE_LEFT_ID)
+                            self._mouse_down(msg[2], msg[3], MOUSE_LEFT_ID)
                         case sdl2.SDL_BUTTON_RIGHT:
-                            self._mouse_down(msg[2], msg[3], _MOUSE_RIGHT_ID)
+                            self._mouse_down(msg[2], msg[3], MOUSE_RIGHT_ID)
                         case sdl2.SDL_BUTTON_MIDDLE:
-                            self._mouse_down(msg[2], msg[3], _MOUSE_MIDDLE_ID)
+                            self._mouse_down(msg[2], msg[3], MOUSE_MIDDLE_ID)
                 case "mouseup":
                     match msg[1]:
                         case sdl2.SDL_BUTTON_LEFT:
-                            self._mouse_up(msg[2], msg[3], _MOUSE_LEFT_ID)
+                            self._mouse_up(msg[2], msg[3], MOUSE_LEFT_ID)
                         case sdl2.SDL_BUTTON_RIGHT:
-                            self._mouse_up(msg[2], msg[3], _MOUSE_RIGHT_ID)
+                            self._mouse_up(msg[2], msg[3], MOUSE_RIGHT_ID)
                         case sdl2.SDL_BUTTON_MIDDLE:
-                            self._mouse_up(msg[2], msg[3], _MOUSE_MIDDLE_ID)
+                            self._mouse_up(msg[2], msg[3], MOUSE_MIDDLE_ID)
                 case "mousemove":
                     self._cursor_pos = (float(msg[2]), float(msg[3]))
                     any_drag = False
                     if msg[1] & sdl2.SDL_BUTTON_LMASK:
-                        self._mouse_dragged(msg[2], msg[3], _MOUSE_LEFT_ID)
+                        self._mouse_dragged(msg[2], msg[3], MOUSE_LEFT_ID)
                         any_drag = True
                     if msg[1] & sdl2.SDL_BUTTON_RMASK:
-                        self._mouse_dragged(msg[2], msg[3], _MOUSE_RIGHT_ID)
+                        self._mouse_dragged(msg[2], msg[3], MOUSE_RIGHT_ID)
                         any_drag = True
                     if msg[1] & sdl2.SDL_BUTTON_MMASK:
-                        self._mouse_dragged(msg[2], msg[3], _MOUSE_MIDDLE_ID)
+                        self._mouse_dragged(msg[2], msg[3], MOUSE_MIDDLE_ID)
                         any_drag = True
                     if not any_drag:
                         self._mouse_moved(msg[2], msg[3])

@@ -254,6 +254,7 @@ class SDLRuntime(BaseRuntime):
                 case "keydown":
                     sym, mod = msg[1], msg[2]
                     from pytoui._kb import _build_sdl_map, _sdl_mods_to_set
+
                     key_str = _build_sdl_map(sdl2).get(sym, "")
                     handled = False
                     if key_str:

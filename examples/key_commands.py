@@ -147,18 +147,16 @@ class KeyCommandsView(ui.View):
 
     def get_key_commands(self):
         return [
-            {"input": "n", "modifiers": ui.KEY_MOD_CMD,
-             "title": "Increment"},
-            {"input": "z", "modifiers": ui.KEY_MOD_CMD,
-             "title": "Decrement"},
-            {"input": "z", "modifiers": f"{ui.KEY_MOD_CMD},{ui.KEY_MOD_SHIFT}",
-             "title": "Re-increment"},
-            {"input": ui.KEY_INPUT_UP,
-             "title": "Previous color"},
-            {"input": ui.KEY_INPUT_DOWN,
-             "title": "Next color"},
-            {"input": ui.KEY_INPUT_ESC,
-             "title": "Reset"},
+            {"input": "n", "modifiers": ui.KEY_MOD_CMD, "title": "Increment"},
+            {"input": "z", "modifiers": ui.KEY_MOD_CMD, "title": "Decrement"},
+            {
+                "input": "z",
+                "modifiers": f"{ui.KEY_MOD_CMD},{ui.KEY_MOD_SHIFT}",
+                "title": "Re-increment",
+            },
+            {"input": ui.KEY_INPUT_UP, "title": "Previous color"},
+            {"input": ui.KEY_INPUT_DOWN, "title": "Next color"},
+            {"input": ui.KEY_INPUT_ESC, "title": "Reset"},
         ]
 
     def key_command(self, sender):
@@ -204,9 +202,7 @@ class KeyCommandsView(ui.View):
     def _refresh_status(self):
         _, color_name = _COLORS[self._color_idx]
         focus_str = "● focused" if self._focused else "○ click to focus"
-        self._status.text = (
-            f"counter={self._counter}  color={color_name}  {focus_str}"
-        )
+        self._status.text = f"counter={self._counter}  color={color_name}  {focus_str}"
         self.set_needs_display()
 
     # ── Drawing ────────────────────────────────────────────────────────────────

@@ -1059,8 +1059,8 @@ class _View:
 
             def get_key_commands(self):
                 return [
-                    {'input': 'n', 'modifiers': 'cmd', 'title': 'New'},
-                    {'input': KEY_INPUT_ESC, 'title': 'Cancel'},
+                    {"input": "n", "modifiers": "cmd", "title": "New"},
+                    {"input": KEY_INPUT_ESC, "title": "Cancel"},
                 ]
         """
         return []

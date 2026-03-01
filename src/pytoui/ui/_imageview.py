@@ -48,7 +48,9 @@ class ImageView(View):
 
     @property
     def content_mode(self) -> int:
-        """The image content mode (CONTENT_SCALE_TO_FILL, CONTENT_SCALE_ASPECT_FIT, etc.)."""
+        """
+        The image content mode (CONTENT_SCALE_TO_FILL, CONTENT_SCALE_ASPECT_FIT, etc.).
+        """
         return self._content_mode
 
     @content_mode.setter

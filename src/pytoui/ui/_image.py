@@ -131,7 +131,12 @@ class Image:
             x, y = float(args[0]), float(args[1])
             dw, dh = float(pw), float(ph)
         elif len(args) == 4:
-            x, y, dw, dh = float(args[0]), float(args[1]), float(args[2]), float(args[3])
+            x, y, dw, dh = (
+                float(args[0]),
+                float(args[1]),
+                float(args[2]),
+                float(args[3]),
+            )
         elif len(args) == 1:
             r = args[0]
             x, y, dw, dh = float(r[0]), float(r[1]), float(r[2]), float(r[3])

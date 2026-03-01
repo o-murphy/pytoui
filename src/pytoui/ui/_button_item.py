@@ -10,7 +10,8 @@ __all__ = ("ButtonItem",)
 
 
 class ButtonItem:
-    """A button for use in the title bar when presenting views or inside a NavigationView.
+    """A button for use in the title bar when presenting views
+    or inside a NavigationView.
 
     Set View.left_button_items or View.right_button_items to a list of ButtonItems.
     Unlike Button, this class does not inherit from View.
@@ -36,7 +37,9 @@ class ButtonItem:
 
     @property
     def title(self) -> str | None:
-        """The button's title. A ButtonItem should have a title or an image, not both."""
+        """
+        The button's title. A ButtonItem should have a title or an image, not both.
+        """
         return self._title
 
     @title.setter
@@ -45,7 +48,9 @@ class ButtonItem:
 
     @property
     def image(self) -> Image | None:
-        """The button's image. A ButtonItem should have a title or an image, not both."""
+        """
+        The button's image. A ButtonItem should have a title or an image, not both.
+        """
         return self._image
 
     @image.setter

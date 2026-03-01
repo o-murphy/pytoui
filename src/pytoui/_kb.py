@@ -13,26 +13,26 @@ from __future__ import annotations
 # Special input strings  (Pythonista-compatible)
 # ---------------------------------------------------------------------------
 
-KEY_INPUT_UP: str = "up"           # (P) Up arrow
-KEY_INPUT_DOWN: str = "down"       # (P) Down arrow
-KEY_INPUT_LEFT: str = "left"       # (P) Left arrow
-KEY_INPUT_RIGHT: str = "right"     # (P) Right arrow
-KEY_INPUT_ESC: str = "esc"         # (P) Escape
-KEY_INPUT_RETURN: str = "\r"       # (P) Return / Enter
-KEY_INPUT_BACKSPACE: str = "\b"    # (P) Backspace
-KEY_INPUT_TAB: str = "\t"          # (P) Tab
-KEY_INPUT_SPACE: str = " "         # (P) Space bar
+KEY_INPUT_UP: str = "up"  # (P) Up arrow
+KEY_INPUT_DOWN: str = "down"  # (P) Down arrow
+KEY_INPUT_LEFT: str = "left"  # (P) Left arrow
+KEY_INPUT_RIGHT: str = "right"  # (P) Right arrow
+KEY_INPUT_ESC: str = "esc"  # (P) Escape
+KEY_INPUT_RETURN: str = "\r"  # (P) Return / Enter
+KEY_INPUT_BACKSPACE: str = "\b"  # (P) Backspace
+KEY_INPUT_TAB: str = "\t"  # (P) Tab
+KEY_INPUT_SPACE: str = " "  # (P) Space bar
 
 # ---------------------------------------------------------------------------
 # Extended input strings  (desktop + iOS 13.4+ UIKit)
 # ---------------------------------------------------------------------------
 
-KEY_INPUT_DELETE: str = "delete"       # (D) Forward-delete (Del key)
-KEY_INPUT_HOME: str = "home"           # (D) Home
-KEY_INPUT_END: str = "end"             # (D) End
-KEY_INPUT_PAGE_UP: str = "pageup"      # (D) Page Up
+KEY_INPUT_DELETE: str = "delete"  # (D) Forward-delete (Del key)
+KEY_INPUT_HOME: str = "home"  # (D) Home
+KEY_INPUT_END: str = "end"  # (D) End
+KEY_INPUT_PAGE_UP: str = "pageup"  # (D) Page Up
 KEY_INPUT_PAGE_DOWN: str = "pagedown"  # (D) Page Down
-KEY_INPUT_INSERT: str = "insert"       # (D) Insert
+KEY_INPUT_INSERT: str = "insert"  # (D) Insert
 
 KEY_INPUT_F1: str = "f1"
 KEY_INPUT_F2: str = "f2"
@@ -51,9 +51,9 @@ KEY_INPUT_F12: str = "f12"
 # Modifier strings — use in the 'modifiers' field (comma-separated)
 # ---------------------------------------------------------------------------
 
-KEY_MOD_CMD: str = "cmd"      # ⌘ on iOS/macOS; mapped to Ctrl on Linux/Windows
-KEY_MOD_CTRL: str = "ctrl"    # Control key (literal, all platforms)
-KEY_MOD_ALT: str = "alt"      # Option/Alt
+KEY_MOD_CMD: str = "cmd"  # ⌘ on iOS/macOS; mapped to Ctrl on Linux/Windows
+KEY_MOD_CTRL: str = "ctrl"  # Control key (literal, all platforms)
+KEY_MOD_ALT: str = "alt"  # Option/Alt
 KEY_MOD_SHIFT: str = "shift"  # Shift
 
 # ---------------------------------------------------------------------------
@@ -146,25 +146,26 @@ def _sdl_mods_to_set(sdl2, mod_flags: int) -> frozenset[str]:
 # ---------------------------------------------------------------------------
 # Winit key code → KEY_INPUT_* lookup table
 # Integer codes match key_to_code() in deps/winitrt/src/lib.rs.
-# Named keys: 1-15 and 1001-1012; character keys: ASCII codepoint (a-z lowercase, printable punctuation).
+# Named keys: 1-15 and 1001-1012; character keys:
+#   ASCII codepoint (a-z lowercase, printable punctuation).
 # Used internally by WinitRuntime; not part of the public API.
 # ---------------------------------------------------------------------------
 
 _WINIT_MOD_SHIFT: int = 1
-_WINIT_MOD_CTRL:  int = 2
-_WINIT_MOD_ALT:   int = 4
+_WINIT_MOD_CTRL: int = 2
+_WINIT_MOD_ALT: int = 4
 _WINIT_MOD_SUPER: int = 8
 
 _WINIT_KEY_MAP: dict[int, str] = {
-    1:  KEY_INPUT_UP,
-    2:  KEY_INPUT_DOWN,
-    3:  KEY_INPUT_LEFT,
-    4:  KEY_INPUT_RIGHT,
-    5:  KEY_INPUT_ESC,
-    6:  KEY_INPUT_RETURN,
-    7:  KEY_INPUT_BACKSPACE,
-    8:  KEY_INPUT_TAB,
-    9:  KEY_INPUT_SPACE,
+    1: KEY_INPUT_UP,
+    2: KEY_INPUT_DOWN,
+    3: KEY_INPUT_LEFT,
+    4: KEY_INPUT_RIGHT,
+    5: KEY_INPUT_ESC,
+    6: KEY_INPUT_RETURN,
+    7: KEY_INPUT_BACKSPACE,
+    8: KEY_INPUT_TAB,
+    9: KEY_INPUT_SPACE,
     10: KEY_INPUT_DELETE,
     11: KEY_INPUT_HOME,
     12: KEY_INPUT_END,

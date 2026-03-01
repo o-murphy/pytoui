@@ -155,6 +155,7 @@ __PresentOrientation: TypeAlias = Literal[
 ]
 __Action: TypeAlias = Callable[[Any], None] | Callable[[], None]
 __Font: TypeAlias = tuple[str, float]
+__ScrollIndicatorStyle = Literal["default", "white", "black"]
 
 class Rect:
     x: float = ...  # default: <attribute 'x' of 'Rect' objects>
@@ -523,39 +524,43 @@ class ScrollView(View):
     always_bounce_vertical: bool = (
         ...
     )  # default: <attribute 'always_bounce_vertical' of '_ui.ScrollView' objects>
-    bounces: Any = ...  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
-    content_inset: Any = (
-        ...
-    )  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
-    content_offset: Any = (
+    bounces: bool = ...  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
+    content_inset: tuple[
+        float, float, float, float
+    ] = ...  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
+    content_offset: __PointLike = (
         ...
     )  # default: <attribute 'content_offset' of '_ui.ScrollView' objects>
-    content_size: Any = (
+    content_size: __SizeLike = (
         ...
     )  # default: <attribute 'content_size' of '_ui.ScrollView' objects>
-    decelerating: Any = (
+    decelerating: bool = (
         ...
     )  # default: <attribute 'decelerating' of '_ui.ScrollView' objects>
-    delegate: Any = ...  # default: <attribute 'delegate' of '_ui.ScrollView' objects>
-    directional_lock_enabled: Any = (
+    delegate: (
+        Any | None
+    ) = ...  # default: <attribute 'delegate' of '_ui.ScrollView' objects>
+    directional_lock_enabled: bool = (
         ...
     )  # default: <attribute 'directional_lock_enabled' of '_ui.ScrollView' objects>
-    dragging: Any = ...  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
-    indicator_style: Any = (
+    dragging: bool = ...  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
+    indicator_style: __ScrollIndicatorStyle = (
         ...
     )  # default: <attribute 'indicator_style' of '_ui.ScrollView' objects>
-    paging_enabled: Any = (
+    paging_enabled: bool = (
         ...
     )  # default: <attribute 'paging_enabled' of '_ui.ScrollView' objects>
-    scroll_enabled: Any = (
+    scroll_enabled: bool = (
         ...
     )  # default: <attribute 'scroll_enabled' of '_ui.ScrollView' objects>
-    scroll_indicator_insets: Any = (
+    scroll_indicator_insets: tuple[
+        float, float, float, float
+    ] = (
         ...
     )  # default: <attribute 'scroll_indicator_insets' of '_ui.ScrollView' objects>
-    shows_horizontal_scroll_indicator: Any = ...  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
-    shows_vertical_scroll_indicator: Any = ...  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
-    tracking: Any = ...  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
+    shows_horizontal_scroll_indicator: bool = ...  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
+    shows_vertical_scroll_indicator: bool = ...  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
+    tracking: bool = ...  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
     def __init__(self, *args, **kwargs) -> None: ...
 
 class SegmentedControl(View):

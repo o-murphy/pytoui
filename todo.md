@@ -7,6 +7,10 @@ NOTE:
 * original Pythonista.ui references, inspected stubs are in the src/ui/resources
 * osdbuf.py is in src/osdbuf/__init__.py
 
+HOT:
+* move mouse and kb related types to _kb.py and _mouse.py, cause it is not part of Pythonista ui public API 
+* ScrollView
+
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through env variable)
 * add keyboard input support (for future text input functionality)

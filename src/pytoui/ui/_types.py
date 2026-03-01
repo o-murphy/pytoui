@@ -24,6 +24,10 @@ __all__ = (
     "_SizeLike",
     "_TouchPhase",
     "_ViewFlex",
+    "_SCROLL_TOUCH_ID",
+    "_MOUSE_LEFT_ID",
+    "_MOUSE_RIGHT_ID",
+    "_MOUSE_MIDDLE_ID",
     "autoreleasepool",
 )
 
@@ -448,7 +452,7 @@ _MOUSE_MIDDLE_ID: int = -3
 Never appears on real Pythonista.  Check with ``touch.touch_id == MOUSE_MIDDLE_ID``.
 """
 
-SCROLL_TOUCH_ID: int = -4
+_SCROLL_TOUCH_ID: int = -4
 """Reserved touch_id for synthetic mouse-wheel / trackpad scroll events.
 
 Never appears on real Pythonista (iOS has no mouse wheel), so checking
@@ -508,7 +512,7 @@ class MouseWheel(MouseEvent):
         scroll_dy: float,
     ):
         super().__init__(
-            location, phase, prev_location, timestamp, SCROLL_TOUCH_ID, buttons
+            location, phase, prev_location, timestamp, _SCROLL_TOUCH_ID, buttons
         )
         self.scroll_dx = scroll_dx
         self.scroll_dy = scroll_dy

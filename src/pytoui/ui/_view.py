@@ -132,6 +132,7 @@ class _ViewInternals:
         "_pytoui_needs_display",
         "_pytoui_last_update_time",
         "_pytoui_mouse_scroll_enabled",
+        "_pytoui_clips_to_bounds",
         "_pytoui_close_event",
         "_pytoui_content_draw_size",
     )
@@ -158,6 +159,7 @@ class _ViewInternals:
         self._touch_enabled: bool = True
         self._multitouch_enabled: bool = False
         self._pytoui_mouse_scroll_enabled: bool = False
+        self._pytoui_clips_to_bounds: bool = False
 
         # CUSTOM
         self._pytoui_presented: bool = False
@@ -335,6 +337,15 @@ class _ViewInternals:
     @mouse_scroll_enabled.setter
     def mouse_scroll_enabled(self, value: bool):
         self._pytoui_mouse_scroll_enabled = bool(value)
+
+    @property
+    def clips_to_bounds(self) -> bool:
+        """If True, subviews are clipped to this view's bounds during rendering."""
+        return self._pytoui_clips_to_bounds
+
+    @clips_to_bounds.setter
+    def clips_to_bounds(self, value: bool):
+        self._pytoui_clips_to_bounds = bool(value)
 
     @property
     def frame(self) -> Rect:
@@ -538,6 +549,12 @@ class _ViewInternals:
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
+    def _clear_dirty_tree(self) -> None:
+        """Recursively clear needs_display without rendering (used for culled views)."""
+        self._pytoui_needs_display = False
+        for sv in self._subviews:
+            sv._clear_dirty_tree()
+
     def pytoui_render(self):
         self._pytoui_needs_display = False
         if self._hidden:
@@ -584,8 +601,33 @@ class _ViewInternals:
                         _content_mode_transform(cm, cw, ch, fw, fh)
                         draw()
 
-        for sv in self._subviews:
-            sv.pytoui_render()
+        if self._pytoui_clips_to_bounds and self._subviews:
+            with GState():
+                _set_origin(ox, oy)
+                (
+                    Path.rounded_rect(0, 0, fw, fh, cr)
+                    if cr > 0
+                    else Path.rect(0, 0, fw, fh)
+                ).add_clip()
+                bx, by = self._bounds.x, self._bounds.y
+                for sv in self._subviews:
+                    sf = sv._frame
+                    if (
+                        sf.x + sf.w <= bx
+                        or sf.x >= bx + fw
+                        or sf.y + sf.h <= by
+                        or sf.y >= by + fh
+                    ):
+                        sv._clear_dirty_tree()
+                        continue
+                    sv.pytoui_render()
+        else:
+            for sv in self._subviews:
+                sv.pytoui_render()
+
+        draw_overlay = getattr(self._ref, "_pytoui_draw_overlay", None)
+        if draw_overlay is not None:
+            draw_overlay(fw, fh)
 
     def __getitem__(self, name: str) -> _ViewInternals:
         for view in self._subviews:
@@ -947,6 +989,15 @@ class _View:
         self._internals_.mouse_scroll_enabled = value
 
     @property
+    def clips_to_bounds(self) -> bool:
+        """If True, subviews are clipped to this view's bounds during rendering."""
+        return self._internals_.clips_to_bounds
+
+    @clips_to_bounds.setter
+    def clips_to_bounds(self, value: bool):
+        self._internals_.clips_to_bounds = value
+
+    @property
     def transform(self) -> Transform | None:
         """The transform applied to the view relative to the center of its bounds."""
         return self._internals_.transform
@@ -1103,6 +1154,14 @@ if IS_PYTHONISTA:
 
         @mouse_scroll_enabled.setter
         def mouse_scroll_enabled(self, value: bool):
+            pass
+
+        @property
+        def clips_to_bounds(self) -> bool:
+            return True
+
+        @clips_to_bounds.setter
+        def clips_to_bounds(self, value: bool):
             pass
 
 

@@ -4,17 +4,6 @@ from collections.abc import Callable
 
 from pytoui import ui
 
-# --- Store / Model ---
-from pytoui._platform import IS_PYTHONISTA
-
-if not IS_PYTHONISTA:
-
-    class MockScrollView(ui.View):
-        pass
-
-    if not hasattr(ui, "ScrollView"):
-        ui.ScrollView = MockScrollView
-
 
 class ValueStore:
     def __init__(self, defaults: dict[str, float] = None):
@@ -65,11 +54,11 @@ class MockServer:
 
 class ScrollAwareMixin:
     def _find_scroll_view(self):
-        # view = self.superview
-        # while view:
-        #     if isinstance(view, ui.ScrollView):
-        #         return view
-        #     view = view.superview
+        view = self.superview
+        while view:
+            if isinstance(view, ui.ScrollView):
+                return view
+            view = view.superview
         return None
 
     def _disable_scroll(self):
@@ -906,8 +895,8 @@ def main():
     v.frame = (0, 0, 400, 720)
 
     # ScrollView
-    # scroll = ui.ScrollView()
-    scroll = ui.View()
+    scroll = ui.ScrollView()
+    # scroll = ui.View()
     scroll.background_color = "transparent"
     # scroll.shows_vertical_scroll_indicator = True
     scroll.flex = "WH"
@@ -1098,7 +1087,7 @@ def main():
             y += row.height + spacing
 
         content.frame = (0, 0, w, y + 20)
-        # scroll.content_size = (w, y + 20)
+        scroll.content_size = (w, y + 20)
 
     for row in rows:
         content.add_subview(row)

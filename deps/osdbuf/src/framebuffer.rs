@@ -72,6 +72,11 @@ impl FrameBuffer {
             return;
         }
         if x >= 0 && x < self.w && y >= 0 && y < self.h {
+            if let Some(mask) = &self.clip_mask {
+                if mask.data()[y as usize * self.w as usize + x as usize] == 0 {
+                    return;
+                }
+            }
             let off = ((y * self.w + x) * 4) as usize;
             // Premultiply source
             let sa = a as f32 / 255.0;
@@ -400,6 +405,10 @@ impl FrameBuffer {
         dst_y: i32,
         blend: bool,
     ) {
+        let clip_data = self
+            .clip_mask
+            .as_ref()
+            .map(|m| (m.data().to_vec(), self.w as u32, self.h as u32));
         // src_pixels is in straight RGBA from Python. Convert to premultiplied for tiny-skia.
         let len = (src_w * src_h * 4) as usize;
         let mut premul = vec![0u8; len];
@@ -420,6 +429,11 @@ impl FrameBuffer {
                 } else {
                     BlendMode::Source
                 };
+                let clip_mask = clip_data.as_ref().and_then(|(data, w, h)| {
+                    let mut m = Mask::new(*w, *h)?;
+                    m.data_mut().copy_from_slice(data);
+                    Some(m)
+                });
                 dst_pm.draw_pixmap(
                     dst_x,
                     dst_y,
@@ -430,7 +444,7 @@ impl FrameBuffer {
                         quality: tiny_skia::FilterQuality::Nearest,
                     },
                     Transform::identity(),
-                    None,
+                    clip_mask.as_ref(),
                 );
             }
         }
@@ -451,6 +465,10 @@ impl FrameBuffer {
         if src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0 {
             return;
         }
+        let clip_data = self
+            .clip_mask
+            .as_ref()
+            .map(|m| (m.data().to_vec(), self.w as u32, self.h as u32));
         let len = (src_w * src_h * 4) as usize;
         let mut premul = vec![0u8; len];
         for i in (0..len).step_by(4) {
@@ -468,6 +486,11 @@ impl FrameBuffer {
                 let mode = if blend { BlendMode::SourceOver } else { BlendMode::Source };
                 let sx = dst_w as f32 / src_w as f32;
                 let sy = dst_h as f32 / src_h as f32;
+                let clip_mask = clip_data.as_ref().and_then(|(data, w, h)| {
+                    let mut m = Mask::new(*w, *h)?;
+                    m.data_mut().copy_from_slice(data);
+                    Some(m)
+                });
                 dst_pm.draw_pixmap(
                     dst_x,
                     dst_y,
@@ -478,7 +501,7 @@ impl FrameBuffer {
                         quality: tiny_skia::FilterQuality::Bilinear,
                     },
                     Transform::from_scale(sx, sy),
-                    None,
+                    clip_mask.as_ref(),
                 );
             }
         }

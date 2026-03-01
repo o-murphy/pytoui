@@ -145,14 +145,12 @@ def _route_event(sdl2, event) -> None:
         try:
             dx = float(event.wheel.preciseX)
             dy = float(event.wheel.preciseY)
-            is_precise = True
         except AttributeError:
             dx = float(event.wheel.x)
             dy = float(event.wheel.y)
-            is_precise = False
         if event.wheel.direction == sdl2.SDL_MOUSEWHEEL_FLIPPED:
             dx, dy = -dx, -dy
-        _send(wid, ("mousewheel", dx, dy, is_precise))
+        _send(wid, ("mousewheel", dx, dy))
     elif t == sdl2.SDL_KEYDOWN:
         wid = event.key.windowID
         _send(wid, ("keydown", event.key.keysym.sym, int(event.key.keysym.mod)))
@@ -300,10 +298,7 @@ class SDLRuntime(BaseRuntime):
                     if not any_drag:
                         self._mouse_moved(msg[2], msg[3])
                 case "mousewheel":
-                    dx, dy, is_precise = msg[1], msg[2], msg[3]
-                    if not is_precise:
-                        dx *= _SCROLL_LINE_PX
-                        dy *= _SCROLL_LINE_PX
+                    dx, dy = msg[1] * _SCROLL_LINE_PX, msg[2] * _SCROLL_LINE_PX
                     cx, cy = self._cursor_pos
                     self._scroll_event(cx, cy, dx, dy)
                 case "fingerdown":

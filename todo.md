@@ -8,8 +8,11 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* move mouse and kb related types to _kb.py and _mouse.py, cause it is not part of Pythonista ui public API 
+* startup glitch when many views added (maybe we need no draw invisible things?)
 * ScrollView
+  * what is ScrollView.flash_scroll_indicators?
+  * ScrollView scroll indicators not displaying
+  * ScrollView is not working on iOS
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through env variable)

@@ -269,6 +269,9 @@ class BaseRuntime:
         )
 
     def _mouse_moved(self, x, y):
+        since_scroll = time.monotonic() - getattr(self, "_last_scroll_time", 0.0)
+        if since_scroll < self._SCROLL_HOVER_COOLDOWN:
+            return
         target = self.root.pytoui_hit_test(x, y)
         if not target:
             return
@@ -308,6 +311,9 @@ class BaseRuntime:
             )
         )
 
+    # seconds to suppress _mouse_moved after a scroll tick
+    _SCROLL_HOVER_COOLDOWN = 0.08
+
     def _scroll_event(
         self, cursor_x: float, cursor_y: float, dx: float, dy: float
     ) -> None:
@@ -318,6 +324,7 @@ class BaseRuntime:
         """
         from pytoui.ui._types import MouseWheel
 
+        self._last_scroll_time = time.monotonic()
         target = self.root.pytoui_scroll_hit_test(cursor_x, cursor_y)
         if not target:
             return

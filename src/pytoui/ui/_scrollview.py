@@ -95,6 +95,7 @@ class ScrollView(View):
         self._last_touch_time: float = 0.0
         self._flash_until: float = 0.0
 
+        self.update_interval = 1/60
         # ── pytoui setup ──────────────────────────────────────────────────────
         self.mouse_scroll_enabled = True  # triggers lazy _internals_ creation
         self.clips_to_bounds = True

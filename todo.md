@@ -10,6 +10,7 @@ NOTE:
 HOT:
 * startup glitch when many views added (maybe we need no draw invisible things?)
 * ScrollView
+  * we handle touch_cancelled with touch_end
   * what is ScrollView.flash_scroll_indicators?
   * ScrollView scroll indicators not displaying
   * ScrollView is not working on iOS

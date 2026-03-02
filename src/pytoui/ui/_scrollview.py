@@ -266,7 +266,9 @@ class _ScrollView(View):
 
     @mouse_scroll_enabled.setter
     def mouse_scroll_enabled(self, value: bool):
-        self.mouse_scroll_enabled = bool(value) and self._scroll_enabled
+        self._internals_._pytoui_mouse_scroll_enabled = (
+            bool(value) and self._scroll_enabled
+        )
 
     @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:

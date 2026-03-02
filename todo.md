@@ -19,6 +19,8 @@ HOT:
   * ScrollView: our custom pytoui..ui.ScrollView still not work on Pythonista, so maybe we had create shim (like for a View). For Pythonista better to fallback to native pythonista.ui.ScrollView instead of our custom ones. But we will try to adjust our pytoui.ui.ScrollView public API and behaviour to maximum match original ones at least for PC.
     * so make pytoui.ui.ScrollView publick API match original ones
     * make pytoui.ui.ScrollView behaviour matching original ones with PC runtime features support
+    * cleanup useless Pyhtonista.ui compat features, due to the shim
+    * implement animations for paging?
 * startup glitch when many views added (maybe we need no draw invisible things?) note: seems like not happen after clipping fix
 * ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
 * SegmentedView and other scrollable widgets can steal scroll of ScrollView, Idk if we need to handle it and how

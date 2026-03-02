@@ -50,6 +50,7 @@ def make_tile(row: int, col: int) -> ui.View:
     lbl.text_color = "white"
     lbl.alignment = ui.ALIGN_CENTER
     tile.add_subview(lbl)
+    tile.touch_enabled = False
 
     return tile
 
@@ -78,6 +79,7 @@ def main():
     content_w = COLS * TILE_W + (COLS - 1) * GAP + 2 * PADDING
     content_h = ROWS * TILE_H + (ROWS - 1) * GAP + 2 * PADDING
     sv.content_size = (content_w, content_h)
+    sv.content_inset = (8, 8, 8, 8)
 
     for row in range(ROWS):
         for col in range(COLS):

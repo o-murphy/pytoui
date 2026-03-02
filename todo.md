@@ -10,10 +10,10 @@ NOTE:
 HOT:
 * startup glitch when many views added (maybe we need no draw invisible things?)
 * ScrollView
-  * we handle touch_cancelled with touch_end
-  * what is ScrollView.flash_scroll_indicators?
-  * ScrollView scroll indicators not displaying
-  * ScrollView is not working on iOS
+  * paging not working
+  * ScrollView scroll displaying under the content
+  * ScrollView is not working on iOS as expected
+  * Subviews handles the touch move events preventing the scroll
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through env variable)

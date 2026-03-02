@@ -132,10 +132,6 @@ class FootswitchButton(BaseControl, ThresholdMixin):
         self._emit(new_value)
         self.set_needs_display()
 
-    def touch_cancelled(self, touch):
-        self._is_pressed = False
-        self.set_needs_display()
-
 
 class DS1KnobView(KnobView):
     def __init__(

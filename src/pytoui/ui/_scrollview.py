@@ -95,10 +95,9 @@ class ScrollView(View):
         self._last_touch_time: float = 0.0
         self._flash_until: float = 0.0
 
-        self.update_interval = 1/60
+        self.update_interval = 1 / 60
         # ── pytoui setup ──────────────────────────────────────────────────────
         self.mouse_scroll_enabled = True  # triggers lazy _internals_ creation
-        self.clips_to_bounds = True
 
     # ── Pythonista public API ──────────────────────────────────────────────────
 
@@ -288,7 +287,7 @@ class ScrollView(View):
         """(readonly) Whether the user has touched the content to initiate scrolling."""
         return self._tracking
 
-    def flash_scroll_indicators(self):
+    def _flash_scroll_indicators(self):
         """Briefly show the scroll indicators."""
         self._flash_until = time.monotonic() + 0.5
         if self.update_interval <= 0:
@@ -366,7 +365,7 @@ class ScrollView(View):
         new_x = ox - event.scroll_dx if self._can_scroll_h() else ox
         new_y = oy - event.scroll_dy if self._can_scroll_v() else oy
         self._set_offset(new_x, new_y)
-        self.flash_scroll_indicators()
+        self._flash_scroll_indicators()
 
     def _mouse_wheel_page(self, event: MouseWheel):
         """Advance one page per wheel tick when paging_enabled."""
@@ -389,7 +388,7 @@ class ScrollView(View):
             # positive dy = scroll up = prev page
             step = -1 if dy > 0 else 1
             self._set_offset(ox, (cur + step) * fh)
-        self.flash_scroll_indicators()
+        self._flash_scroll_indicators()
 
     # ── Touch drag scrolling ───────────────────────────────────────────────────
 
@@ -475,7 +474,7 @@ class ScrollView(View):
 
         if self._paging_enabled:
             self._snap_to_page()
-            self.flash_scroll_indicators()
+            self._flash_scroll_indicators()
             return
 
         # Start kinetic deceleration if there's meaningful velocity
@@ -485,13 +484,7 @@ class ScrollView(View):
         else:
             self._vel_x = 0.0
             self._vel_y = 0.0
-            self.flash_scroll_indicators()
-
-    def touch_cancelled(self, touch: Touch):
-        self._tracking = False
-        self._dragging = False
-        self._vel_x = 0.0
-        self._vel_y = 0.0
+            self._flash_scroll_indicators()
 
     def _snap_to_page(self):
         fw = self.width
@@ -557,7 +550,9 @@ class ScrollView(View):
 
     # ── Scroll indicators overlay ──────────────────────────────────────────────
 
-    def _pytoui_draw_overlay(self, fw: float, fh: float):
+    def draw(self):
+
+        fw, fh = self.frame.size
         """Draw scroll indicator bars on top of content."""
         now = time.monotonic()
         if not (self._dragging or self._decelerating or self._flash_until > now):

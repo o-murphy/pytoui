@@ -17,10 +17,10 @@ HOT:
   * ~~mouse_scroll_enabled not tied to scroll_enabled~~ (fixed: property override)
   * ~~_draw_indicators crashes on Pythonista~~ (fixed: IS_PYTHONISTA guard)
   * ScrollView: our custom pytoui..ui.ScrollView still not work on Pythonista, so maybe we had create shim (like for a View). For Pythonista better to fallback to native pythonista.ui.ScrollView instead of our custom ones. But we will try to adjust our pytoui.ui.ScrollView public API and behaviour to maximum match original ones at least for PC.
-    * so make pytoui.ui.ScrollView publick API match original ones
+    * so make pytoui.ui.ScrollView public API match original ones. possibly we have to create ScrollView._internals_ inherited from View._internals_ to draw system subviews instead of redirect it to View._internals_ and simplify touch and mouse events handling behavior
     * make pytoui.ui.ScrollView behaviour matching original ones with PC runtime features support
     * cleanup useless Pyhtonista.ui compat features, due to the shim
-    * implement animations for paging?
+    * implement animations for paging? (slides like)
 * startup glitch when many views added (maybe we need no draw invisible things?) note: seems like not happen after clipping fix
 * ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
 * SegmentedView and other scrollable widgets can steal scroll of ScrollView, Idk if we need to handle it and how

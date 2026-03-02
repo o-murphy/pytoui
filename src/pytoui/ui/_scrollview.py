@@ -4,6 +4,7 @@ import math
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
+from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._types import Point, Rect, Size
 from pytoui.ui._view import View
@@ -53,8 +54,12 @@ class ScrollView(View):
         "_last_touch_x",
         "_last_touch_y",
         "_last_touch_time",
+        # Touch tracking: touch_id → original subview target
+        "_tracked",
         # Flash indicator timer
         "_flash_until",
+        # Paging debounce
+        "_last_page_flip_time",
     )
 
     def __init__(self):
@@ -93,11 +98,15 @@ class ScrollView(View):
         self._last_touch_x: float = 0.0
         self._last_touch_y: float = 0.0
         self._last_touch_time: float = 0.0
+        self._tracked: dict = {}
         self._flash_until: float = 0.0
+        self._last_page_flip_time: float = 0.0
 
         self.update_interval = 1 / 60
-        # ── pytoui setup ──────────────────────────────────────────────────────
-        self.mouse_scroll_enabled = True  # triggers lazy _internals_ creation
+        # ── pytoui setup (desktop only) ───────────────────────────────────────
+        if not IS_PYTHONISTA:
+            self.mouse_scroll_enabled = True
+            self._internals_._pytoui_system_subviews.append(self._draw_indicators)
 
     # ── Pythonista public API ──────────────────────────────────────────────────
 
@@ -251,6 +260,21 @@ class ScrollView(View):
         self.mouse_scroll_enabled = bool(value)
 
     @property
+    def mouse_scroll_enabled(self) -> bool:
+        """mouse_scroll_enabled is tied to scroll_enabled on ScrollView."""
+        if IS_PYTHONISTA:
+            return self._scroll_enabled
+        return self._scroll_enabled and self._internals_._pytoui_mouse_scroll_enabled
+
+    @mouse_scroll_enabled.setter
+    def mouse_scroll_enabled(self, value: bool):
+        if IS_PYTHONISTA:
+            return
+        self._internals_._pytoui_mouse_scroll_enabled = (
+            bool(value) and self._scroll_enabled
+        )
+
+    @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:
         """
         The distance the scroll indicators are inset from the edges of the scroll view.
@@ -369,6 +393,9 @@ class ScrollView(View):
 
     def _mouse_wheel_page(self, event: MouseWheel):
         """Advance one page per wheel tick when paging_enabled."""
+        now = time.monotonic()
+        if now - self._last_page_flip_time < 0.35:
+            return
         ox, oy = self._content_offset
         can_h = self._can_scroll_h()
         can_v = self._can_scroll_v()
@@ -378,7 +405,12 @@ class ScrollView(View):
             if fw <= 0:
                 return
             cur = round(ox / fw)
-            step = 1 if dx > 0 else -1
+            # dx>0 = "scroll right" (natural) = previous page (offset decreases)
+            # when dx==0 (pure vertical wheel), use dy direction instead
+            if dx != 0:
+                step = -1 if dx > 0 else 1
+            else:
+                step = -1 if dy > 0 else 1
             self._set_offset((cur + step) * fw, oy)
         elif can_v:
             fh = self.height
@@ -388,6 +420,9 @@ class ScrollView(View):
             # positive dy = scroll up = prev page
             step = -1 if dy > 0 else 1
             self._set_offset(ox, (cur + step) * fh)
+        else:
+            return
+        self._last_page_flip_time = now
         self._flash_scroll_indicators()
 
     # ── Touch drag scrolling ───────────────────────────────────────────────────
@@ -550,10 +585,9 @@ class ScrollView(View):
 
     # ── Scroll indicators overlay ──────────────────────────────────────────────
 
-    def draw(self):
-
-        fw, fh = self.frame.size
+    def _draw_indicators(self):
         """Draw scroll indicator bars on top of content."""
+        fw, fh = self.frame.size
         now = time.monotonic()
         if not (self._dragging or self._decelerating or self._flash_until > now):
             return

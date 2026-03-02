@@ -134,6 +134,10 @@ class _ViewInternals:
         "_pytoui_mouse_scroll_enabled",
         "_pytoui_close_event",
         "_pytoui_content_draw_size",
+        # System-level overlay draw functions called after subviews.
+        # Each entry is a zero-argument callable rendered in the current GState
+        # (clipped to this view's bounds). Used by ScrollView for indicators.
+        "_pytoui_system_subviews",
     )
 
     def __init__(self, view: _View):
@@ -167,6 +171,7 @@ class _ViewInternals:
         # INTERNAL ONLY
         self._pytoui_close_event: Event = Event()
         self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
+        self._pytoui_system_subviews: list = []
 
     @property
     def ref(self) -> _View:
@@ -551,27 +556,32 @@ class _ViewInternals:
 
         ox, oy = _screen_origin(self)
         fw, fh = self._frame.size
+        if fw <= 0 or fh <= 0:
+            return
         cr = self._corner_radius
 
         with GState():
             _set_origin(ox, oy)
             set_alpha(self._alpha)
 
+            clip_path = (
+                Path.rounded_rect(0, 0, fw, fh, cr)
+                if cr > 0
+                else Path.rect(0, 0, fw, fh)
+            )
+            clip_path.add_clip()
+
             bg = self._background_color
             if bg and bg[3] > 0:
                 set_color(bg)
                 if cr > 0:
-                    Path.rounded_rect(0, 0, fw, fh, cr).fill()
+                    clip_path.fill()
                 else:
                     fill_rect(0, 0, fw, fh)
 
             if self._border_width > 0 and self._border_color is not None:
                 set_color(self._border_color)
-                p = (
-                    Path.rounded_rect(0, 0, fw, fh, cr)
-                    if cr > 0
-                    else Path.rect(0, 0, fw, fh)
-                )
+                p = clip_path if cr > 0 else Path.rect(0, 0, fw, fh)
                 p.line_width = self._border_width
                 p.stroke()
 
@@ -590,14 +600,6 @@ class _ViewInternals:
                         _content_mode_transform(cm, cw, ch, fw, fh)
                         draw()
 
-        # clips to bounds
-        with GState():
-            _set_origin(ox, oy)
-            (
-                Path.rounded_rect(0, 0, fw, fh, cr)
-                if cr > 0
-                else Path.rect(0, 0, fw, fh)
-            ).add_clip()
             bx, by = self._bounds.x, self._bounds.y
             for sv in self._subviews:
                 sf = sv._frame
@@ -610,6 +612,11 @@ class _ViewInternals:
                     sv._clear_dirty_tree()
                     continue
                 sv.pytoui_render()
+
+            # System subviews: drawn on top of all regular subviews,
+            # within the same clip. Each entry is a zero-arg callable.
+            for fn in self._pytoui_system_subviews:
+                fn()
 
     def __getitem__(self, name: str) -> _ViewInternals:
         for view in self._subviews:

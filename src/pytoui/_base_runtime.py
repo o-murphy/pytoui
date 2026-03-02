@@ -32,7 +32,7 @@ __all__ = (
     "_SCROLL_LINE_PX",
 )
 
-_SCROLL_LINE_PX: float = 20.0  # pixels per scroll "line" (for LineDelta)
+_SCROLL_LINE_PX: float = 8.0  # pixels per scroll "line" (for LineDelta)
 
 _CHECKER_SIZE = 8
 
@@ -80,6 +80,11 @@ class BaseRuntime:
         self._last_pos: dict[int, tuple[float, float]] = {}
         self._held_mouse_buttons: set[int] = set()
 
+        # touch_id/button_id → nearest scroll-enabled ancestor (scroll interceptor)
+        self._scroll_tracked: dict[int, _ViewInternals] = {}
+        # ids where the scroll view took over and the primary target was cancelled
+        self._scroll_cancelled: set[int] = set()
+
         # Per-window first responder
         self._first_responder: _ViewInternals | None = None
 
@@ -109,6 +114,20 @@ class BaseRuntime:
             view.pytoui_did_become_first_responder()
 
     # ------------------------------------------------------------------
+    # Scroll intercept helpers
+    # ------------------------------------------------------------------
+
+    def _find_scroll_interceptor(self, view: _ViewInternals) -> _ViewInternals | None:
+        """Walk up from view and return the nearest ancestor with
+        mouse_scroll_enabled=True (i.e. a ScrollView with scroll_enabled)."""
+        sv = view.superview
+        while sv is not None:
+            if sv._pytoui_mouse_scroll_enabled:
+                return sv
+            sv = sv.superview
+        return None
+
+    # ------------------------------------------------------------------
     # Touch handling
     # ------------------------------------------------------------------
 
@@ -136,43 +155,105 @@ class BaseRuntime:
         target = self.root.pytoui_hit_test(x, y)
         if not target:
             return
+
+        # Notify nearest scroll ancestor so it can start tracking the gesture
+        interceptor = self._find_scroll_interceptor(target)
+        if interceptor:
+            self._scroll_tracked[touch_id] = interceptor
+            scroll_began = interceptor.pytoui_touch_began
+            if scroll_began:
+                scroll_began(
+                    self._create_touch(interceptor, x, y, "began", touch_id, (x, y))
+                )
+
         touch_began = target.pytoui_touch_began
         if not touch_began:
             return
-
         if not target._multitouch_enabled and any(
             v is target for v in self._tracked.values()
         ):
             return
         self._tracked[touch_id] = target
+        # Primary subview always gets touch_began immediately.
+        # If it calls scroll_enabled=False, the interceptor is released in _touch_move.
         touch_began(self._create_touch(target, x, y, "began", touch_id, (x, y)))
 
     def _touch_move(self, x, y, touch_id):
         prev = self._last_pos.get(touch_id, (x, y))
         self._last_pos[touch_id] = (x, y)
+        phase = "moved" if (x, y) != prev else "stationary"
+
+        interceptor = self._scroll_tracked.get(touch_id)
+        if interceptor:
+            if not interceptor._pytoui_mouse_scroll_enabled:
+                # Primary disabled scrolling
+                # (e.g. via scroll_enabled=False in touch_began).
+                # Release the interceptor so primary gets all subsequent moves.
+                self._scroll_tracked.pop(touch_id)
+            else:
+                # ScrollView has priority: it owns all touch_moved events.
+                # Primary subview is blocked from receiving touch_moved.
+                scroll_moved = interceptor.pytoui_touch_moved
+                if scroll_moved:
+                    scroll_moved(
+                        self._create_touch(interceptor, x, y, phase, touch_id, prev)
+                    )
+                # Track whether the scroll view actually started dragging
+                # (used in touch_up to decide "ended" vs "cancelled" for primary)
+                if getattr(interceptor.ref, "_dragging", False):
+                    self._scroll_cancelled.add(touch_id)
+                return
+
         target = self._tracked.get(touch_id)
         if not target:
             return
         touch_moved = target.pytoui_touch_moved
         if not touch_moved:
             return
-        phase = "moved" if (x, y) != prev else "stationary"
         touch_moved(self._create_touch(target, x, y, phase, touch_id, prev))
 
     def _touch_up(self, x, y, touch_id):
         prev = self._last_pos.pop(touch_id, (x, y))
+        scroll_did_drag = touch_id in self._scroll_cancelled
+        self._scroll_cancelled.discard(touch_id)
+
+        interceptor = self._scroll_tracked.pop(touch_id, None)
+        if interceptor:
+            scroll_ended = interceptor.pytoui_touch_ended
+            if scroll_ended:
+                current = self.root.pytoui_hit_test(x, y)
+                phase = "ended" if current is interceptor else "cancelled"
+                scroll_ended(
+                    self._create_touch(interceptor, x, y, phase, touch_id, prev)
+                )
+
         target = self._tracked.pop(touch_id, None)
         if not target:
             return
         touch_ended = target.pytoui_touch_ended
         if not touch_ended:
             return
-        current = self.root.pytoui_hit_test(x, y)
-        phase = "ended" if current is target else "cancelled"
+        # If the scroll view dragged, cancel the primary subview's touch.
+        # Otherwise it was a tap — let it complete normally.
+        if scroll_did_drag:
+            phase = "cancelled"
+        else:
+            current = self.root.pytoui_hit_test(x, y)
+            phase = "ended" if current is target else "cancelled"
         touch_ended(self._create_touch(target, x, y, phase, touch_id, prev))
 
     def _touch_cancel(self, touch_id):
         x, y = self._last_pos.pop(touch_id, (0.0, 0.0))
+        self._scroll_cancelled.discard(touch_id)
+
+        interceptor = self._scroll_tracked.pop(touch_id, None)
+        if interceptor:
+            scroll_ended = interceptor.pytoui_touch_ended
+            if scroll_ended:
+                scroll_ended(
+                    self._create_touch(interceptor, x, y, "cancelled", touch_id, (x, y))
+                )
+
         target = self._tracked.pop(touch_id, None)
         if not target:
             return
@@ -207,10 +288,30 @@ class BaseRuntime:
         target = self.root.pytoui_hit_test(x, y)
         if not target:
             return
+
+        interceptor = self._find_scroll_interceptor(target)
+        if interceptor:
+            self._scroll_tracked[button_id] = interceptor
+            scroll_cb = interceptor.pytoui_mouse_down
+            if scroll_cb:
+                scroll_cb(
+                    self._create_mouse_event(
+                        interceptor,
+                        x,
+                        y,
+                        "began",
+                        button_id,
+                        (x, y),
+                        frozenset(self._held_mouse_buttons),
+                    )
+                )
         cb = target.pytoui_mouse_down
         if not cb:
             return
         self._tracked[button_id] = target
+        # Primary subview always gets mouse_down immediately.
+        # If it calls scroll_enabled=False, the interceptor is released
+        # in _mouse_dragged.
         cb(
             self._create_mouse_event(
                 target,
@@ -226,14 +327,38 @@ class BaseRuntime:
     def _mouse_up(self, x, y, button_id: int):
         self._held_mouse_buttons.discard(button_id)
         prev = self._last_pos.pop(button_id, (x, y))
+        scroll_did_drag = button_id in self._scroll_cancelled
+        self._scroll_cancelled.discard(button_id)
+
+        interceptor = self._scroll_tracked.pop(button_id, None)
+        if interceptor:
+            scroll_cb = interceptor.pytoui_mouse_up
+            if scroll_cb:
+                current = self.root.pytoui_hit_test(x, y)
+                phase = "ended" if current is interceptor else "cancelled"
+                scroll_cb(
+                    self._create_mouse_event(
+                        interceptor,
+                        x,
+                        y,
+                        phase,
+                        button_id,
+                        prev,
+                        frozenset(self._held_mouse_buttons),
+                    )
+                )
+
         target = self._tracked.pop(button_id, None)
         if not target:
             return
         cb = target.pytoui_mouse_up
         if not cb:
             return
-        current = self.root.pytoui_hit_test(x, y)
-        phase = "ended" if current is target else "cancelled"
+        if scroll_did_drag:
+            phase = "cancelled"
+        else:
+            current = self.root.pytoui_hit_test(x, y)
+            phase = "ended" if current is target else "cancelled"
         cb(
             self._create_mouse_event(
                 target,
@@ -249,13 +374,38 @@ class BaseRuntime:
     def _mouse_dragged(self, x, y, button_id: int):
         prev = self._last_pos.get(button_id, (x, y))
         self._last_pos[button_id] = (x, y)
+        phase = "moved" if (x, y) != prev else "stationary"
+
+        interceptor = self._scroll_tracked.get(button_id)
+        if interceptor:
+            if not interceptor._pytoui_mouse_scroll_enabled:
+                # Primary disabled scrolling; release interceptor so primary gets drags.
+                self._scroll_tracked.pop(button_id)
+            else:
+                # ScrollView has priority: it owns all drag events.
+                scroll_cb = interceptor.pytoui_mouse_dragged
+                if scroll_cb:
+                    scroll_cb(
+                        self._create_mouse_event(
+                            interceptor,
+                            x,
+                            y,
+                            phase,
+                            button_id,
+                            prev,
+                            frozenset(self._held_mouse_buttons),
+                        )
+                    )
+                if getattr(interceptor.ref, "_dragging", False):
+                    self._scroll_cancelled.add(button_id)
+                return
+
         target = self._tracked.get(button_id)
         if not target:
             return
         cb = target.pytoui_mouse_dragged
         if not cb:
             return
-        phase = "moved" if (x, y) != prev else "stationary"
         cb(
             self._create_mouse_event(
                 target,
@@ -293,6 +443,24 @@ class BaseRuntime:
     def _mouse_cancel(self, button_id: int):
         self._held_mouse_buttons.discard(button_id)
         x, y = self._last_pos.pop(button_id, (0.0, 0.0))
+        self._scroll_cancelled.discard(button_id)
+
+        interceptor = self._scroll_tracked.pop(button_id, None)
+        if interceptor:
+            scroll_cb = interceptor.pytoui_mouse_up
+            if scroll_cb:
+                scroll_cb(
+                    self._create_mouse_event(
+                        interceptor,
+                        x,
+                        y,
+                        "cancelled",
+                        button_id,
+                        (x, y),
+                        frozenset(self._held_mouse_buttons),
+                    )
+                )
+
         target = self._tracked.pop(button_id, None)
         if not target:
             return

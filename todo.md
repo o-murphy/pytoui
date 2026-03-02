@@ -8,12 +8,19 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* startup glitch when many views added (maybe we need no draw invisible things?)
 * ScrollView
-  * paging not working
-  * ScrollView scroll displaying under the content
-  * ScrollView is not working on iOS as expected
-  * Subviews handles the touch move events preventing the scroll
+  * ~~clips to bounds should work the render or for the draw?~~ (fixed: single GState clip)
+  * ~~paging not working~~ (fixed: direction + debounce)
+  * ~~ScrollView scroll displaying under the content~~ (fixed: _pytoui_system_subviews)
+  * ~~ScrollView is not working as expected / subviews steal touch events~~ (fixed: UIKit-style interceptor — scroll has full priority, tap delivery is retroactive)
+  * ~~scrollview scrolls too fast on wheel~~ (fixed: _SCROLL_LINE_PX = 8.0)
+  * ~~mouse_scroll_enabled not tied to scroll_enabled~~ (fixed: property override)
+  * ~~_draw_indicators crashes on Pythonista~~ (fixed: IS_PYTHONISTA guard)
+  * ScrollView: maybe we had create custom ScrollViewInternals idk
+* startup glitch when many views added (maybe we need no draw invisible things?)
+* ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
+* SegmentedView: steals scroll of ScrollView
+* Button: draw_string not at button's vertical center... Maybe take behaviour from Label
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through env variable)

@@ -29,16 +29,17 @@ type EventCb  = extern "C" fn(i32, f64, f64, i64);
 
 // ── UserEvent: request to add a new window ────────────────────────────────────
 struct AddWindowReq {
-    width:      u32,
-    height:     u32,
-    title:      String,
-    pixel_ptr:  *mut u32,
-    width_ptr:  *mut u32,
-    height_ptr: *mut u32,
-    render_cb:  RenderCb,
-    event_cb:   EventCb,
+    width:            u32,
+    height:           u32,
+    title:            String,
+    pixel_ptr:        *mut u32,
+    width_ptr:        *mut u32,
+    height_ptr:       *mut u32,
+    scale_factor_ptr: *mut f64,
+    render_cb:        RenderCb,
+    event_cb:         EventCb,
     /// Python thread blocks on done_rx; we send () when the window closes
-    done_tx:    mpsc::SyncSender<()>,
+    done_tx:          mpsc::SyncSender<()>,
 }
 
 // Raw pointers are managed by the Python/ctypes side — this is safe
@@ -51,16 +52,18 @@ enum AppEvent {
 
 // ── Single window state (lives on the EventLoop thread) ───────────────────────
 struct WinState {
-    window:     Arc<Window>,
-    surface:    Surface<Arc<Window>, Arc<Window>>,
-    pixel_ptr:  *mut u32,
-    width_ptr:  *mut u32,
-    height_ptr: *mut u32,
-    render_cb:  RenderCb,
-    event_cb:   EventCb,
-    done_tx:    mpsc::SyncSender<()>,
-    cursor_pos: (f64, f64),  // last known cursor position
-    modifiers:  Modifiers,   // current modifier state
+    window:           Arc<Window>,
+    surface:          Surface<Arc<Window>, Arc<Window>>,
+    pixel_ptr:        *mut u32,
+    width_ptr:        *mut u32,
+    height_ptr:       *mut u32,
+    scale_factor_ptr: *mut f64,
+    scale_factor:     f64,
+    render_cb:        RenderCb,
+    event_cb:         EventCb,
+    done_tx:          mpsc::SyncSender<()>,
+    cursor_pos:       (f64, f64),  // logical coords (physical / scale_factor)
+    modifiers:        Modifiers,   // current modifier state
 }
 
 // ── Keyboard helpers ──────────────────────────────────────────────────────────
@@ -250,13 +253,15 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                         .build(elwt)
                         .expect("Failed to create window"),
                 );
-                // Use actual physical size — may differ from logical on HiDPI.
+                let scale = window.scale_factor();
+                // Physical size for framebuffer
                 let phys = window.inner_size();
                 let pw = phys.width.max(1);
                 let ph = phys.height.max(1);
                 unsafe {
-                    *req.width_ptr  = pw;
-                    *req.height_ptr = ph;
+                    *req.width_ptr        = pw;
+                    *req.height_ptr       = ph;
+                    *req.scale_factor_ptr = scale;
                 }
                 let ctx = Context::new(Arc::clone(&window)).unwrap();
                 let mut surface = Surface::new(&ctx, Arc::clone(&window)).unwrap();
@@ -265,14 +270,16 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                 windows.insert(window.id(), WinState {
                     window,
                     surface,
-                    pixel_ptr:  req.pixel_ptr,
-                    width_ptr:  req.width_ptr,
-                    height_ptr: req.height_ptr,
-                    render_cb:  req.render_cb,
-                    event_cb:   req.event_cb,
-                    done_tx:    req.done_tx,
-                    cursor_pos: (0.0, 0.0),
-                    modifiers:  Modifiers::default(),
+                    pixel_ptr:        req.pixel_ptr,
+                    width_ptr:        req.width_ptr,
+                    height_ptr:       req.height_ptr,
+                    scale_factor_ptr: req.scale_factor_ptr,
+                    scale_factor:     scale,
+                    render_cb:        req.render_cb,
+                    event_cb:         req.event_cb,
+                    done_tx:          req.done_tx,
+                    cursor_pos:       (0.0, 0.0),
+                    modifiers:        Modifiers::default(),
                 });
             }
 
@@ -355,11 +362,21 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                         }
                     }
 
-                    // Mouse (touch_id == -1 signals "mouse pointer" on the Python side)
+                    WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                        if let Some(st) = windows.get_mut(&window_id) {
+                            st.scale_factor = scale_factor;
+                            unsafe { *st.scale_factor_ptr = scale_factor; }
+                            // Resized event follows with new physical size
+                        }
+                    }
+
+                    // Mouse — divide physical positions by scale_factor → logical coords
                     WindowEvent::CursorMoved { position, .. } => {
                         if let Some(st) = windows.get_mut(&window_id) {
-                            st.cursor_pos = (position.x, position.y);
-                            (st.event_cb)(2, position.x, position.y, -1);
+                            let lx = position.x / st.scale_factor;
+                            let ly = position.y / st.scale_factor;
+                            st.cursor_pos = (lx, ly);
+                            (st.event_cb)(2, lx, ly, -1);
                         }
                     }
 
@@ -391,7 +408,12 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                                 MouseScrollDelta::LineDelta(x, y) => {
                                     (x as f64, y as f64, 0i64)
                                 }
-                                MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y, 1i64),
+                                // PixelDelta is physical — convert to logical
+                                MouseScrollDelta::PixelDelta(pos) => (
+                                    pos.x / st.scale_factor,
+                                    pos.y / st.scale_factor,
+                                    1i64,
+                                ),
                             };
                             (st.event_cb)(4, dx, dy, is_pixel);
                         }
@@ -406,7 +428,9 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                                 TouchPhase::Moved     => 2,
                                 TouchPhase::Cancelled => 3,
                             };
-                            (st.event_cb)(etype, touch.location.x, touch.location.y, touch.id as i64);
+                            let lx = touch.location.x / st.scale_factor;
+                            let ly = touch.location.y / st.scale_factor;
+                            (st.event_cb)(etype, lx, ly, touch.id as i64);
                         }
                     }
 
@@ -446,16 +470,23 @@ fn proxy() -> Proxy {
 /// Create a window and block until it is closed.
 /// Can be called from multiple threads simultaneously — each will get its own window.
 /// title can be NULL (empty string will be used).
+///
+/// scale_factor_ptr is written with the initial display scale factor after the window
+/// is created, and updated whenever ScaleFactorChanged fires.
+/// All event coordinates reported via event_callback are in logical pixels
+/// (physical / scale_factor).  width_ptr / height_ptr report physical pixels
+/// (used for the pixel framebuffer).
 #[no_mangle]
 pub extern "C" fn winit_run(
-    initial_width:   u32,
-    initial_height:  u32,
-    pixel_ptr:       *mut u32,
-    width_ptr:       *mut u32,
-    height_ptr:      *mut u32,
-    render_callback: RenderCb,
-    event_callback:  EventCb,
-    title:           *const c_char,
+    initial_width:    u32,
+    initial_height:   u32,
+    pixel_ptr:        *mut u32,
+    width_ptr:        *mut u32,
+    height_ptr:       *mut u32,
+    scale_factor_ptr: *mut f64,
+    render_callback:  RenderCb,
+    event_callback:   EventCb,
+    title:            *const c_char,
 ) {
     let title_str = if title.is_null() {
         String::new()
@@ -465,14 +496,15 @@ pub extern "C" fn winit_run(
 
     let (done_tx, done_rx) = mpsc::sync_channel::<()>(1);
     proxy().lock().unwrap().send_event(AppEvent::AddWindow(AddWindowReq {
-        width:      initial_width,
-        height:     initial_height,
-        title:      title_str,
+        width:            initial_width,
+        height:           initial_height,
+        title:            title_str,
         pixel_ptr,
         width_ptr,
         height_ptr,
-        render_cb:  render_callback,
-        event_cb:   event_callback,
+        scale_factor_ptr,
+        render_cb:        render_callback,
+        event_cb:         event_callback,
         done_tx,
     })).ok();
 

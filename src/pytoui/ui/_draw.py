@@ -438,8 +438,16 @@ def _sync_ctm_to_rust(ctx) -> None:
         return
     ox, oy = ctx.origin
     m = ctx.ctm
-    # T(ox, oy).concat(m) = (m.a, m.b, m.c, m.d, m.tx + ox, m.ty + oy)
-    fb.set_ctm(m.a, m.b, m.c, m.d, m.tx + ox, m.ty + oy)
+    scale = getattr(fb, "scale_factor", 1.0)
+    # T(ox, oy).concat(m), then scale all components to physical pixels
+    fb.set_ctm(
+        m.a * scale,
+        m.b * scale,
+        m.c * scale,
+        m.d * scale,
+        (m.tx + ox) * scale,
+        (m.ty + oy) * scale,
+    )
 
 
 @pytoui_desktop_only
@@ -1012,10 +1020,11 @@ def draw_string(
     if not isinstance(rect, Rect):
         rect = Rect(*rect)
 
-    # Transform coords
-    x = m.a * rect.x + m.c * rect.y + m.tx + ox
-    y = m.b * rect.x + m.d * rect.y + m.ty + oy
-    w, h = rect.w, rect.h
+    # Transform coords (logical → physical via scale_factor)
+    scale = getattr(fb, "scale_factor", 1.0)
+    x = (m.a * rect.x + m.c * rect.y + m.tx + ox) * scale
+    y = (m.b * rect.x + m.d * rect.y + m.ty + oy) * scale
+    w, h = rect.w * scale, rect.h * scale
 
     font_name, font_size = font
     fid = _get_font_id(font_name, font_size)
@@ -1033,7 +1042,7 @@ def draw_string(
         y,
         w,
         h,
-        size=font_size,
+        size=font_size * scale,
         c=c,
         font_id=fid,
         alignment=alignment,

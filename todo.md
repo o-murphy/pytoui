@@ -21,10 +21,12 @@ HOT:
   * ~~implement animations for paging~~ (fixed: _start_page_anim + cubic easeOut in update(), 0.30s)
 * ~~startup glitch when many views added~~ (resolved: was caused by missing clip, fixed with single-GState render)
 * ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
-* SegmentedView and other scrollable widgets can steal scroll of ScrollView, Idk if we need to handle it and how
 * ~~Button: draw_string not at button's vertical center~~ (fixed: frame setter resets _pytoui_content_draw_size on resize — global fix for all draw() views)
 * ~~Allow close app with Ctrl+C~~ (fixed: signal.SIGINT handler in SDLRuntime.run() and WinitRuntime.run())
-* Winit (wayland scaling) - some views not scale to the window scale factor (root cause: winit_run writes physical px to width_ptr/height_ptr; on HiDPI logical coords in subviews appear too small — needs Rust-side scale_factor output param)
+* ~~Winit (wayland HiDPI scaling)~~ (fixed: scale_factor_ptr from Rust; _sync_ctm_to_rust and draw_string multiply by scale; root.frame set to logical pts; cursor/touch/PixelDelta divided by scale in Rust)
+* SegmentedView and other scrollable widgets can steal scroll and other mouse/touch events of ScrollView, Idk if we need to handle it and how
+* Scroll view indicator should not go out of rounded corners
+* Activity indicator is broken and not renders good on hidpi (e.g. 125% etc.) scaled windows
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

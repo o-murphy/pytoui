@@ -21,6 +21,7 @@ class ActivityIndicator(View):
         "_hides_when_stopped",
         "_is_animating",
         "_style",
+        "_anim_disabled",
     )
 
     def __init__(self):

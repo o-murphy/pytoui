@@ -540,6 +540,7 @@ class FrameBuffer:
         self._height = height
         self._cx = width // 2
         self._cy = height // 2
+        self.scale_factor: float = 1.0
 
     def __enter__(self):
         return self

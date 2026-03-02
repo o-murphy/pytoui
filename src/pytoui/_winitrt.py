@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pytoui._base_runtime import _CHECKER_SIZE, BaseRuntime
+from pytoui._base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime
 from pytoui._hid import (
     KEY_INPUT_ESC,
     MOUSE_LEFT_ID,
@@ -56,6 +56,11 @@ class WinitRuntime(BaseRuntime):
         # Use ctypes for stable memory addresses used by the shared library
         self._width_c = ctypes.c_uint32(width)
         self._height_c = ctypes.c_uint32(height)
+        # Scale factor written by Rust; 1.0 on non-HiDPI, >1 on HiDPI/Wayland
+        self._scale_factor_c = ctypes.c_double(1.0)
+        # Last logical dims — avoid redundant root.frame updates
+        self._last_lw: int = width
+        self._last_lh: int = height
 
         # Performance Monitoring
         self._fps_frame_count = 0
@@ -77,8 +82,9 @@ class WinitRuntime(BaseRuntime):
             ctypes.c_uint32,  # initial_width
             ctypes.c_uint32,  # initial_height
             ctypes.POINTER(ctypes.c_uint32),  # pixel_ptr
-            ctypes.POINTER(ctypes.c_uint32),  # width_ptr
-            ctypes.POINTER(ctypes.c_uint32),  # height_ptr
+            ctypes.POINTER(ctypes.c_uint32),  # width_ptr (physical pixels)
+            ctypes.POINTER(ctypes.c_uint32),  # height_ptr (physical pixels)
+            ctypes.POINTER(ctypes.c_double),  # scale_factor_ptr (written by Rust)
             ctypes.CFUNCTYPE(ctypes.c_int),  # render_callback -> 0=continue, 1=close
             ctypes.CFUNCTYPE(
                 None,
@@ -86,7 +92,7 @@ class WinitRuntime(BaseRuntime):
                 ctypes.c_double,
                 ctypes.c_double,
                 ctypes.c_int64,
-            ),  # event_callback(etype, x, y, touch_id)  touch_id==-1 → mouse
+            ),  # event_callback(etype, x, y, touch_id) — coords in logical pixels
             ctypes.c_char_p,  # title
         ]
 
@@ -143,7 +149,7 @@ class WinitRuntime(BaseRuntime):
         _tick(now)
         _tick_delays(now)
 
-        w, h = self._cur_width, self._cur_height
+        w, h = self._cur_width, self._cur_height  # physical pixels
         if w == 0 or h == 0:
             return 0
 
@@ -151,14 +157,29 @@ class WinitRuntime(BaseRuntime):
         if fb is None:
             return 0
 
+        scale = self._scale_factor_c.value
+        if scale <= 0.0:
+            scale = 1.0
+        lw = max(1, round(w / scale))
+        lh = max(1, round(h / scale))
+
         if fb._width != w or fb._height != h:
             FrameBuffer._lib.DestroyFrameBuffer(fb._handle)
             fb._handle = 0
             self._fb = FrameBuffer(self.pixel_data, w, h)
             self._fb.antialias = _UI_ANTIALIAS
+            self._fb.scale_factor = scale
             fb = self._fb
+            self._last_lw = lw
+            self._last_lh = lh
             rf = self.root.frame
-            self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
+            self.root.frame = Rect(rf.x, rf.y, float(lw), float(lh))
+        elif lw != self._last_lw or lh != self._last_lh or fb.scale_factor != scale:
+            fb.scale_factor = scale
+            self._last_lw = lw
+            self._last_lh = lh
+            rf = self.root.frame
+            self.root.frame = Rect(rf.x, rf.y, float(lw), float(lh))
 
         if not self.root.pytoui_presented:
             return 1
@@ -206,7 +227,12 @@ class WinitRuntime(BaseRuntime):
                     self._touch_cancel(touch_id)
             case 4:
                 cx, cy = self._cursor_pos
-                self._scroll_event(cx, cy, x, y)
+                # touch_id doubles as is_pixel:
+                # 0=LineDelta (lines), 1=PixelDelta (logical px)
+                if touch_id:
+                    self._scroll_event(cx, cy, x, y)
+                else:
+                    self._scroll_event(cx, cy, x * _SCROLL_LINE_PX, y * _SCROLL_LINE_PX)
             case 5:
                 code, flags = int(x), int(y)
                 key_str = _winit_key_to_str(code)
@@ -241,6 +267,7 @@ class WinitRuntime(BaseRuntime):
                 self.pixel_data,
                 ctypes.byref(self._width_c),
                 ctypes.byref(self._height_c),
+                ctypes.byref(self._scale_factor_c),
                 self._render_cb,
                 self._event_cb,
                 self.root._name.encode("utf-8"),

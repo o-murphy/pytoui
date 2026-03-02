@@ -56,7 +56,7 @@ def make_tile(row: int, col: int) -> ui.View:
 
 
 def main():
-    WIN_W, WIN_H = 420, 600
+    WIN_W, WIN_H = 400, 600
 
     # ── Status label ──────────────────────────────────────────────────────────
     status = ui.Label()

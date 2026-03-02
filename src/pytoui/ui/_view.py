@@ -14,7 +14,7 @@ from typing import (
 )
 from uuid import uuid4
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA, pytoui_desktop_only
+from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
@@ -1104,41 +1104,9 @@ class _View:
         """
 
 
-class View(_View):
-    _final_ = False
-
-
-if IS_PYTHONISTA:
+if not IS_PYTHONISTA:
+    View = _View
+else:
     import ui  # type: ignore[import-not-found]
 
-    class View(ui.View):  # type: ignore[no-redef]
-        # Proxy to the native properties so that subclass
-        # __init__ assignments (e.g. self.frame = Rect(...)) immediately update
-        # the native frame and reads always reflect the current geometry.
-
-        def __init__(self):
-            pass
-
-        @property
-        @pytoui_desktop_only
-        def _internals(self) -> _ViewInternals:
-            raise NotImplementedError
-
-        @_internals.setter
-        @pytoui_desktop_only
-        def _internals(self, value: _ViewInternals):
-            raise NotImplementedError
-
-        @property
-        def mouse_scroll_enabled(self) -> bool:
-            """Alias for scroll_enabled."""
-            return False
-
-        @mouse_scroll_enabled.setter
-        def mouse_scroll_enabled(self, value: bool):
-            pass
-
-
-if __name__ == "__main__":
-    v = View()
-    print(v.__dict__)
+    View = ui.View  # type: ignore[assignment,misc]

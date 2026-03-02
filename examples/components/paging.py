@@ -50,7 +50,7 @@ class PagingDelegate:
 
 
 def main():
-    WIN_W, WIN_H = 420, 600
+    WIN_W, WIN_H = 400, 600
     HEADER_H = 44
     DOTS_H = 36
     PAGE_H = WIN_H - HEADER_H - DOTS_H

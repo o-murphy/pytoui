@@ -4,7 +4,7 @@ import math
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
-from pytoui._platform import IS_PYTHONISTA
+from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._types import Point, Rect, Size
 from pytoui.ui._view import View
@@ -20,6 +20,7 @@ __all__ = ("ScrollView", "_ScrollIndicatorStyle")
 _DECEL_RATE: float = 0.95  # velocity multiplier per frame (≈60 fps)
 _MIN_VEL: float = 0.5  # px/frame threshold to stop deceleration
 _UPDATE_INTERVAL: float = 1.0 / 60.0
+_PAGE_ANIM_DUR: float = 0.30  # paging slide animation duration (seconds)
 
 
 class _ScrollView(View):
@@ -60,6 +61,10 @@ class _ScrollView(View):
         "_flash_until",
         # Paging debounce
         "_last_page_flip_time",
+        # Paging slide animation
+        "_page_anim_target",
+        "_page_anim_start",
+        "_page_anim_t0",
     )
 
     def __init__(self):
@@ -101,6 +106,9 @@ class _ScrollView(View):
         self._tracked: dict = {}
         self._flash_until: float = 0.0
         self._last_page_flip_time: float = 0.0
+        self._page_anim_target: tuple[float, float] | None = None
+        self._page_anim_start: tuple[float, float] = (0.0, 0.0)
+        self._page_anim_t0: float = 0.0
 
         self.update_interval = 1 / 60
         # ── pytoui setup (desktop only) ───────────────────────────────────────
@@ -262,7 +270,7 @@ class _ScrollView(View):
     @property
     def mouse_scroll_enabled(self) -> bool:
         """mouse_scroll_enabled is tied to scroll_enabled on ScrollView."""
-        return self._scroll_enabled and self.mouse_scroll_enabled
+        return self._scroll_enabled and self._internals_._pytoui_mouse_scroll_enabled
 
     @mouse_scroll_enabled.setter
     def mouse_scroll_enabled(self, value: bool):
@@ -407,7 +415,7 @@ class _ScrollView(View):
                 step = -1 if dx > 0 else 1
             else:
                 step = -1 if dy > 0 else 1
-            self._set_offset((cur + step) * fw, oy)
+            self._start_page_anim((cur + step) * fw, oy)
         elif can_v:
             fh = self.height
             if fh <= 0:
@@ -415,21 +423,21 @@ class _ScrollView(View):
             cur = round(oy / fh)
             # positive dy = scroll up = prev page
             step = -1 if dy > 0 else 1
-            self._set_offset(ox, (cur + step) * fh)
+            self._start_page_anim(ox, (cur + step) * fh)
         else:
             return
         self._last_page_flip_time = now
-        self._flash_scroll_indicators()
 
     # ── Touch drag scrolling ───────────────────────────────────────────────────
 
     def touch_began(self, touch: Touch):
         if not self._scroll_enabled:
             return
-        # Cancel any running deceleration
+        # Cancel any running deceleration or page animation
         self._vel_x = 0.0
         self._vel_y = 0.0
         self._decelerating = False
+        self._page_anim_target = None
         self.update_interval = 0.0
 
         self._tracking = True
@@ -517,6 +525,19 @@ class _ScrollView(View):
             self._vel_y = 0.0
             self._flash_scroll_indicators()
 
+    def _start_page_anim(self, tx: float, ty: float) -> None:
+        """Smoothly slide content to page target (tx, ty)."""
+        ox, oy = self._content_offset
+        if _UI_DISABLE_ANIMATIONS or (ox == tx and oy == ty):
+            self._set_offset(tx, ty)
+            self._flash_scroll_indicators()
+            return
+        self._page_anim_start = (ox, oy)
+        self._page_anim_target = (tx, ty)
+        self._page_anim_t0 = time.monotonic()
+        if self.update_interval <= 0:
+            self.update_interval = _UPDATE_INTERVAL
+
     def _snap_to_page(self):
         fw = self.width
         fh = self.height
@@ -538,12 +559,28 @@ class _ScrollView(View):
         new_y = nearest_page(oy, fh, self._vel_y) if self._can_scroll_v() else oy
         self._vel_x = 0.0
         self._vel_y = 0.0
-        self._set_offset(new_x, new_y)
+        self._start_page_anim(new_x, new_y)
 
     # ── Kinetic deceleration via update() ─────────────────────────────────────
 
     def update(self):
         now = time.monotonic()
+
+        # Page animation has priority over deceleration
+        if self._page_anim_target is not None:
+            elapsed = now - self._page_anim_t0
+            t = min(1.0, elapsed / _PAGE_ANIM_DUR)
+            e = 1.0 - (1.0 - t) ** 3  # cubic easeOut
+            sx, sy = self._page_anim_start
+            tx, ty = self._page_anim_target
+            new_x = sx + (tx - sx) * e
+            new_y = sy + (ty - sy) * e
+            self._set_offset(new_x, new_y, notify=True)
+            if t >= 1.0:
+                self._page_anim_target = None
+                self._flash_scroll_indicators()
+            return  # don't run deceleration while page-animating
+
         if not self._decelerating:
             # Keep running while flash timer is active
             if self._flash_until > now:
@@ -585,7 +622,9 @@ class _ScrollView(View):
         """Draw scroll indicator bars on top of content."""
         fw, fh = self.frame.size
         now = time.monotonic()
-        if not (self._dragging or self._decelerating or self._flash_until > now):
+        animating = self._page_anim_target is not None
+        flashing = self._flash_until > now
+        if not (self._dragging or self._decelerating or animating or flashing):
             return
 
         style = self._indicator_style

@@ -1128,6 +1128,15 @@ if IS_PYTHONISTA:
         def _internals(self, value: _ViewInternals):
             raise NotImplementedError
 
+        @property
+        def mouse_scroll_enabled(self) -> bool:
+            """Alias for scroll_enabled."""
+            return False
+
+        @mouse_scroll_enabled.setter
+        def mouse_scroll_enabled(self, value: bool):
+            pass
+
 
 if __name__ == "__main__":
     v = View()

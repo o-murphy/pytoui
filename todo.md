@@ -16,11 +16,13 @@ HOT:
   * ~~scrollview scrolls too fast on wheel~~ (fixed: _SCROLL_LINE_PX = 8.0)
   * ~~mouse_scroll_enabled not tied to scroll_enabled~~ (fixed: property override)
   * ~~_draw_indicators crashes on Pythonista~~ (fixed: IS_PYTHONISTA guard)
-  * ScrollView: maybe we had create custom ScrollViewInternals idk
-* startup glitch when many views added (maybe we need no draw invisible things?)
+  * ScrollView: our custom pytoui..ui.ScrollView still not work on Pythonista, so maybe we had create shim (like for a View). For Pythonista better to fallback to native pythonista.ui.ScrollView instead of our custom ones. But we will try to adjust our pytoui.ui.ScrollView public API and behaviour to maximum match original ones at least for PC.
+    * so make pytoui.ui.ScrollView publick API match original ones
+    * make pytoui.ui.ScrollView behaviour matching original ones with PC runtime features support
+* startup glitch when many views added (maybe we need no draw invisible things?) note: seems like not happen after clipping fix
 * ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
-* SegmentedView: steals scroll of ScrollView
-* Button: draw_string not at button's vertical center... Maybe take behaviour from Label
+* SegmentedView and other scrollable widgets can steal scroll of ScrollView, Idk if we need to handle it and how
+* Button: draw_string not at button's vertical center... Maybe we can take behaviour from Label
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through env variable)

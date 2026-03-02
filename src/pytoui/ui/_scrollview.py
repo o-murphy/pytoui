@@ -22,7 +22,7 @@ _MIN_VEL: float = 0.5  # px/frame threshold to stop deceleration
 _UPDATE_INTERVAL: float = 1.0 / 60.0
 
 
-class ScrollView(View):
+class _ScrollView(View):
     _final_ = True
     __slots__ = (
         # Pythonista-compatible state
@@ -104,9 +104,9 @@ class ScrollView(View):
 
         self.update_interval = 1 / 60
         # ── pytoui setup (desktop only) ───────────────────────────────────────
-        if not IS_PYTHONISTA:
-            self.mouse_scroll_enabled = True
-            self._internals_._pytoui_system_subviews.append(self._draw_indicators)
+        self.mouse_scroll_enabled = True
+        # NOTE: not public API, idk if we need to make it public
+        self._internals_._pytoui_system_subviews.append(self._draw_indicators)
 
     # ── Pythonista public API ──────────────────────────────────────────────────
 
@@ -262,17 +262,11 @@ class ScrollView(View):
     @property
     def mouse_scroll_enabled(self) -> bool:
         """mouse_scroll_enabled is tied to scroll_enabled on ScrollView."""
-        if IS_PYTHONISTA:
-            return self._scroll_enabled
-        return self._scroll_enabled and self._internals_._pytoui_mouse_scroll_enabled
+        return self._scroll_enabled and self.mouse_scroll_enabled
 
     @mouse_scroll_enabled.setter
     def mouse_scroll_enabled(self, value: bool):
-        if IS_PYTHONISTA:
-            return
-        self._internals_._pytoui_mouse_scroll_enabled = (
-            bool(value) and self._scroll_enabled
-        )
+        self.mouse_scroll_enabled = bool(value) and self._scroll_enabled
 
     @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:
@@ -634,3 +628,12 @@ class ScrollView(View):
             bar_y = fh - inset_b - BAR - MARGIN
             set_color(color)
             Path.rounded_rect(bar_x, bar_y, bar_w, BAR, BAR / 2).fill()
+
+
+if not IS_PYTHONISTA:
+    ScrollView = _ScrollView
+
+else:
+    import ui
+
+    ScrollView = ui.ScrollView  # type: ignore[misc, assignment]

@@ -154,24 +154,22 @@ class Button(View):
         r, g, b, a = base_color
         current_color = (r, g, b, a * self._anim_alpha)
 
-        # Apply content insets to get the drawing rectangle
-        inset_rect = self.bounds.inset(self._content_insets.x, self._content_insets.y)
+        w, h = self.width, self.height
+        inset_x = self._content_insets.x
 
         # Measure text
         _, text_height = measure_string(
             self._title,
-            max_width=inset_rect.w,
+            max_width=w - 2 * inset_x,
             font=self._font,
             alignment=ALIGN_CENTER,
             line_break_mode=LB_TRUNCATE_TAIL,
         )
 
-        text_height = min(text_height, inset_rect.height)
-
         title_rect = Rect(
-            inset_rect.x,
-            inset_rect.y + (inset_rect.height - text_height) / 2,
-            inset_rect.width,
+            inset_x,
+            h / 2 - text_height / 2,
+            w - 2 * inset_x,
             text_height,
         )
 

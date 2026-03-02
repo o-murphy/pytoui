@@ -357,6 +357,7 @@ class _ViewInternals:
         new_w, new_h = new_frame.size
         if new_w != old_w or new_h != old_h:
             self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
+            self._pytoui_content_draw_size = Size(0.0, 0.0)
             self.pytoui_apply_autoresizing(old_w, old_h)
             if hasattr(self._ref, "layout"):
                 self._ref.layout()

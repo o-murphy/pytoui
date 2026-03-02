@@ -353,10 +353,10 @@ class Rect:
         if len(args) > 4:
             raise TypeError("inset() takes at most 4 arguments")
 
-        new_x = self._x + dy
-        new_y = self._y + dx
-        new_w = self._w - (2 * dy + dh)
-        new_h = self._h - (2 * dx + dw)
+        new_x = self._x + dx
+        new_y = self._y + dy
+        new_w = self._w - (2 * dx + dw)
+        new_h = self._h - (2 * dy + dh)
 
         return Rect(new_x, new_y, new_w, new_h)
 

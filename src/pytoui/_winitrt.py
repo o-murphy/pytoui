@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+import signal
 import sys
 import time
 from pathlib import Path
@@ -225,6 +226,14 @@ class WinitRuntime(BaseRuntime):
         )
         self._fb.antialias = _UI_ANTIALIAS
 
+        old_sigint = None
+        try:
+            old_sigint = signal.signal(
+                signal.SIGINT,
+                lambda *_: self.root.close(),
+            )
+        except (ValueError, OSError):
+            pass
         try:
             self._lib.winit_run(
                 self._width_c.value,
@@ -237,6 +246,8 @@ class WinitRuntime(BaseRuntime):
                 self.root._name.encode("utf-8"),
             )
         finally:
+            if old_sigint is not None:
+                signal.signal(signal.SIGINT, old_sigint)
             if self._fb is not None and self._fb._handle > 0:
                 self._fb._lib.DestroyFrameBuffer(self._fb._handle)
                 self._fb._handle = 0

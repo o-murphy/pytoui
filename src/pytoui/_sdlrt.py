@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ctypes
 import queue
+import signal
 import threading
 import time
 from typing import TYPE_CHECKING
@@ -323,6 +324,14 @@ class SDLRuntime(BaseRuntime):
 
         fb = FrameBuffer(self.pixel_data, self.width, self.height)
         fb.antialias = _UI_ANTIALIAS
+        old_sigint = None
+        try:
+            old_sigint = signal.signal(
+                signal.SIGINT,
+                lambda *_: setattr(self, "running", False),
+            )
+        except (ValueError, OSError):
+            pass
         try:
             while self.running and self.root.pytoui_presented:
                 now = time.time()
@@ -384,7 +393,11 @@ class SDLRuntime(BaseRuntime):
 
                 else:
                     sdl2.SDL_Delay(_UI_RT_SDL_MAX_DELAY)
+        except KeyboardInterrupt:
+            pass  # safety net if signal.signal was unavailable
         finally:
+            if old_sigint is not None:
+                signal.signal(signal.SIGINT, old_sigint)
             if fb._handle > 0:
                 FrameBuffer._lib.DestroyFrameBuffer(fb._handle)
                 fb._handle = 0

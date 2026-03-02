@@ -19,15 +19,15 @@ HOT:
   * ~~ScrollView shim implemented~~ (fixed: IS_PYTHONISTA → ui.ScrollView on Pythonista, _ScrollView on desktop)
   * ~~mouse_scroll_enabled getter had infinite recursion~~ (fixed: use _internals_._pytoui_mouse_scroll_enabled)
   * ~~implement animations for paging~~ (fixed: _start_page_anim + cubic easeOut in update(), 0.30s)
-* startup glitch when many views added (maybe we need no draw invisible things?) note: seems like not happen after clipping fix
+* ~~startup glitch when many views added~~ (resolved: was caused by missing clip, fixed with single-GState render)
 * ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
 * SegmentedView and other scrollable widgets can steal scroll of ScrollView, Idk if we need to handle it and how
 * ~~Button: draw_string not at button's vertical center~~ (fixed: frame setter resets _pytoui_content_draw_size on resize — global fix for all draw() views)
-* Allow close app with Ctrl+C
-* Winit (wayland scaling) - some views not scales to the windows scale 
+* ~~Allow close app with Ctrl+C~~ (fixed: signal.SIGINT handler in SDLRuntime.run() and WinitRuntime.run())
+* Winit (wayland scaling) - some views not scale to the window scale factor (root cause: winit_run writes physical px to width_ptr/height_ptr; on HiDPI logical coords in subviews appear too small — needs Rust-side scale_factor output param)
 
 NEXT:
-* possibly: add Numpad / punctuation keys support (maybe optional through env variable)
+* possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)
 * add keyboard input support (for future text input functionality)
 * dialogs.alert() and other
 * View

@@ -8,25 +8,6 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* Issue with Image (examples/demo.py) on Pythonista
-  ```
-  Segmented: Var3 (2)
-  TypeError: function takes exactly 1 argument (0 given)
-
-  The above exception was the direct cause of the following exception:
-
-  Traceback (most recent call last):
-    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 217, in <module>
-      main()
-    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 210, in main
-      root = MainView()
-    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 150, in __init__
-      self.img_view.image = _make_test_image()
-    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 25, in _make_test_image
-      return ui.Image(width=w, height=h, data=pil.tobytes())
-  SystemError: <class '_ui.Image'> returned a result with an exception set
-  ```
-* Multiwindow is broken on sdl (second window is closed immediatelly and app is stacking)
 * Ideas how to implement View.right_button_items/View.left_button_items, maybe with _pytoui_system_subviews or kinda, but we need somehow handle the touch and mouse clicks
 
 
@@ -127,6 +108,8 @@ Enums:
 --------------------------------------------------------
 
 DONE:
+* ~~Image on Pythonista: `ui.Image(width=w, height=h, data=...)` crashed~~ (fixed: Pythonista shim is now a factory that converts raw RGBA→PNG via PIL and calls `ui.Image.from_data(png, scale)`; class methods `.named/.from_data/.from_image_context` preserved on the factory)
+* ~~Multiwindow SDL: second window closed immediately after present() / opening additional window hangs~~ (fixed: (1) SDL_QUIT stale event — `SDL_SetHint(SDL_HINT_QUIT_ON_LAST_WINDOW_CLOSE, "0")` + `SDL_FlushEvent`; (2) `SDL_CreateWindow` vs `SDL_PollEvent` display-lock deadlock on Wayland/X11 — `_stop_pump()` before `SDL_CreateWindow` in `__init__`, `_register_runtime` restarts pump; (3) `present()` now non-blocking — each window runs in its own non-daemon thread via `launch_runtime`)
 * ~~ScrollView~~ (PC implementation complete)
   * ~~clips to bounds should work the render or for the draw?~~ (fixed: single GState clip)
   * ~~paging not working~~ (fixed: direction + debounce)

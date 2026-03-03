@@ -44,11 +44,33 @@ __all__ = ("SDLRuntime",)
 _window_map: dict[int, SDLRuntime] = {}
 _wmap_lock = threading.Lock()
 _pump_thread: threading.Thread | None = None
+# Set to request the pump to exit; cleared before starting a new pump.
+_pump_stop_event = threading.Event()
+
+
+def _stop_pump() -> None:
+    """Signal the pump thread to exit and wait for it.
+
+    Must be called before SDL_CreateWindow / SDL_CreateRenderer to prevent a
+    race between SDL_PollEvent (pump) and SDL_CreateWindow (window thread) on
+    Wayland/X11 where both access the display connection concurrently.
+    _register_runtime() restarts the pump afterward.
+    """
+    global _pump_thread
+    if _pump_thread is not None and _pump_thread.is_alive():
+        _pump_stop_event.set()
+        _pump_thread.join(timeout=0.5)
+    _pump_stop_event.clear()
 
 
 def _register_runtime(rt: SDLRuntime) -> None:
     global _pump_thread
     with _wmap_lock:
+        if not _window_map:
+            # Flush any stale SDL_QUIT events left over from the previous window's
+            # destruction (SDL_DestroyWindow can push SDL_QUIT when the last window
+            # closes, which would immediately dismiss a newly-presented window).
+            rt._sdl2.SDL_FlushEvent(rt._sdl2.SDL_QUIT)
         _window_map[rt.window_id] = rt
         if _pump_thread is None or not _pump_thread.is_alive():
             _pump_thread = threading.Thread(
@@ -69,6 +91,8 @@ def _pump_loop(sdl2) -> None:
     """Single thread that polls SDL events and routes them to per-window queues."""
     event = sdl2.SDL_Event()
     while True:
+        if _pump_stop_event.is_set():
+            return
         with _wmap_lock:
             if not _window_map:
                 break
@@ -93,6 +117,14 @@ def _route_event(sdl2, event) -> None:
             _send(wid, ("window_close",))
         elif event.window.event == sdl2.SDL_WINDOWEVENT_SIZE_CHANGED:
             _send(wid, ("window_resize", event.window.data1, event.window.data2))
+        elif event.window.event == sdl2.SDL_WINDOWEVENT_FOCUS_GAINED:
+            # On Wayland the compositor may swallow the click that focuses the
+            # window, so SDL_MOUSEBUTTONDOWN never arrives.  Read the current
+            # mouse state right now (user is still holding the button) and
+            # pass it along so the dispatch side can synthesize the event.
+            x, y = ctypes.c_int(0), ctypes.c_int(0)
+            state = sdl2.SDL_GetMouseState(ctypes.byref(x), ctypes.byref(y))
+            _send(wid, ("focus_gained", int(state), int(x.value), int(y.value)))
         else:
             _send(wid, ("windowevent", event.window.event))
     elif t == sdl2.SDL_MOUSEBUTTONDOWN:
@@ -194,7 +226,21 @@ class SDLRuntime(BaseRuntime):
             if SDLRuntime._sdl_ref_count == 0:
                 if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) != 0:
                     raise RuntimeError(sdl2.SDL_GetError().decode())
+                # Prevent SDL from generating SDL_QUIT when the last window
+                # is closed (SDL 2.0.22+).  On older SDL the hint is ignored
+                # but the call is safe.
+                sdl2.SDL_SetHint(b"SDL_HINT_QUIT_ON_LAST_WINDOW_CLOSE", b"0")
+                # Pass the focus-gaining click through to the app so that
+                # the user does not have to click twice (once to focus, once
+                # to interact) when switching between windows.
+                sdl2.SDL_SetHint(b"SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH", b"1")
             SDLRuntime._sdl_ref_count += 1
+
+        # Stop the pump before creating the window.  SDL_CreateWindow and
+        # SDL_PollEvent both access the underlying display (Wayland/X11) and
+        # calling them concurrently from different threads causes a hang.
+        # _register_runtime() below restarts the pump after the window is ready.
+        _stop_pump()
 
         self.window = sdl2.SDL_CreateWindow(
             root_view._name.encode(),
@@ -264,6 +310,25 @@ class SDLRuntime(BaseRuntime):
                         self.running = False
                 case "window_resize":
                     self._current_w, self._current_h = msg[1], msg[2]
+                case "focus_gained":
+                    # Synthesize mousedown(s) for any buttons pressed during
+                    # focus gain.  On Wayland the compositor often swallows
+                    # the click, so SDL_MOUSEBUTTONDOWN never arrives.
+                    # _mouse_down ignores duplicates (button already held),
+                    # so this is safe on compositors that DO deliver the event.
+                    state, mx, my = msg[1], float(msg[2]), float(msg[3])
+                    if (
+                        state & sdl2.SDL_BUTTON_LMASK
+                    ) and MOUSE_LEFT_ID not in self._held_mouse_buttons:
+                        self._mouse_down(mx, my, MOUSE_LEFT_ID)
+                    if (
+                        state & sdl2.SDL_BUTTON_RMASK
+                    ) and MOUSE_RIGHT_ID not in self._held_mouse_buttons:
+                        self._mouse_down(mx, my, MOUSE_RIGHT_ID)
+                    if (
+                        state & sdl2.SDL_BUTTON_MMASK
+                    ) and MOUSE_MIDDLE_ID not in self._held_mouse_buttons:
+                        self._mouse_down(mx, my, MOUSE_MIDDLE_ID)
                 case "windowevent":
                     if msg[1] == sdl2.SDL_WINDOWEVENT_LEAVE:
                         for bid in (MOUSE_LEFT_ID, MOUSE_RIGHT_ID, MOUSE_MIDDLE_ID):

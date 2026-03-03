@@ -330,6 +330,12 @@ class BaseRuntime:
         )
 
     def _mouse_down(self, x, y, button_id: int):
+        if button_id in self._held_mouse_buttons:
+            # Duplicate down for an already-held button (e.g. SDL delivers
+            # SDL_MOUSEBUTTONDOWN after we already synthesized one from a
+            # focus-gain event).  Update position only — don't re-fire handlers.
+            self._last_pos[button_id] = (x, y)
+            return
         self._held_mouse_buttons.add(button_id)
         self._last_pos[button_id] = (x, y)
         self._drag_start[button_id] = (x, y)

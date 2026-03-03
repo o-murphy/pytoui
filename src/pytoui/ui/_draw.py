@@ -162,10 +162,10 @@ class ImageContext:
 
     def get_image(self):
         """Create an Image from the current drawing."""
-        from pytoui.ui._image import Image
+        from pytoui.ui._image import _Image
 
         if self._buf is None:
-            return Image()
+            return _Image._make()
         pw = int(self.width * self.scale)
         ph = int(self.height * self.scale)
         # FrameBuffer stores premultiplied RGBA (tiny-skia requirement).
@@ -179,7 +179,7 @@ class ImageContext:
                 raw[i] = min(255, raw[i] * 255 // a)
                 raw[i + 1] = min(255, raw[i + 1] * 255 // a)
                 raw[i + 2] = min(255, raw[i + 2] * 255 // a)
-        return Image(
+        return _Image._make(
             width=self.width,
             height=self.height,
             scale=self.scale,

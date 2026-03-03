@@ -82,6 +82,7 @@ class MainView(ui.View):
             v = SecondView()
             v.frame = (0, 0, 400, 300)
             v.present()
+            v.wait_modal()
             # Window closed
             self._second_open = False
             self._btn.title = "Open Second Window"

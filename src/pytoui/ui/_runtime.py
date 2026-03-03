@@ -17,6 +17,7 @@ per-window queues via _window_map. Each SDLRuntime drains its own queue.
 from __future__ import annotations
 
 import ctypes
+import threading
 from typing import TYPE_CHECKING
 
 from pytoui._base_runtime import BaseRuntime
@@ -118,8 +119,46 @@ def _get_runtime():
 
 
 def launch_runtime(root_view: _ViewInternals, render_fn) -> None:
-    """Pick and run the appropriate runtime based on _UI_RUNTIME."""
+    """Pick and run the appropriate runtime based on _UI_RUNTIME.
+
+    Each windowed runtime runs in its own non-daemon thread so that multiple
+    windows can coexist without freezing each other (e.g. presenting a second
+    window from a button handler keeps the first window interactive).
+
+    Non-daemon threads keep the process alive until every window is closed,
+    matching Pythonista's behaviour where present() is non-blocking and the
+    app stays open.  Use wait_modal() to block the caller until a window closes.
+
+    RawFrameBufferRuntime (headless/testing) runs synchronously on the calling
+    thread since it has no event loop and is expected to complete instantly.
+    """
     w = int(root_view.frame.w)
     h = int(root_view.frame.h)
-    runtime = _get_runtime()
-    runtime(root_view, w, h, render_fn).run()
+    runtime_class = _get_runtime()
+
+    if runtime_class is RawFrameBufferRuntime:
+        # Headless: run synchronously so tests can inspect results immediately.
+        runtime_class(root_view, w, h, render_fn).run()
+        return
+
+    # Windowed runtimes: run in a dedicated thread.
+    # Wait for __init__ to finish so init errors propagate to the caller and
+    # the window is guaranteed to exist before present() returns.
+    _init_done: threading.Event = threading.Event()
+    _init_exc: list[BaseException | None] = [None]
+
+    def _window_thread() -> None:
+        try:
+            rt = runtime_class(root_view, w, h, render_fn)
+        except BaseException as exc:
+            _init_exc[0] = exc
+            _init_done.set()
+            return
+        _init_done.set()
+        rt.run()
+
+    t = threading.Thread(target=_window_thread, daemon=False, name="pytoui-window")
+    t.start()
+    _init_done.wait()
+    if _init_exc[0] is not None:
+        raise _init_exc[0]

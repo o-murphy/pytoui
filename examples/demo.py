@@ -21,8 +21,11 @@ def _make_test_image():
     for y in range(20, 30):
         for x in range(w):
             pil.putpixel((x, y), (255, 0, 0, 255))
-    w, h = pil.size
-    return ui.Image(width=w, height=h, data=pil.tobytes())
+    import io
+
+    buf = io.BytesIO()
+    pil.save(buf, format="PNG")
+    return ui.Image.from_data(buf.getvalue())
 
 
 class DrawTestView(ui.View):

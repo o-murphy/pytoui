@@ -8,8 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* sdl not smooth on resize, othervice winit is very smooth
-* winit draws extra transparent pixel on right and bottom sides of a window when we fill background of a root view
+* continue implementing of NavigationView (bar, internal drawing, stack animations, etc.)
+  * maybe we can keep index or ref  to current top view and update it on pop/push for fast lookup
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

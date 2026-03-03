@@ -113,6 +113,7 @@ class _ScrollView(View):
         self.update_interval = 1 / 60
         # ── pytoui setup (desktop only) ───────────────────────────────────────
         self.mouse_scroll_enabled = True
+        self._internals_._pytoui_is_scroll_container = True
         # NOTE: not public API, idk if we need to make it public
         self._internals_._pytoui_system_subviews.append(self._draw_indicators)
 
@@ -677,6 +678,4 @@ if not IS_PYTHONISTA:
 else:
     import ui
 
-    class ScrollView(ui.ScrollView):  # type: ignore[assignment,misc,no-redef]
-        def __init__(self):
-            pass
+    ScrollView = ui.ScrollView  # type: ignore[assignment,misc,no-redef]

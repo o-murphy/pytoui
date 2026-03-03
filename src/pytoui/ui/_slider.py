@@ -20,6 +20,7 @@ __all__ = ("Slider",)
 
 class _Slider(View):
     _final_ = True
+    _PREFERRED_AXIS = "x"  # horizontal drag → Slider; vertical → parent ScrollView
 
     __slots__ = (
         "_action",

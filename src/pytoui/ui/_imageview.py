@@ -184,23 +184,4 @@ if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
 else:
     import ui  # type: ignore[import-not-found]
 
-    class ImageView(ui.ImageView):  # type: ignore[assignment,misc,no-redef]
-        def __init__(self):
-            pass
-
-        def load_from_url(self, url: str):
-            """Asynchronously load an image from a URL and set self.image."""
-            import threading
-
-            def _fetch():
-                try:
-                    from urllib.request import urlopen
-
-                    import ui as _ui
-
-                    data = urlopen(url).read()
-                    self.image = _ui.Image.from_data(data)
-                except Exception:
-                    pass
-
-            threading.Thread(target=_fetch, daemon=True).start()
+    ImageView = ui.ImageView  # type: ignore[assignment,misc,no-redef]

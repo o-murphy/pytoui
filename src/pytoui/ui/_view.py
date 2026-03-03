@@ -132,6 +132,7 @@ class _ViewInternals:
         "_pytoui_needs_display",
         "_pytoui_last_update_time",
         "_pytoui_mouse_scroll_enabled",
+        "_pytoui_is_scroll_container",
         "_pytoui_close_event",
         "_pytoui_content_draw_size",
         # System-level overlay draw functions called after subviews.
@@ -162,6 +163,7 @@ class _ViewInternals:
         self._touch_enabled: bool = True
         self._multitouch_enabled: bool = False
         self._pytoui_mouse_scroll_enabled: bool = False
+        self._pytoui_is_scroll_container: bool = False
 
         # CUSTOM
         self._pytoui_presented: bool = False
@@ -539,6 +541,14 @@ class _ViewInternals:
             if target is not None and getattr(
                 target, "_pytoui_mouse_scroll_enabled", False
             ):
+                # If the current view is a scroll container but the child is
+                # not (e.g. Slider/SegmentedControl inside a ScrollView),
+                # prefer the container — matches iOS where wheel events go to
+                # the scroll view, not to inline controls inside it.
+                if self._pytoui_is_scroll_container and not getattr(
+                    target, "_pytoui_is_scroll_container", False
+                ):
+                    break
                 return target
         return self if getattr(self, "_pytoui_mouse_scroll_enabled", False) else None
 

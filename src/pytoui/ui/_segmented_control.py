@@ -23,6 +23,7 @@ __all__ = ("SegmentedControl",)
 
 class _SegmentedControl(View):
     _final_ = True
+    _PREFERRED_AXIS = "x"  # horizontal drag → self; vertical → parent ScrollView
 
     __slots__ = (
         "_action",

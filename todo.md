@@ -25,9 +25,9 @@ HOT:
 * ~~Allow close app with Ctrl+C~~ (fixed: signal.SIGINT handler in SDLRuntime.run() and WinitRuntime.run())
 * ~~Winit (wayland HiDPI scaling)~~ (fixed: scale_factor_ptr from Rust; _sync_ctm_to_rust and draw_string multiply by scale; root.frame set to logical pts; cursor/touch/PixelDelta divided by scale in Rust)
 * Activity indicator is broken and not renders good on hidpi (e.g. 125% etc.) scaled windows. This happen on both sdl and winit
-* Scroll view indicator should not go out of rounded corners, so we should add margins for it to _draw_indicators
+* ~~Scroll view indicator should not go out of rounded corners, so we should add margins for it to _draw_indicators~~
 * SegmentedView, Slider and other scrollable views can steal scroll and other mouse/touch events of parrent `_ScrollView`, but also we should have some way to use this controls when them rendered inside `_ScrollView`, Idk if we need to handle it and how. Maybe we should use something as ScrollAwareMixin explicitly to not brake Pythonista.ui-like behaviour?
-* We should review a `_View` and `_ScrollView`, we should check all classes that inherit this two to determine what can be broken when we are not on PC and running under Pythonista (for example, explicit unprotected use of `._intenals_` or on set some properties that exists only on PC and not in Pythonista.ui API's), fix it or protect.
+* We should review a `_View` and `_ScrollView`, we should check all classes that inherit this two to determine what can be broken when we are not on PC and running under Pythonista (for example, explicit unprotected use of `._intenals_` or on set some properties that exists only on PC and not in Pythonista.ui API's), fix it or protect. Everything related to our runtime should be as hidden as possible, so that the user does not accidentally try to access it in Pythonista. That is why the ViewInternals class was introduced - it is responsible for this, but it may be necessary to break it into several smaller ones, like GesturesRecognizer and the like.
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

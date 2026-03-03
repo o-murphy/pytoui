@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
-    IS_PYTHONISTA,
 )
 from pytoui.ui._draw import Path, parse_color, set_color
 from pytoui.ui._final import _final_
@@ -19,7 +18,7 @@ __all__ = ("Switch",)
 
 
 @_final_
-class _Switch(View):
+class Switch(View):
     __slots__ = (
         "_action",
         "_anim_alpha",
@@ -271,11 +270,3 @@ class _Switch(View):
             action(sender if sender is not None else self)
         else:
             action()
-
-
-if not IS_PYTHONISTA:
-    Switch = _Switch
-else:
-    import ui
-
-    Switch = ui.Switch  # type: ignore[misc,assignment]

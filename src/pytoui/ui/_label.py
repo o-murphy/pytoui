@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import (
     ALIGN_NATURAL,
     LB_TRUNCATE_TAIL,
@@ -28,7 +27,7 @@ __all__ = ("Label",)
 
 
 @_final_
-class _Label(View):
+class Label(View):
     __slots__ = (
         "_alignment",
         "_font",
@@ -222,11 +221,3 @@ class _Label(View):
             self.frame = Rect(self.frame.x, self.frame.y, tw, th)
         except Exception:
             pass  # Silently fail if measurement fails
-
-
-if not IS_PYTHONISTA:
-    Label = _Label
-else:
-    import ui
-
-    Label = ui.Label  # type: ignore[misc,assignment]

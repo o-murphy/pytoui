@@ -22,7 +22,7 @@ __all__ = ("SegmentedControl",)
 
 
 @_final_
-class _SegmentedControl(View):
+class SegmentedControl(View):
     _PREFERRED_AXIS = "x"  # horizontal drag → self; vertical → parent ScrollView
 
     __slots__ = (
@@ -337,11 +337,3 @@ class _SegmentedControl(View):
             action(sender if sender is not None else self)
         else:
             action()
-
-
-if not IS_PYTHONISTA:
-    SegmentedControl = _SegmentedControl
-else:
-    import ui
-
-    SegmentedControl = ui.SegmentedControl  # type: ignore[misc,assignment]

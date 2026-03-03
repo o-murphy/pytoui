@@ -19,7 +19,7 @@ __all__ = ("Slider",)
 
 
 @_final_
-class _Slider(View):
+class Slider(View):
     _PREFERRED_AXIS = "x"  # horizontal drag → Slider; vertical → parent ScrollView
 
     __slots__ = (
@@ -281,11 +281,3 @@ class _Slider(View):
             action(sender if sender is not None else self)
         else:
             action()
-
-
-if not IS_PYTHONISTA:
-    Slider = _Slider
-else:
-    import ui
-
-    Slider = ui.Slider  # type: ignore[misc,assignment]

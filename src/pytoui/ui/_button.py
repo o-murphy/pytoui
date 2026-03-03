@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
-    IS_PYTHONISTA,
 )
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._draw import draw_string, measure_string
@@ -25,7 +24,7 @@ __all__ = ("Button",)
 
 
 @_final_
-class _Button(View):
+class Button(View):
     __slots__ = (
         "_action",
         "_anim_alpha",
@@ -245,11 +244,3 @@ class _Button(View):
             action(sender if sender is not None else self)
         else:
             action()
-
-
-if not IS_PYTHONISTA:
-    Button = _Button
-else:
-    import ui
-
-    Button = ui.Button  # type: ignore[misc,assignment]

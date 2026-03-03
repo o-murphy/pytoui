@@ -491,16 +491,18 @@ impl FrameBuffer {
                     m.data_mut().copy_from_slice(data);
                     Some(m)
                 });
+                // Encode position in the transform so tiny-skia doesn't
+                // scale the (dst_x, dst_y) offset along with the pixels.
                 dst_pm.draw_pixmap(
-                    dst_x,
-                    dst_y,
+                    0,
+                    0,
                     src_pm.as_ref(),
                     &tiny_skia::PixmapPaint {
                         opacity: 1.0,
                         blend_mode: mode,
                         quality: tiny_skia::FilterQuality::Bilinear,
                     },
-                    Transform::from_scale(sx, sy),
+                    Transform::from_row(sx, 0.0, 0.0, sy, dst_x as f32, dst_y as f32),
                     clip_mask.as_ref(),
                 );
             }

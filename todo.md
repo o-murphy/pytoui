@@ -8,7 +8,6 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* Ideas how to implement View.right_button_items/View.left_button_items, maybe with _pytoui_system_subviews or kinda, but we need somehow handle the touch and mouse clicks
 
 
 NEXT:
@@ -23,6 +22,7 @@ NEXT:
     * View.present("panel") - uses popower location, as second window not blocks the first one till opened
   * which View.present() args are not completely used?
   * code after View.present should continue to run
+* Ideas how to implement View.right_button_items/View.left_button_items, maybe with _pytoui_system_subviews or kinda, but we need somehow handle the touch and mouse clicks
 
 Runtime
 * ~~ImageView, Image shims~~ (fixed: _ImageView + _Image desktop classes; on Pythonista ImageView=ui.ImageView with load_from_url preserved, Image=ui.Image; ImageContext already shimmed in _draw.py)

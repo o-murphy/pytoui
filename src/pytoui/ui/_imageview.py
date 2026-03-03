@@ -43,9 +43,9 @@ class _ImageView(View):
         self._image: Image | None = None
         self._content_mode = CONTENT_SCALE_TO_FILL
         self.touch_enabled = False
-        # Tell pytoui_render to always call draw() directly without applying
-        # any CTM transform — ImageView handles all content_mode logic internally.
-        self.content_mode = CONTENT_REDRAW
+        # pytoui_render must always call draw() without applying any CTM transform —
+        # ImageView handles all content_mode layout internally inside draw().
+        self._internals_.content_mode = CONTENT_REDRAW
 
     @property
     def content_mode(self) -> int:
@@ -56,6 +56,9 @@ class _ImageView(View):
 
     @content_mode.setter
     def content_mode(self, value: int):
+        # Store the image-layout mode in _content_mode (used by draw()).
+        # _internals_.content_mode stays CONTENT_REDRAW so pytoui_render never
+        # applies its own CTM transform on top of the image.
         self._content_mode = value
         self.set_needs_display()
 
@@ -98,8 +101,11 @@ class _ImageView(View):
         if fb is None:
             return
 
+        # Image pixel buffer dimensions
         iw = int(img._size.w * img._scale)
         ih = int(img._size.h * img._scale)
+        # Image and view logical (point) dimensions
+        img_pw, img_ph = img._size.w, img._size.h
         fw, fh = self.frame.w, self.frame.h
 
         if iw <= 0 or ih <= 0 or fw <= 0 or fh <= 0:
@@ -108,55 +114,56 @@ class _ImageView(View):
         mode = self._content_mode
 
         # Calculate draw position and target size based on content_mode.
-        # draw_w / draw_h are the pixel dimensions to render; x / y are offsets
-        # within the view's coordinate space (may be fractional / negative).
+        # All values (x, y, draw_w, draw_h) are in POINTS.
         if mode == CONTENT_SCALE_TO_FILL:
             x, y = 0.0, 0.0
             draw_w, draw_h = fw, fh
         elif mode == CONTENT_SCALE_ASPECT_FIT:
-            scale = min(fw / iw, fh / ih)
-            draw_w, draw_h = iw * scale, ih * scale
+            sc = min(fw / img_pw, fh / img_ph)
+            draw_w, draw_h = img_pw * sc, img_ph * sc
             x, y = (fw - draw_w) / 2, (fh - draw_h) / 2
         elif mode == CONTENT_SCALE_ASPECT_FILL:
-            scale = max(fw / iw, fh / ih)
-            draw_w, draw_h = iw * scale, ih * scale
+            sc = max(fw / img_pw, fh / img_ph)
+            draw_w, draw_h = img_pw * sc, img_ph * sc
             x, y = (fw - draw_w) / 2, (fh - draw_h) / 2
         elif mode == CONTENT_CENTER:
-            x, y = (fw - iw) / 2, (fh - ih) / 2
-            draw_w, draw_h = iw, ih
+            x, y = (fw - img_pw) / 2, (fh - img_ph) / 2
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_TOP:
-            x, y = (fw - iw) / 2, 0.0
-            draw_w, draw_h = iw, ih
+            x, y = (fw - img_pw) / 2, 0.0
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_BOTTOM:
-            x, y = (fw - iw) / 2, fh - ih
-            draw_w, draw_h = iw, ih
+            x, y = (fw - img_pw) / 2, fh - img_ph
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_LEFT:
-            x, y = 0.0, (fh - ih) / 2
-            draw_w, draw_h = iw, ih
+            x, y = 0.0, (fh - img_ph) / 2
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_RIGHT:
-            x, y = fw - iw, (fh - ih) / 2
-            draw_w, draw_h = iw, ih
+            x, y = fw - img_pw, (fh - img_ph) / 2
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_TOP_LEFT:
             x, y = 0.0, 0.0
-            draw_w, draw_h = iw, ih
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_TOP_RIGHT:
-            x, y = fw - iw, 0.0
-            draw_w, draw_h = iw, ih
+            x, y = fw - img_pw, 0.0
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_BOTTOM_LEFT:
-            x, y = 0.0, fh - ih
-            draw_w, draw_h = iw, ih
+            x, y = 0.0, fh - img_ph
+            draw_w, draw_h = img_pw, img_ph
         elif mode == CONTENT_BOTTOM_RIGHT:
-            x, y = fw - iw, fh - ih
-            draw_w, draw_h = iw, ih
+            x, y = fw - img_pw, fh - img_ph
+            draw_w, draw_h = img_pw, img_ph
         else:
             x, y = 0.0, 0.0
             draw_w, draw_h = fw, fh
 
+        # Convert points → physical pixels for blit
+        pxscale = getattr(fb, "scale_factor", 1.0)
         ox, oy = ctx.origin
-        dst_x = int(ox + x)
-        dst_y = int(oy + y)
-        dst_w = max(1, int(draw_w))
-        dst_h = max(1, int(draw_h))
+        dst_x = int((ox + x) * pxscale)
+        dst_y = int((oy + y) * pxscale)
+        dst_w = max(1, int(draw_w * pxscale))
+        dst_h = max(1, int(draw_h * pxscale))
 
         pixel_data = img._data
         if img._rendering_mode == RENDERING_MODE_TEMPLATE:

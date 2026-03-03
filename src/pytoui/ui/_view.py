@@ -697,6 +697,10 @@ class _ViewInternals:
         self._pytoui_close_event.clear()
         self._pytoui_needs_display = True
 
+        # NOTE: recusrsion!!!
+        # if hasattr(self._ref, "layout"):
+        #     self._ref.layout()
+
         from pytoui.ui._runtime import launch_runtime
 
         if animated and not _UI_DISABLE_ANIMATIONS:

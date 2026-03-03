@@ -38,6 +38,7 @@ struct AddWindowReq {
     scale_factor_ptr: *mut f64,
     render_cb:        RenderCb,
     event_cb:         EventCb,
+    decorations:      bool,
     /// Python thread blocks on done_rx; we send () when the window closes
     done_tx:          mpsc::SyncSender<()>,
 }
@@ -249,6 +250,8 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                 let window = Arc::new(
                     WindowBuilder::new()
                         .with_inner_size(LogicalSize::new(req.width, req.height))
+                        .with_min_inner_size(LogicalSize::new(120u32, 36u32))
+                        .with_decorations(req.decorations)
                         .with_title(&req.title)
                         .build(elwt)
                         .expect("Failed to create window"),
@@ -486,6 +489,7 @@ pub extern "C" fn winit_run(
     scale_factor_ptr: *mut f64,
     render_callback:  RenderCb,
     event_callback:   EventCb,
+    decorations:      u8,
     title:            *const c_char,
 ) {
     let title_str = if title.is_null() {
@@ -505,6 +509,7 @@ pub extern "C" fn winit_run(
         scale_factor_ptr,
         render_cb:        render_callback,
         event_cb:         event_callback,
+        decorations:      decorations != 0,
         done_tx,
     })).ok();
 

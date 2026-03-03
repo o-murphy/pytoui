@@ -13,6 +13,7 @@ from pytoui._base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
+    _UI_DISABLE_WINIT_CSD,
     _UI_RT_FPS,
 )
 from pytoui.hid import (
@@ -93,6 +94,7 @@ class WinitRuntime(BaseRuntime):
                 ctypes.c_double,
                 ctypes.c_int64,
             ),  # event_callback(etype, x, y, touch_id) — coords in logical pixels
+            ctypes.c_uint8,  # decorations: 1=CSD (winit draws), 0=SSD (compositor)
             ctypes.c_char_p,  # title
         ]
 
@@ -270,6 +272,7 @@ class WinitRuntime(BaseRuntime):
                 ctypes.byref(self._scale_factor_c),
                 self._render_cb,
                 self._event_cb,
+                ctypes.c_uint8(0 if _UI_DISABLE_WINIT_CSD else 1),
                 self.root._name.encode("utf-8"),
             )
         finally:

@@ -8,7 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-
+* sdl not smooth on resize, othervice winit is very smooth
+* winit draws extra transparent pixel on right and bottom sides of a window when we fill background of a root view
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

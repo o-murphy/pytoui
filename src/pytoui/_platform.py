@@ -44,6 +44,7 @@ __all__ = (
     "_UI_RT_SDL_DELAY",
     "_UI_RT_SDL_MAX_DELAY",
     "_UI_FORCE_PYTOUI_VIEWS",
+    "_UI_DISABLE_WINIT_CSD",
 )
 
 
@@ -87,3 +88,8 @@ else:
 _UI_RT_SDL_MAX_DELAY = 16
 
 _UI_FORCE_PYTOUI_VIEWS = _get_env_bool("UI_FORCE_PYTHOUI_VIEWS", "0")
+
+# winit: use Client-Side Decorations (drawn by sctk).
+# Default 0 = no winit CSD; compositor draws SSD if supported (e.g. KDE Plasma).
+# Set UI_WINIT_CSD=1 on compositors without SSD support (e.g. GNOME).
+_UI_DISABLE_WINIT_CSD = _get_env_bool("UI_DISABLE_WINIT_CSD", "0")

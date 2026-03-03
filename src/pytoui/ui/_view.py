@@ -708,12 +708,17 @@ class _ViewInternals:
         """Present the view on screen."""
         if self._pytoui_presented:
             raise RuntimeError("View is already presented")
+
+        from pytoui.ui._runtime import launch_runtime
+
         self._pytoui_presented = True
         self._on_screen = True
         self._pytoui_close_event.clear()
         self._pytoui_needs_display = True
 
-        from pytoui.ui._runtime import launch_runtime
+        # Forse first resize
+        if hasattr(self._ref, "layout"):
+            self._ref.layout()
 
         if animated and not _UI_DISABLE_ANIMATIONS:
             self._alpha = 0.0

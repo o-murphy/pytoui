@@ -130,6 +130,7 @@ class _ViewInternals:
         # pytoui attributes
         "_pytoui_presented",
         "_pytoui_needs_display",
+        "_pytoui_needs_layout",
         "_pytoui_last_update_time",
         "_pytoui_mouse_scroll_enabled",
         "_pytoui_is_scroll_container",
@@ -168,6 +169,7 @@ class _ViewInternals:
         # CUSTOM
         self._pytoui_presented: bool = False
         self._pytoui_needs_display: bool = True
+        self._pytoui_needs_layout: bool = True
         self._pytoui_last_update_time: float = 0.0
 
         # INTERNAL ONLY
@@ -189,6 +191,11 @@ class _ViewInternals:
     def pytoui_needs_display(self) -> bool:
         # READONLY
         return self._pytoui_needs_display
+
+    @property
+    def pytoui_needs_layout(self) -> bool:
+        # READONLY
+        return self._pytoui_needs_layout
 
     @property
     def pytoui_last_update_time(self) -> float:
@@ -361,9 +368,7 @@ class _ViewInternals:
             self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
             self._pytoui_content_draw_size = Size(0.0, 0.0)
             self.pytoui_apply_autoresizing(old_w, old_h)
-            if hasattr(self._ref, "layout"):
-                self._ref.layout()
-        self.set_needs_display()
+        self.set_needs_layout()
 
     @property
     def bounds(self) -> Rect:
@@ -379,17 +384,15 @@ class _ViewInternals:
         if new_w != old_w or new_h != old_h:
             self._frame = Rect(self._frame.x, self._frame.y, new_w, new_h)
             self.pytoui_apply_autoresizing(old_w, old_h)
-            if hasattr(self._ref, "layout"):
-                self._ref.layout()
-        self.set_needs_display()
+        self.set_needs_layout()
 
     @property
     def tint_color(self) -> _RGBA:
         """The view's tint color, inherited from superview if None."""
         v: _ViewInternals | None = self
         while v is not None:
-            if self._tint_color is not None:
-                return self._tint_color
+            if v._tint_color is not None:
+                return v._tint_color
             if self._superview is not None:
                 v = self._superview
         return self.SYSTEM_TINT
@@ -561,7 +564,14 @@ class _ViewInternals:
             sv._clear_dirty_tree()
 
     def pytoui_render(self):
+        if self._pytoui_needs_layout:
+            if hasattr(self._ref, "layout"):
+                self._ref.layout()
+            self._pytoui_needs_layout = False
+
         self._pytoui_needs_display = False
+
+        # Hidden views don't render and don't traverse
         if self._hidden:
             return
 
@@ -572,6 +582,7 @@ class _ViewInternals:
         cr = self._corner_radius
 
         with GState():
+            # render self
             _set_origin(ox, oy)
             set_alpha(self._alpha)
 
@@ -611,6 +622,7 @@ class _ViewInternals:
                         _content_mode_transform(cm, cw, ch, fw, fh)
                         draw()
 
+            # --- Traverse children ALWAYS ---
             bx, by = self._bounds.x, self._bounds.y
             for sv in self._subviews:
                 sf = sv._frame
@@ -670,6 +682,10 @@ class _ViewInternals:
     def set_needs_display(self):
         self._pytoui_needs_display = True
 
+    def set_needs_layout(self):
+        self._pytoui_needs_layout = True
+        self.set_needs_display()
+
     def size_to_fit(self):
         """Resize to enclose all subviews."""
         if not self._subviews:
@@ -696,10 +712,6 @@ class _ViewInternals:
         self._on_screen = True
         self._pytoui_close_event.clear()
         self._pytoui_needs_display = True
-
-        # NOTE: recusrsion!!!
-        # if hasattr(self._ref, "layout"):
-        #     self._ref.layout()
 
         from pytoui.ui._runtime import launch_runtime
 
@@ -1038,7 +1050,7 @@ class _View:
 
     def size_to_fit(self):
         """Resize to enclose all subviews."""
-        self._internals_.size_to_fit
+        self._internals_.size_to_fit()
 
     # ── presentation ──────────────────────────────────────────────────────────
 

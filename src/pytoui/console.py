@@ -6,6 +6,8 @@ from pytoui.ui._final import _final_
 from pytoui.ui._label import Label
 from pytoui.ui._view import View
 
+__all__ = ("alert",)
+
 
 @_final_
 class _Alert(View):
@@ -130,4 +132,6 @@ def alert(
 
 
 if IS_PYTHONISTA:
-    pass  # type: ignore[import-not-found,no-redef]
+    from console import (  # type: ignore[import-not-found,no-redef]
+        alert,
+    )

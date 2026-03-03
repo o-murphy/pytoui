@@ -8,24 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* ~~ScrollView~~ (PC implementation complete)
-  * ~~clips to bounds should work the render or for the draw?~~ (fixed: single GState clip)
-  * ~~paging not working~~ (fixed: direction + debounce)
-  * ~~ScrollView scroll displaying under the content~~ (fixed: _pytoui_system_subviews)
-  * ~~ScrollView is not working as expected / subviews steal touch events~~ (fixed: UIKit-style interceptor — scroll has full priority, tap delivery is retroactive)
-  * ~~scrollview scrolls too fast on wheel~~ (fixed: _SCROLL_LINE_PX = 8.0)
-  * ~~mouse_scroll_enabled not tied to scroll_enabled~~ (fixed: property override)
-  * ~~_draw_indicators crashes on Pythonista~~ (fixed: IS_PYTHONISTA guard)
-  * ~~ScrollView shim implemented~~ (fixed: IS_PYTHONISTA → ui.ScrollView on Pythonista, _ScrollView on desktop)
-  * ~~mouse_scroll_enabled getter had infinite recursion~~ (fixed: use _internals_._pytoui_mouse_scroll_enabled)
-  * ~~implement animations for paging~~ (fixed: _start_page_anim + cubic easeOut in update(), 0.30s)
-* ~~startup glitch when many views added~~ (resolved: was caused by missing clip, fixed with single-GState render)
-* ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
-* ~~Button: draw_string not at button's vertical center~~ (fixed: frame setter resets _pytoui_content_draw_size on resize — global fix for all draw() views)
-* ~~Allow close app with Ctrl+C~~ (fixed: signal.SIGINT handler in SDLRuntime.run() and WinitRuntime.run())
-* ~~Winit (wayland HiDPI scaling)~~ (fixed: scale_factor_ptr from Rust; _sync_ctm_to_rust and draw_string multiply by scale; root.frame set to logical pts; cursor/touch/PixelDelta divided by scale in Rust)
-* Activity indicator is broken and not renders good on hidpi (e.g. 125% etc.) scaled windows. This happen on both sdl and winit
-* ~~Scroll view indicator should not go out of rounded corners, so we should add margins for it to _draw_indicators~~
+* ~~ActivityIndicator centering and style-size bugs~~ (fixed: style setter checked old `self._style` instead of new `value`, causing wrong bounds→frame resize; removed bounds mutation from setter and redundant `self.bounds` in `__init__`)
+* Activity indicator may have subpixel aliasing on non-integer HiDPI (e.g. 125%) — fractional physical petal sizes. Both sdl and winit.
 * SegmentedView, Slider and other scrollable views can steal scroll and other mouse/touch events of parrent `_ScrollView`, but also we should have some way to use this controls when them rendered inside `_ScrollView`, Idk if we need to handle it and how. Maybe we should use something as ScrollAwareMixin explicitly to not brake Pythonista.ui-like behaviour?
 * We should review a `_View` and `_ScrollView`, we should check all classes that inherit this two to determine what can be broken when we are not on PC and running under Pythonista (for example, explicit unprotected use of `._intenals_` or on set some properties that exists only on PC and not in Pythonista.ui API's), fix it or protect. Everything related to our runtime should be as hidden as possible, so that the user does not accidentally try to access it in Pythonista. That is why the ViewInternals class was introduced - it is responsible for this, but it may be necessary to break it into several smaller ones, like GesturesRecognizer and the like.
 
@@ -123,3 +107,21 @@ Enums:
 * ~~RenderingMode~~
 
 --------------------------------------------------------
+
+DONE:
+* ~~ScrollView~~ (PC implementation complete)
+  * ~~clips to bounds should work the render or for the draw?~~ (fixed: single GState clip)
+  * ~~paging not working~~ (fixed: direction + debounce)
+  * ~~ScrollView scroll displaying under the content~~ (fixed: _pytoui_system_subviews)
+  * ~~ScrollView is not working as expected / subviews steal touch events~~ (fixed: UIKit-style interceptor — scroll has full priority, tap delivery is retroactive)
+  * ~~scrollview scrolls too fast on wheel~~ (fixed: _SCROLL_LINE_PX = 8.0)
+  * ~~mouse_scroll_enabled not tied to scroll_enabled~~ (fixed: property override)
+  * ~~_draw_indicators crashes on Pythonista~~ (fixed: IS_PYTHONISTA guard)
+  * ~~ScrollView shim implemented~~ (fixed: IS_PYTHONISTA → ui.ScrollView on Pythonista, _ScrollView on desktop)
+  * ~~mouse_scroll_enabled getter had infinite recursion~~ (fixed: use _internals_._pytoui_mouse_scroll_enabled)
+  * ~~implement animations for paging~~ (fixed: _start_page_anim + cubic easeOut in update(), 0.30s)
+* ~~startup glitch when many views added~~ (resolved: was caused by missing clip, fixed with single-GState render)
+* ~~issue: draws rects with negative height and width~~ (fixed: fw<=0 or fh<=0 guard in pytoui_render)
+* ~~Button: draw_string not at button's vertical center~~ (fixed: frame setter resets _pytoui_content_draw_size on resize — global fix for all draw() views)
+* ~~Allow close app with Ctrl+C~~ (fixed: signal.SIGINT handler in SDLRuntime.run() and WinitRuntime.run())
+* ~~Winit (wayland HiDPI scaling)~~ (fixed: scale_factor_ptr from Rust; _sync_ctm_to_rust and draw_string multiply by scale; root.frame set to logical pts; cursor/touch/PixelDelta divided by scale in Rust)

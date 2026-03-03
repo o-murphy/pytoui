@@ -36,7 +36,6 @@ class ActivityIndicator(View):
         # default size for standard style; frame is user-settable and must not
         # change automatically when style changes
         self.frame = Rect(0.0, 0.0, 20.0, 20.0)
-        self.bounds = Rect(0.0, 0.0, 20.0, 20.0)
 
     @property
     def style(self) -> int:
@@ -44,10 +43,6 @@ class ActivityIndicator(View):
 
     @style.setter
     def style(self, value: int):
-        if self._style == ACTIVITY_INDICATOR_STYLE_WHITE_LARGE:
-            self.bounds = (0.0, 0.0, 27.0, 27.0)
-        else:
-            self.bounds = (0.0, 0.0, 20.0, 20.0)
         self._style = value
         self.set_needs_display()
 

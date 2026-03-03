@@ -37,7 +37,6 @@ class Label(View):
         "_scales_font",
         "_text",
         "_text_color",
-        "_anim_disabled",
     )
 
     def __init__(self):

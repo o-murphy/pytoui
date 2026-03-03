@@ -65,6 +65,9 @@ make build
 
 # 2. Sync Python dependencies
 uv sync
+
+# 3. Install pre-commit hooks
+uv run pre-commit install
 ```
 
 `uv sync` only installs Python dependencies — it does **not** compile the native libs.

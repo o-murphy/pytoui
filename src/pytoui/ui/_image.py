@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import RENDERING_MODE_AUTOMATIC
 from pytoui.ui._types import Size
 
 __all__ = ("Image",)
 
 
-class Image:
+class _Image:
     """Lightweight image wrapper holding raw RGBA pixel data."""
 
     __slots__ = (
@@ -35,7 +36,7 @@ class Image:
     # -- Class constructors ---------------------------------------------------
 
     @classmethod
-    def from_data(cls, image_data: bytes, scale: float = 1.0) -> Image:
+    def from_data(cls, image_data: bytes, scale: float = 1.0) -> _Image:
         """Create an image from binary data (png, jpeg, etc.)."""
         try:
             import io
@@ -209,9 +210,9 @@ class Image:
         """The image's rendering mode (RENDERING_MODE_*)."""
         return self._rendering_mode
 
-    def with_rendering_mode(self, mode: int) -> Image:
+    def with_rendering_mode(self, mode: int) -> _Image:
         """Return a copy of this image with the specified rendering mode."""
-        img = Image(
+        img = _Image(
             width=self._size.w,
             height=self._size.h,
             scale=self._scale,
@@ -220,3 +221,12 @@ class Image:
         )
         img._rendering_mode = mode
         return img
+
+
+if not IS_PYTHONISTA:
+    Image = _Image
+
+else:
+    import ui  # type: ignore[import-not-found]
+
+    Image = ui.Image  # type: ignore[assignment,misc]

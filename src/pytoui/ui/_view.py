@@ -1107,6 +1107,8 @@ class _View:
 if not IS_PYTHONISTA:
     View = _View
 else:
-    import ui  # type: ignore[import-not-found]
+    import ui
 
-    View = ui.View  # type: ignore[assignment,misc]
+    class View(ui.View):  # type: ignore[assignment,misc,no-redef]
+        def __init__(self):
+            pass

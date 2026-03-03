@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 from typing import TYPE_CHECKING
 
+from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import (
     CONTENT_BOTTOM,
     CONTENT_BOTTOM_LEFT,
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 __all__ = ("ImageView",)
 
 
-class ImageView(View):
+class _ImageView(View):
     """An ImageView presents a ui.Image.
 
     The scaling behavior is determined by the inherited
@@ -175,3 +176,31 @@ class ImageView(View):
             fb.blit(buf, iw, ih, dst_x, dst_y, blend=True)
         else:
             fb.blit_scaled(buf, iw, ih, dst_x, dst_y, dst_w, dst_h, blend=True)
+
+
+if not IS_PYTHONISTA:
+    ImageView = _ImageView
+
+else:
+    import ui  # type: ignore[import-not-found]
+
+    class ImageView(ui.ImageView):  # type: ignore[assignment,misc,no-redef]
+        def __init__(self):
+            pass
+
+        def load_from_url(self, url: str):
+            """Asynchronously load an image from a URL and set self.image."""
+            import threading
+
+            def _fetch():
+                try:
+                    from urllib.request import urlopen
+
+                    import ui as _ui
+
+                    data = urlopen(url).read()
+                    self.image = _ui.Image.from_data(data)
+                except Exception:
+                    pass
+
+            threading.Thread(target=_fetch, daemon=True).start()

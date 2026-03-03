@@ -9,9 +9,9 @@ NOTE:
 
 HOT:
 * ~~ActivityIndicator centering and style-size bugs~~ (fixed: style setter checked old `self._style` instead of new `value`, causing wrong bounds→frame resize; removed bounds mutation from setter and redundant `self.bounds` in `__init__`)
-* Activity indicator may have subpixel aliasing on non-integer HiDPI (e.g. 125%) — fractional physical petal sizes. Both sdl and winit.
+* ~~Activity indicator may have subpixel aliasing on non-integer HiDPI (e.g. 125%) — fractional physical petal sizes. Both sdl and winit.~~
 * SegmentedView, Slider and other scrollable views can steal scroll and other mouse/touch events of parrent `_ScrollView`, but also we should have some way to use this controls when them rendered inside `_ScrollView`, Idk if we need to handle it and how. Maybe we should use something as ScrollAwareMixin explicitly to not brake Pythonista.ui-like behaviour?
-* We should review a `_View` and `_ScrollView`, we should check all classes that inherit this two to determine what can be broken when we are not on PC and running under Pythonista (for example, explicit unprotected use of `._intenals_` or on set some properties that exists only on PC and not in Pythonista.ui API's), fix it or protect. Everything related to our runtime should be as hidden as possible, so that the user does not accidentally try to access it in Pythonista. That is why the ViewInternals class was introduced - it is responsible for this, but it may be necessary to break it into several smaller ones, like GesturesRecognizer and the like.
+* ~~Pythonista compatibility review of _View subclasses~~ (audited: no unprotected `_internals_` accesses outside _ScrollView; _draw.py shimmed via IS_PYTHONISTA; fixed: `_anim_disabled` orphaned slot removed from Label; `mouse_scroll_enabled=True` guarded in Slider+SegmentedControl; note: ImageView.draw() uses fb.blit directly — no-op on Pythonista, needs shim)
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)
@@ -27,6 +27,7 @@ NEXT:
   * code after View.present should continue to run
 
 Runtime
+* ~~ImageView, Image shims~~ (fixed: _ImageView + _Image desktop classes; on Pythonista ImageView=ui.ImageView with load_from_url preserved, Image=ui.Image; ImageContext already shimmed in _draw.py)
 * Pillow can be not always available, so maybe we are need some rust based fallback like an "image" crate for ui.ImageContext, ui.ImageView ui.Image
 * Add keyboard events for View that supports input or hot-keys binding (idk if Pythonista ) (for sdl for now)
 * does Viev.wait_modal implemented right?

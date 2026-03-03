@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
@@ -54,7 +54,8 @@ class Slider(View):
 
         # Standard iOS slider size
         self.frame = Rect(0, 0, 200, 31)
-        self.mouse_scroll_enabled = True
+        if not IS_PYTHONISTA:
+            self.mouse_scroll_enabled = True
 
     @property
     def action(self) -> _Action | None:

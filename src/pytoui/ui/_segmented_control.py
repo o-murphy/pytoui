@@ -4,7 +4,7 @@ import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._draw import Path, draw_string, measure_string, set_color
 from pytoui.ui._types import Rect, Touch
@@ -59,7 +59,8 @@ class SegmentedControl(View):
         self._tracked = False
 
         self.frame = Rect(0.00, 0.00, 120.0, 32.0)
-        self.mouse_scroll_enabled = True
+        if not IS_PYTHONISTA:
+            self.mouse_scroll_enabled = True
 
     @property
     def action(self) -> _Action | None:

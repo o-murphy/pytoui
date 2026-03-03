@@ -677,4 +677,6 @@ if not IS_PYTHONISTA:
 else:
     import ui
 
-    ScrollView = ui.ScrollView  # type: ignore[misc, assignment]
+    class ScrollView(ui.ScrollView):  # type: ignore[assignment,misc,no-redef]
+        def __init__(self):
+            pass

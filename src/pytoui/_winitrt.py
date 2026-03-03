@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+import math
 import signal
 import sys
 import time
@@ -162,8 +163,8 @@ class WinitRuntime(BaseRuntime):
         scale = self._scale_factor_c.value
         if scale <= 0.0:
             scale = 1.0
-        lw = max(1, round(w / scale))
-        lh = max(1, round(h / scale))
+        lw = max(1, math.ceil(w / scale))
+        lh = max(1, math.ceil(h / scale))
 
         if fb._width != w or fb._height != h:
             FrameBuffer._lib.DestroyFrameBuffer(fb._handle)

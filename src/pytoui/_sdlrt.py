@@ -260,8 +260,8 @@ class SDLRuntime(BaseRuntime):
             self.renderer,
             sdl2.SDL_PIXELFORMAT_ABGR8888,
             sdl2.SDL_TEXTUREACCESS_STREAMING,
-            width,
-            height,
+            3840,
+            2160,
         )
         sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
         # Pre-allocate for 4K to avoid reallocation on resize
@@ -420,15 +420,6 @@ class SDLRuntime(BaseRuntime):
                     fb._handle = 0
                     fb = FrameBuffer(self.pixel_data, w, h)
                     fb.antialias = _UI_ANTIALIAS
-                    sdl2.SDL_DestroyTexture(self.texture)
-                    self.texture = sdl2.SDL_CreateTexture(
-                        self.renderer,
-                        sdl2.SDL_PIXELFORMAT_ABGR8888,
-                        sdl2.SDL_TEXTUREACCESS_STREAMING,
-                        w,
-                        h,
-                    )
-                    sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
                     self.width, self.height = w, h
                     rf = self.root.frame
                     self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
@@ -439,19 +430,20 @@ class SDLRuntime(BaseRuntime):
                     fb.draw_checkerboard(_CHECKER_SIZE)
                     self.render_fn(fb)
 
-                    pixels_ptr = ctypes.c_void_p()
-                    pitch = ctypes.c_int()
-                    sdl2.SDL_LockTexture(
+                    src_rect = sdl2.rect.SDL_Rect(0, 0, w, h)
+                    sdl2.SDL_UpdateTexture(
                         self.texture,
-                        None,
-                        ctypes.byref(pixels_ptr),
-                        ctypes.byref(pitch),
+                        ctypes.byref(src_rect),
+                        self.pixel_data,
+                        w * 4,
                     )
-                    ctypes.memmove(pixels_ptr, self.pixel_data, w * h * 4)
-                    sdl2.SDL_UnlockTexture(self.texture)
-
                     sdl2.SDL_RenderClear(self.renderer)
-                    sdl2.SDL_RenderCopy(self.renderer, self.texture, None, None)
+                    sdl2.SDL_RenderCopy(
+                        self.renderer,
+                        self.texture,
+                        ctypes.byref(src_rect),
+                        None,
+                    )
                     sdl2.SDL_RenderPresent(self.renderer)
 
                     sdl2.SDL_Delay(_UI_RT_SDL_DELAY)

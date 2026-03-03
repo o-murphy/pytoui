@@ -79,7 +79,7 @@ class Label(View):
     @property
     def text_color(self) -> _RGBA | None:
         """The label's text color."""
-        return parse_color(self._text_color)
+        return self._text_color
 
     @text_color.setter
     def text_color(self, value: _ColorLike):

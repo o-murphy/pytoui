@@ -220,7 +220,7 @@ class _ViewInternals:
     @property
     def background_color(self) -> _RGBA | None:
         """The view's background color, defaults to None (transparent)."""
-        return parse_color(self._background_color)
+        return self._background_color
 
     @background_color.setter
     def background_color(self, value: _ColorLike):
@@ -235,7 +235,7 @@ class _ViewInternals:
     @property
     def border_color(self) -> _RGBA | None:
         """The view's border color (only has effect if border_width > 0)."""
-        return parse_color(self._border_color)
+        return self._border_color
 
     @border_color.setter
     def border_color(self, value: _ColorLike):
@@ -387,7 +387,7 @@ class _ViewInternals:
         self.set_needs_layout()
 
     @property
-    def tint_color(self) -> _RGBA:
+    def tint_color(self) -> _RGBA | None:
         """The view's tint color, inherited from superview if None."""
         v: _ViewInternals | None = self
         while v is not None:
@@ -973,7 +973,7 @@ class _View:
         return None
 
     @property
-    def tint_color(self) -> _RGBA:
+    def tint_color(self) -> _RGBA | None:
         """The view's tint color, inherited from superview if None."""
         return self._internals_.tint_color
 

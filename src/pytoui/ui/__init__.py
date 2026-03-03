@@ -141,9 +141,10 @@ from pytoui.ui._draw import (
     set_shadow,
 )
 from pytoui.ui._image import Image
-from pytoui.ui._imageview import ImageView
+from pytoui.ui._image_view import ImageView
 from pytoui.ui._label import Label
-from pytoui.ui._scrollview import ScrollView
+from pytoui.ui._navigation_view import NavigationView
+from pytoui.ui._scroll_view import ScrollView
 from pytoui.ui._segmented_control import SegmentedControl
 from pytoui.ui._slider import Slider
 from pytoui.ui._switch import Switch
@@ -194,6 +195,8 @@ __all__ = (
     "Slider",
     # ScrollView
     "ScrollView",
+    # NavigationView
+    "NavigationView",
     # Drawing
     "GState",
     "ImageContext",

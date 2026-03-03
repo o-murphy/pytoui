@@ -6,7 +6,7 @@ from pytoui import ui
 
 
 class ValueStore:
-    def __init__(self, defaults: dict[str, float] = None):
+    def __init__(self, defaults: dict[str, float] | None = None):
         self._values: dict[str, float] = dict(defaults or {})
         self._listeners: dict[str, list[Callable[[float], None]]] = {}
 
@@ -88,7 +88,7 @@ class DraggableMixin(ScrollAwareMixin):
 
     def touch_began(self, touch: ui.Touch):
         self._drag_start_y = touch.location[1]
-        self._drag_start_value = self._display_value
+        self._drag_start_value = self._display_value  # type: ignore[attr-defined]
         self._disable_scroll()
 
     def touch_moved(self, touch: ui.Touch):
@@ -96,8 +96,8 @@ class DraggableMixin(ScrollAwareMixin):
         delta_value = delta_y / self.DRAG_SENSITIVITY
         new_value = max(0, min(1, self._drag_start_value + delta_value))
         new_value = self._snap_value(new_value)
-        if self.on_input:
-            self.on_input(new_value)
+        if self.on_input:  # type: ignore[attr-defined]
+            self.on_input(new_value)  # type: ignore[attr-defined]
 
     def touch_ended(self, touch: ui.Touch):
         self._enable_scroll()
@@ -106,8 +106,8 @@ class DraggableMixin(ScrollAwareMixin):
 class OptionsMixin:
     def _init_options(
         self,
-        options: list[str] = None,
-        values: list[float] = None,
+        options: list[str] | None = None,
+        values: list[float] | None = None,
         match_mode: str = "nearest",
     ):
         self.options = options or ["Off", "On"]
@@ -165,7 +165,7 @@ class ThresholdMixin:
 class BaseControl(ui.View):
     preferred_height: float | None = None
 
-    def __init__(self, on_input: Callable[[float], None] = None, **kwargs):
+    def __init__(self, on_input: Callable[[float], None] | None = None, **kwargs):
         super().__init__(**kwargs)
         self.on_input = on_input
         self._display_value = 0.0
@@ -188,7 +188,7 @@ class KnobView(BaseControl, DraggableMixin):
 
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
+        on_input: Callable[[float], None] | None = None,
         style: str = "arc",
         num_ticks: int = 11,
         major_every: int | None = 5,
@@ -351,7 +351,7 @@ class _SliderView(BaseControl, ScrollAwareMixin):
 
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
+        on_input: Callable[[float], None] | None = None,
         steps: int | None = None,
         style: str = "default",  # 'default' | 'ticks'
         num_ticks: int = 11,
@@ -607,7 +607,7 @@ class SwitchView(BaseControl, ThresholdMixin):
 
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
+        on_input: Callable[[float], None] | None = None,
         threshold: float = 0.5,
         inverted: bool = False,
         on_value: float = 1.0,
@@ -645,8 +645,8 @@ class SegmentView(BaseControl, OptionsMixin):
     def __init__(
         self,
         on_input: Callable[[float], None] | None = None,
-        options: list[str] = None,
-        values: list[float] = None,
+        options: list[str] | None = None,
+        values: list[float] | None = None,
         match_mode: str = "nearest",
         **kwargs,
     ):
@@ -683,9 +683,9 @@ class PickerView(BaseControl, OptionsMixin):
 
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
-        options: list[str] = None,
-        values: list[float] = None,
+        on_input: Callable[[float], None] | None = None,
+        options: list[str] | None = None,
+        values: list[float] | None = None,
         match_mode: str = "nearest",
         title: str = "Select",
         **kwargs,
@@ -750,8 +750,8 @@ class LabeledControl(ui.View):
         store: ValueStore,
         key: str,
         server: MockServer,
-        label: str = None,
-        format_func: Callable[[float], str] = None,
+        label: str | None = None,
+        format_func: Callable[[float], str] | None = None,
         control: BaseControl | None = None,
         hide_value: bool = False,
         **kwargs,

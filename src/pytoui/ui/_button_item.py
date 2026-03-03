@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pytoui._platform import _UI_FORCE_PYTOUI_VIEWS, IS_PYTHONISTA
+from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._final import _final_
 
 if TYPE_CHECKING:
@@ -93,7 +93,7 @@ class _ButtonItem:
         return f"<ButtonItem {label}>"
 
 
-if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+if not IS_PYTHONISTA:
     ButtonItem = _ButtonItem
 else:
     import ui

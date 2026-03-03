@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
-    _UI_FORCE_PYTOUI_VIEWS,
     IS_PYTHONISTA,
 )
 from pytoui.ui._draw import Path, parse_color, set_color
@@ -274,7 +273,7 @@ class _Switch(View):
             action()
 
 
-if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+if not IS_PYTHONISTA:
     Switch = _Switch
 else:
     import ui

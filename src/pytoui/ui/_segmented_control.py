@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
-    _UI_FORCE_PYTOUI_VIEWS,
     IS_PYTHONISTA,
 )
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
@@ -340,7 +339,7 @@ class _SegmentedControl(View):
             action()
 
 
-if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+if not IS_PYTHONISTA:
     SegmentedControl = _SegmentedControl
 else:
     import ui

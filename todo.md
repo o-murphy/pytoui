@@ -8,8 +8,26 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
+* Issue with Image (examples/demo.py) on Pythonista
+  ```
+  Segmented: Var3 (2)
+  TypeError: function takes exactly 1 argument (0 given)
+
+  The above exception was the direct cause of the following exception:
+
+  Traceback (most recent call last):
+    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 217, in <module>
+      main()
+    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 210, in main
+      root = MainView()
+    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 150, in __init__
+      self.img_view.image = _make_test_image()
+    File "/private/var/mobile/Containers/Shared/AppGroup/0E72E744-F339-4EEC-83F5-8F2144E8D23D/Pythonista3/Documents/pytoui_examples/demo.py", line 25, in _make_test_image
+      return ui.Image(width=w, height=h, data=pil.tobytes())
+  SystemError: <class '_ui.Image'> returned a result with an exception set
+  ```
 * Multiwindow is broken on sdl (second window is closed immediatelly and app is stacking)
-* Ideas how to implement View.right_button_items/View.left_button_items
+* Ideas how to implement View.right_button_items/View.left_button_items, maybe with _pytoui_system_subviews or kinda, but we need somehow handle the touch and mouse clicks
 
 
 NEXT:

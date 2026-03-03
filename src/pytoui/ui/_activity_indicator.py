@@ -4,7 +4,6 @@ import math
 
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
-    _UI_FORCE_PYTOUI_VIEWS,
     IS_PYTHONISTA,
 )
 from pytoui.ui._constants import (
@@ -147,7 +146,7 @@ class _ActivityIndicator(View):
                 p.fill()
 
 
-if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+if not IS_PYTHONISTA:
     ActivityIndicator = _ActivityIndicator
 else:
     import ui

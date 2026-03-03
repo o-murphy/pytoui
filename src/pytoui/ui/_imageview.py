@@ -3,7 +3,7 @@ from __future__ import annotations
 import ctypes
 from typing import TYPE_CHECKING
 
-from pytoui._platform import _UI_FORCE_PYTOUI_VIEWS, IS_PYTHONISTA
+from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import (
     CONTENT_BOTTOM,
     CONTENT_BOTTOM_LEFT,
@@ -178,7 +178,7 @@ class _ImageView(View):
             fb.blit_scaled(buf, iw, ih, dst_x, dst_y, dst_w, dst_h, blend=True)
 
 
-if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+if not IS_PYTHONISTA:
     ImageView = _ImageView
 
 else:

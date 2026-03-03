@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from pytoui import ui
 
-from .controls import (
+from .controls import (  # type: ignore[import-not-found]
     BaseControl,
     KnobView,
     MockServer,
@@ -17,7 +17,7 @@ class LedIndicator(BaseControl):
 
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
+        on_input: Callable[[float], None] | None = None,
         on_color: str = "#FF0000",
         off_color: str = "#440000",
         threshold: float = 0.5,
@@ -76,7 +76,7 @@ class LedIndicator(BaseControl):
 class FootswitchButton(BaseControl, ThresholdMixin):
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
+        on_input: Callable[[float], None] | None = None,
         threshold: float = 0.5,
         inverted: bool = False,
         on_value: float = 1.0,
@@ -136,7 +136,7 @@ class FootswitchButton(BaseControl, ThresholdMixin):
 class DS1KnobView(KnobView):
     def __init__(
         self,
-        on_input: Callable[[float], None] = None,
+        on_input: Callable[[float], None] | None = None,
         num_ticks: int = 2,
         major_every: int | None = 1,
         steps: int | None = None,
@@ -243,7 +243,7 @@ class DS1PedalKnob(ui.View):
         label: str,
         label_position: str = "bottom",  # "top" | "bottom"
         label_color: str = "#1a1a1a",
-        value_format: Callable[[float], str] = None,
+        value_format: Callable[[float], str] | None = None,
         num_ticks: int = 2,
         major_every: int | None = 1,
         **kwargs,

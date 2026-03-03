@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from pytoui._platform import _UI_FORCE_PYTOUI_VIEWS, IS_PYTHONISTA
 from pytoui.ui._constants import RENDERING_MODE_AUTOMATIC
+from pytoui.ui._final import _final_
 from pytoui.ui._types import Size
 
 __all__ = ("Image",)
 
 
+@_final_
 class _Image:
     """Lightweight image wrapper holding raw RGBA pixel data."""
 

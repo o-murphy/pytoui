@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pytoui._platform import _UI_FORCE_PYTOUI_VIEWS, IS_PYTHONISTA
+from pytoui.ui._final import _final_
 
 if TYPE_CHECKING:
     from pytoui.ui._image import Image
@@ -11,6 +12,7 @@ if TYPE_CHECKING:
 __all__ = ("ButtonItem",)
 
 
+@_final_
 class _ButtonItem:
     """A button for use in the title bar when presenting views
     or inside a NavigationView.

@@ -18,7 +18,6 @@ import time
 from typing import TYPE_CHECKING
 
 from pytoui._base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, _any_dirty
-from pytoui._hid import MOUSE_LEFT_ID, MOUSE_MIDDLE_ID, MOUSE_RIGHT_ID
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
@@ -26,6 +25,7 @@ from pytoui._platform import (
     _UI_RT_SDL_DELAY,
     _UI_RT_SDL_MAX_DELAY,
 )
+from pytoui.hid import MOUSE_LEFT_ID, MOUSE_MIDDLE_ID, MOUSE_RIGHT_ID
 from pytoui.ui._draw import _tick, _tick_delays
 from pytoui.ui._types import Rect
 
@@ -253,7 +253,7 @@ class SDLRuntime(BaseRuntime):
                     self.running = False
                 case "keydown":
                     sym, mod = msg[1], msg[2]
-                    from pytoui._hid import _build_sdl_map, _sdl_mods_to_set
+                    from pytoui.hid import _build_sdl_map, _sdl_mods_to_set
 
                     key_str = _build_sdl_map(sdl2).get(sym, "")
                     handled = False

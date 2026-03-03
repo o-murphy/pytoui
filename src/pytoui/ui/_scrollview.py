@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
+from pytoui.ui._final import _final_
 from pytoui.ui._types import Point, Rect, Size
 from pytoui.ui._view import View
 
@@ -23,8 +24,8 @@ _UPDATE_INTERVAL: float = 1.0 / 60.0
 _PAGE_ANIM_DUR: float = 0.30  # paging slide animation duration (seconds)
 
 
+@_final_
 class _ScrollView(View):
-    _final_ = True
     __slots__ = (
         # Pythonista-compatible state
         "_always_bounce_horizontal",

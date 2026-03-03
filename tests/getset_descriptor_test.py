@@ -1,5 +1,7 @@
 import pytest
 
+from pytoui.ui._final import _final_
+
 
 class getset_descriptor:
     def __init__(self, name: str, default_value=1.0):
@@ -37,16 +39,7 @@ class getset_descriptor:
         self._setter = func
 
 
-class _ViewMeta(type):
-    def __new__(mcls, name, bases, namespace, **kwargs):
-        for base in bases:
-            if getattr(base, "_final_", False):
-                raise TypeError(f"{base.__name__} cannot be subclassed")
-        return super().__new__(mcls, name, bases, namespace, **kwargs)
-
-
 class _view:
-    _final_ = False
     __slots__ = ("__alpha", "__beta")
 
     alpha: getset_descriptor = getset_descriptor("alpha", 1.0)
@@ -57,9 +50,7 @@ class _view:
         setattr(self, _view.alpha.mangled_name, value)
 
 
-class View(_view, metaclass=_ViewMeta):
-    _final_ = False
-
+class View(_view):
     @_view.beta.setter
     def __beta(self, value: str):
         setattr(self, _view.beta.mangled_name, str(value) + "Bar")
@@ -74,9 +65,8 @@ class Mixin:
         return "HELP"
 
 
+@_final_
 class View2(View, Mixin):
-    _final_ = True
-
     def __init__(self):
         self.beta = "Bar"
 
@@ -132,14 +122,14 @@ def test_encapsulation_privacy():
 
 
 def test_final_class_violation():
-    with pytest.raises(TypeError, match="View2 cannot be subclassed"):
+    with pytest.raises(TypeError, match="View3 is not an acceptable base type"):
 
         class View3(View2):
             pass
 
 
 def test_no_setter_error():
-    class ReadOnlyView(_view, metaclass=_ViewMeta):
+    class ReadOnlyView(_view):
         gamma = getset_descriptor("gamma", 1.0)
 
     ro = ReadOnlyView()

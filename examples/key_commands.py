@@ -21,32 +21,32 @@ Run:
     python examples/key_commands.py
 """
 
-from pytoui import ui
+from pytoui import hid, ui
 
 _INPUT_LABELS = {
-    ui.KEY_INPUT_UP: "Up",
-    ui.KEY_INPUT_DOWN: "Down",
-    ui.KEY_INPUT_LEFT: "Left",
-    ui.KEY_INPUT_RIGHT: "Right",
-    ui.KEY_INPUT_ESC: "Esc",
-    ui.KEY_INPUT_RETURN: "Return",
-    ui.KEY_INPUT_BACKSPACE: "Backspace",
-    ui.KEY_INPUT_TAB: "Tab",
-    ui.KEY_INPUT_SPACE: "Space",
-    ui.KEY_INPUT_DELETE: "Del",
-    ui.KEY_INPUT_HOME: "Home",
-    ui.KEY_INPUT_END: "End",
-    ui.KEY_INPUT_PAGE_UP: "PgUp",
-    ui.KEY_INPUT_PAGE_DOWN: "PgDn",
+    hid.KEY_INPUT_UP: "Up",
+    hid.KEY_INPUT_DOWN: "Down",
+    hid.KEY_INPUT_LEFT: "Left",
+    hid.KEY_INPUT_RIGHT: "Right",
+    hid.KEY_INPUT_ESC: "Esc",
+    hid.KEY_INPUT_RETURN: "Return",
+    hid.KEY_INPUT_BACKSPACE: "Backspace",
+    hid.KEY_INPUT_TAB: "Tab",
+    hid.KEY_INPUT_SPACE: "Space",
+    hid.KEY_INPUT_DELETE: "Del",
+    hid.KEY_INPUT_HOME: "Home",
+    hid.KEY_INPUT_END: "End",
+    hid.KEY_INPUT_PAGE_UP: "PgUp",
+    hid.KEY_INPUT_PAGE_DOWN: "PgDn",
 }
 for _i in range(1, 13):
     _INPUT_LABELS[f"f{_i}"] = f"F{_i}"
 
 _MOD_LABELS = {
-    ui.KEY_MOD_CMD: "Cmd",
-    ui.KEY_MOD_CTRL: "Ctrl",
-    ui.KEY_MOD_ALT: "Alt",
-    ui.KEY_MOD_SHIFT: "Shift",
+    hid.KEY_MOD_CMD: "Cmd",
+    hid.KEY_MOD_CTRL: "Ctrl",
+    hid.KEY_MOD_ALT: "Alt",
+    hid.KEY_MOD_SHIFT: "Shift",
 }
 
 
@@ -147,16 +147,16 @@ class KeyCommandsView(ui.View):
 
     def get_key_commands(self):
         return [
-            {"input": "n", "modifiers": ui.KEY_MOD_CMD, "title": "Increment"},
-            {"input": "z", "modifiers": ui.KEY_MOD_CMD, "title": "Decrement"},
+            {"input": "n", "modifiers": hid.KEY_MOD_CMD, "title": "Increment"},
+            {"input": "z", "modifiers": hid.KEY_MOD_CMD, "title": "Decrement"},
             {
                 "input": "z",
-                "modifiers": f"{ui.KEY_MOD_CMD},{ui.KEY_MOD_SHIFT}",
+                "modifiers": f"{hid.KEY_MOD_CMD},{hid.KEY_MOD_SHIFT}",
                 "title": "Re-increment",
             },
-            {"input": ui.KEY_INPUT_UP, "title": "Previous color"},
-            {"input": ui.KEY_INPUT_DOWN, "title": "Next color"},
-            {"input": ui.KEY_INPUT_ESC, "title": "Reset"},
+            {"input": hid.KEY_INPUT_UP, "title": "Previous color"},
+            {"input": hid.KEY_INPUT_DOWN, "title": "Next color"},
+            {"input": hid.KEY_INPUT_ESC, "title": "Reset"},
         ]
 
     def key_command(self, sender):
@@ -170,11 +170,11 @@ class KeyCommandsView(ui.View):
             self._counter += 1
         elif inp == "z":
             self._counter -= 1
-        elif inp == ui.KEY_INPUT_UP:
+        elif inp == hid.KEY_INPUT_UP:
             self._color_idx = (self._color_idx - 1) % len(_COLORS)
-        elif inp == ui.KEY_INPUT_DOWN:
+        elif inp == hid.KEY_INPUT_DOWN:
             self._color_idx = (self._color_idx + 1) % len(_COLORS)
-        elif inp == ui.KEY_INPUT_ESC:
+        elif inp == hid.KEY_INPUT_ESC:
             self._counter = 0
             self._color_idx = 0
 

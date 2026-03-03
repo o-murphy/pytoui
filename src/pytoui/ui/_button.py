@@ -10,6 +10,7 @@ from pytoui._platform import (
 )
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._draw import draw_string, measure_string
+from pytoui.ui._final import _final_
 from pytoui.ui._image import Image
 from pytoui.ui._types import (
     Rect,
@@ -24,9 +25,8 @@ if TYPE_CHECKING:
 __all__ = ("Button",)
 
 
+@_final_
 class _Button(View):
-    _final_ = True
-
     __slots__ = (
         "_action",
         "_anim_alpha",

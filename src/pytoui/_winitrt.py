@@ -10,18 +10,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pytoui._base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime
-from pytoui._hid import (
+from pytoui._osdbuf import FrameBuffer
+from pytoui._platform import (
+    _UI_ANTIALIAS,
+    _UI_RT_FPS,
+)
+from pytoui.hid import (
     KEY_INPUT_ESC,
     MOUSE_LEFT_ID,
     MOUSE_MIDDLE_ID,
     MOUSE_RIGHT_ID,
     _winit_key_to_str,
     _winit_mods_to_set,
-)
-from pytoui._osdbuf import FrameBuffer
-from pytoui._platform import (
-    _UI_ANTIALIAS,
-    _UI_RT_FPS,
 )
 from pytoui.ui._draw import _tick, _tick_delays
 from pytoui.ui._types import Rect

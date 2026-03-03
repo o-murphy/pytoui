@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Literal, Union
 
+from pytoui.ui._final import _final_
+
 __all__ = (
     "_HEX",
     "_RGB",
@@ -35,7 +37,135 @@ _ColorLike = _RGB | _RGBA | _HEX | None
 _Action = Callable[[Any], None] | Callable[[], None]
 
 _Font = tuple[str, float]
-_ViewFlex = Literal["", "W", "H", "L", "R", "T", "B"]
+_ViewFlex = Literal[
+    "",
+    "W",
+    "H",
+    "L",
+    "R",
+    "T",
+    "B",
+    "w",
+    "h",
+    "l",
+    "r",
+    "t",
+    "b",
+    "WH",
+    "WL",
+    "WR",
+    "WT",
+    "WB",
+    "HL",
+    "HR",
+    "HT",
+    "HB",
+    "LR",
+    "LT",
+    "LB",
+    "RT",
+    "RB",
+    "TB",
+    "wh",
+    "wl",
+    "wr",
+    "wt",
+    "wb",
+    "hl",
+    "hr",
+    "ht",
+    "hb",
+    "lr",
+    "lt",
+    "lb",
+    "rt",
+    "rb",
+    "tb",
+    "WHL",
+    "WHR",
+    "WHT",
+    "WHB",
+    "WLR",
+    "WLT",
+    "WLB",
+    "WRT",
+    "WRB",
+    "WTB",
+    "whl",
+    "whr",
+    "wht",
+    "whb",
+    "wlr",
+    "wlt",
+    "wlb",
+    "wrt",
+    "wrb",
+    "wtb",
+    "HLR",
+    "HLT",
+    "HLB",
+    "HRT",
+    "HRB",
+    "HTB",
+    "hlr",
+    "hlt",
+    "hlb",
+    "hrt",
+    "hrb",
+    "htb",
+    "LRT",
+    "LRB",
+    "LTB",
+    "RTB",
+    "lrt",
+    "lrb",
+    "ltb",
+    "rtb",
+    "WHLR",
+    "WHLT",
+    "WHLB",
+    "WHRT",
+    "WHRB",
+    "WHTB",
+    "WLRT",
+    "WLRB",
+    "WLTB",
+    "WRTB",
+    "whlr",
+    "whlt",
+    "whlb",
+    "whrt",
+    "whrb",
+    "whtb",
+    "wlrt",
+    "wlrb",
+    "wltb",
+    "wrtb",
+    "HLRT",
+    "HLRB",
+    "HLTB",
+    "HRTB",
+    "hlrt",
+    "hlrb",
+    "hltb",
+    "hrtb",
+    "LRTB",
+    "lrtb",
+    "WHLRT",
+    "WHLRB",
+    "WHLTB",
+    "WHRTB",
+    "WLRTB",
+    "whlrt",
+    "whlrb",
+    "whltb",
+    "whrtb",
+    "wlrtb",
+    "HLRTB",
+    "hlrtb",
+    "WHLRTB",
+    "whlrtb",
+]
 _TouchPhase = Literal["began", "ended", "moved", "stationary", "cancelled"]
 _PresentStyle = Literal["default", "full_screen", "sheet", "popover", "panel"]
 _PresentOrientation = Literal[
@@ -125,6 +255,7 @@ class Vector2:
 # ── Point ─────────────────────────────────────────────────────────────────────
 
 
+@_final_
 class Point(Vector2):
     """A 2D point with x and y coordinates.
 
@@ -142,6 +273,7 @@ class Point(Vector2):
 # ── Size ──────────────────────────────────────────────────────────────────────
 
 
+@_final_
 class Size(Vector2):
     """A 2D size with width and height.
 
@@ -194,6 +326,7 @@ def _coerce_rect(r: _RectLike) -> Rect:
 # ── Rect ──────────────────────────────────────────────────────────────────────
 
 
+@_final_
 class Rect:
     """A rectangle defined by origin (x, y) and size (width, height).
 
@@ -433,7 +566,7 @@ class Touch:
         self.touch_id = touch_id
 
 
-from pytoui._hid import MOUSE_SCROLL_ID
+from pytoui.hid import MOUSE_SCROLL_ID
 
 
 class MouseEvent(Touch):

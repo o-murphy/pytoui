@@ -9,6 +9,7 @@ from pytoui._platform import (
     IS_PYTHONISTA,
 )
 from pytoui.ui._draw import Path, set_color
+from pytoui.ui._final import _final_
 from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
 
@@ -18,8 +19,8 @@ if TYPE_CHECKING:
 __all__ = ("Slider",)
 
 
+@_final_
 class _Slider(View):
-    _final_ = True
     _PREFERRED_AXIS = "x"  # horizontal drag → Slider; vertical → parent ScrollView
 
     __slots__ = (

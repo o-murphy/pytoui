@@ -11,7 +11,7 @@ Demonstrates all desktop input event types:
 Run: python examples/multitouch.py
 """
 
-from pytoui import ui
+from pytoui import hid, ui
 
 _FINGER_COLORS = [
     (1.0, 0.30, 0.30, 0.90),  # red
@@ -22,14 +22,14 @@ _FINGER_COLORS = [
 ]
 
 _MOUSE_COLORS = {
-    ui._MOUSE_LEFT_ID: (0.30, 0.65, 1.00, 0.90),  # blue
-    ui._MOUSE_RIGHT_ID: (1.00, 0.45, 0.20, 0.90),  # orange
-    ui._MOUSE_MIDDLE_ID: (0.75, 0.30, 0.95, 0.90),  # purple
+    hid.MOUSE_LEFT_ID: (0.30, 0.65, 1.00, 0.90),  # blue
+    hid.MOUSE_RIGHT_ID: (1.00, 0.45, 0.20, 0.90),  # orange
+    hid.MOUSE_MIDDLE_ID: (0.75, 0.30, 0.95, 0.90),  # purple
 }
 _MOUSE_LABELS = {
-    ui._MOUSE_LEFT_ID: "L",
-    ui._MOUSE_RIGHT_ID: "R",
-    ui._MOUSE_MIDDLE_ID: "M",
+    hid.MOUSE_LEFT_ID: "L",
+    hid.MOUSE_RIGHT_ID: "R",
+    hid.MOUSE_MIDDLE_ID: "M",
 }
 
 R = 26  # circle radius for press events

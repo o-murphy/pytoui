@@ -1,15 +1,15 @@
 import math
 from collections.abc import Callable
 
-from examples.custom.controls import (
+from pytoui import ui
+
+from .controls import (
     BaseControl,
     KnobView,
     MockServer,
     ThresholdMixin,
     ValueStore,
 )
-
-from pytoui import ui
 
 
 class LedIndicator(BaseControl):

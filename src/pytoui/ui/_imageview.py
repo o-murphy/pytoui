@@ -20,6 +20,7 @@ from pytoui.ui._constants import (
     CONTENT_TOP_RIGHT,
     RENDERING_MODE_TEMPLATE,
 )
+from pytoui.ui._final import _final_
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
@@ -28,14 +29,13 @@ if TYPE_CHECKING:
 __all__ = ("ImageView",)
 
 
+@_final_
 class _ImageView(View):
     """An ImageView presents a ui.Image.
 
     The scaling behavior is determined by the inherited
     View.content_mode attribute.
     """
-
-    _final_ = True
 
     __slots__ = ("_image", "_content_mode")
 

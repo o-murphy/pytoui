@@ -752,7 +752,6 @@ class _ViewInternals:
 class _View:
     __slots__ = ("__internals_",)
 
-    _final_ = False
     _internals_: _getset_descriptor["_View", "_ViewInternals"] = _getset_descriptor(
         "internals_", factory=lambda obj: _ViewInternals(obj), readonly=True
     )

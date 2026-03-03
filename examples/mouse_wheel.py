@@ -11,7 +11,7 @@ Run:
     python examples/mouse_wheel.py
 """
 
-from pytoui import ui
+from pytoui import hid, ui
 
 _MAX_LOG = 12
 _INDICATOR_SIZE = 40
@@ -64,12 +64,12 @@ class ScrollView(ui.View):
             "+"
             + "+".join(
                 {
-                    ui._MOUSE_LEFT_ID: "L",
-                    ui._MOUSE_RIGHT_ID: "R",
-                    ui._MOUSE_MIDDLE_ID: "M",
+                    hid.MOUSE_LEFT_ID: "L",
+                    hid.MOUSE_RIGHT_ID: "R",
+                    hid.MOUSE_MIDDLE_ID: "M",
                 }[b]
                 for b in sorted(touch.buttons)
-                if b in {ui._MOUSE_LEFT_ID, ui._MOUSE_RIGHT_ID, ui._MOUSE_MIDDLE_ID}
+                if b in {hid.MOUSE_LEFT_ID, hid.MOUSE_RIGHT_ID, hid.MOUSE_MIDDLE_ID}
             )
             if touch.buttons
             else ""

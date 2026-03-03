@@ -59,6 +59,7 @@ from pytoui.ui._constants import (
     LINE_CAP_BUTT,
     LINE_JOIN_MITER,
 )
+from pytoui.ui._final import _final_
 from pytoui.ui._types import (
     Point,
     Rect,
@@ -186,6 +187,7 @@ class ImageContext:
         )
 
 
+@_final_
 class Transform:
     """Thin wrapper around a Rust-side Transform handle.
 
@@ -335,6 +337,7 @@ class Transform:
 _IDENTITY_TRANSFORM = Transform()
 
 
+@_final_
 class _DrawingContext:
     """Description of the context structure for static analysis."""
 
@@ -1130,6 +1133,7 @@ def convert_rect(
 # -- Path class ---------------------------------------------------------------
 
 
+@_final_
 class Path:
     """Pythonista-compatible Path backed by a Rust handle (osdbuf PathXxx FFI).
 
@@ -1439,6 +1443,7 @@ def get_ui_style() -> str:
 # ---------------------------------------------------------------------------
 
 
+@_final_
 class _AnimatingContext:
     active: list
     pending_delays: list
@@ -1544,6 +1549,7 @@ def _lerp(a, b, t: float):
 # ---------------------------------------------------------------------------
 
 
+@_final_
 class _Anim:
     __slots__ = (
         "attr",

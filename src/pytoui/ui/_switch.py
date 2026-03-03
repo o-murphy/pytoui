@@ -9,6 +9,7 @@ from pytoui._platform import (
     IS_PYTHONISTA,
 )
 from pytoui.ui._draw import Path, parse_color, set_color
+from pytoui.ui._final import _final_
 from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
 
@@ -18,9 +19,8 @@ if TYPE_CHECKING:
 __all__ = ("Switch",)
 
 
+@_final_
 class _Switch(View):
-    _final_ = True
-
     __slots__ = (
         "_action",
         "_anim_alpha",

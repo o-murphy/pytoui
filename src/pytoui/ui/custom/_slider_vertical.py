@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS
 from pytoui.ui._draw import Path, set_color
+from pytoui.ui._final import _final_
 from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
 
@@ -14,9 +15,8 @@ if TYPE_CHECKING:
 __all__ = ("VerticalSlider",)
 
 
+@_final_
 class VerticalSlider(View):
-    _final_ = True
-
     __slots__ = (
         "_action",
         "_anim_value",

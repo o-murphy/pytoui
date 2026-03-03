@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pytoui._platform import IS_PYTHONISTA
+from pytoui._platform import _UI_FORCE_PYTOUI_VIEWS, IS_PYTHONISTA
 from pytoui.ui._constants import RENDERING_MODE_AUTOMATIC
 from pytoui.ui._types import Size
 
@@ -223,7 +223,7 @@ class _Image:
         return img
 
 
-if not IS_PYTHONISTA:
+if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
     Image = _Image
 
 else:

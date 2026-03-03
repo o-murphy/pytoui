@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pytoui._platform import _UI_FORCE_PYTOUI_VIEWS, IS_PYTHONISTA
+
 if TYPE_CHECKING:
     from pytoui.ui._image import Image
     from pytoui.ui._types import _RGBA, _Action
@@ -9,7 +11,7 @@ if TYPE_CHECKING:
 __all__ = ("ButtonItem",)
 
 
-class ButtonItem:
+class _ButtonItem:
     """A button for use in the title bar when presenting views
     or inside a NavigationView.
 
@@ -87,3 +89,11 @@ class ButtonItem:
     def __str__(self) -> str:
         label = repr(self._title) if self._title else repr(self._image)
         return f"<ButtonItem {label}>"
+
+
+if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+    ButtonItem = _ButtonItem
+else:
+    import ui
+
+    ButtonItem = ui.ButtonItem  # type: ignore[misc,assignment]

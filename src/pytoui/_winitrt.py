@@ -213,7 +213,7 @@ class WinitRuntime(BaseRuntime):
                 if touch_id < 0:
                     any_drag = False
                     for bid in (MOUSE_LEFT_ID, MOUSE_RIGHT_ID, MOUSE_MIDDLE_ID):
-                        if bid in self._tracked:
+                        if bid in self._held_mouse_buttons:
                             self._mouse_dragged(x, y, bid)
                             any_drag = True
                     if not any_drag:

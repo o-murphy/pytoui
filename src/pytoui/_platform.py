@@ -43,6 +43,7 @@ __all__ = (
     "_UI_RT_FPS",
     "_UI_RT_SDL_DELAY",
     "_UI_RT_SDL_MAX_DELAY",
+    "_UI_FORCE_PYTOUI_VIEWS",
 )
 
 
@@ -84,3 +85,5 @@ else:
     _UI_RT_SDL_DELAY = 4
 
 _UI_RT_SDL_MAX_DELAY = 16
+
+_UI_FORCE_PYTOUI_VIEWS = _get_env_bool("UI_FORCE_PYTHOUI_VIEWS", "0")

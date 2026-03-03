@@ -4,7 +4,11 @@ import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
+from pytoui._platform import (
+    _UI_DISABLE_ANIMATIONS,
+    _UI_FORCE_PYTOUI_VIEWS,
+    IS_PYTHONISTA,
+)
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._draw import Path, draw_string, measure_string, set_color
 from pytoui.ui._types import Rect, Touch
@@ -17,7 +21,7 @@ if TYPE_CHECKING:
 __all__ = ("SegmentedControl",)
 
 
-class SegmentedControl(View):
+class _SegmentedControl(View):
     _final_ = True
 
     __slots__ = (
@@ -332,3 +336,11 @@ class SegmentedControl(View):
             action(sender if sender is not None else self)
         else:
             action()
+
+
+if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+    SegmentedControl = _SegmentedControl
+else:
+    import ui
+
+    SegmentedControl = ui.SegmentedControl  # type: ignore[misc,assignment]

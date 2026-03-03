@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import math
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui._platform import (
+    _UI_DISABLE_ANIMATIONS,
+    _UI_FORCE_PYTOUI_VIEWS,
+    IS_PYTHONISTA,
+)
 from pytoui.ui._constants import (
     ACTIVITY_INDICATOR_STYLE_GRAY,
     ACTIVITY_INDICATOR_STYLE_WHITE,
@@ -13,7 +17,7 @@ from pytoui.ui._types import Rect
 from pytoui.ui._view import View
 
 
-class ActivityIndicator(View):
+class _ActivityIndicator(View):
     _final_ = True
 
     __slots__ = (
@@ -141,3 +145,11 @@ class ActivityIndicator(View):
                     line_width / 2,
                 )
                 p.fill()
+
+
+if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+    ActivityIndicator = _ActivityIndicator
+else:
+    import ui
+
+    ActivityIndicator = ui.ActivityIndicator  # type: ignore[misc,assignment]

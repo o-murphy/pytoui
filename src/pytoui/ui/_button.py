@@ -3,7 +3,11 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui._platform import (
+    _UI_DISABLE_ANIMATIONS,
+    _UI_FORCE_PYTOUI_VIEWS,
+    IS_PYTHONISTA,
+)
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._draw import draw_string, measure_string
 from pytoui.ui._image import Image
@@ -20,7 +24,7 @@ if TYPE_CHECKING:
 __all__ = ("Button",)
 
 
-class Button(View):
+class _Button(View):
     _final_ = True
 
     __slots__ = (
@@ -242,3 +246,11 @@ class Button(View):
             action(sender if sender is not None else self)
         else:
             action()
+
+
+if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+    Button = _Button
+else:
+    import ui
+
+    Button = ui.Button  # type: ignore[misc,assignment]

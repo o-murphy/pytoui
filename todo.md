@@ -11,7 +11,9 @@ HOT:
 * ~~ActivityIndicator centering and style-size bugs~~ (fixed: style setter checked old `self._style` instead of new `value`, causing wrong bounds→frame resize; removed bounds mutation from setter and redundant `self.bounds` in `__init__`)
 * ~~Activity indicator may have subpixel aliasing on non-integer HiDPI (e.g. 125%) — fractional physical petal sizes. Both sdl and winit.~~
 * SegmentedView, Slider and other scrollable views can steal scroll and other mouse/touch events of parrent `_ScrollView`, but also we should have some way to use this controls when them rendered inside `_ScrollView`, Idk if we need to handle it and how. Maybe we should use something as ScrollAwareMixin explicitly to not brake Pythonista.ui-like behaviour?
+* ~~ScrollView - paging not works with touch move action (on winit)~~ (fixed: winit `_internal_event` case 2 checked `bid in self._tracked` to decide whether to call `_mouse_dragged`; if primary view has no touch handler, `_tracked` is never updated, so drags were dropped — even though the scroll interceptor was registered; fixed by checking `self._held_mouse_buttons` instead, matching SDL behavior)
 * ~~Pythonista compatibility review of _View subclasses~~ (audited: no unprotected `_internals_` accesses outside _ScrollView; _draw.py shimmed via IS_PYTHONISTA; fixed: `_anim_disabled` orphaned slot removed from Label; `mouse_scroll_enabled=True` guarded in Slider+SegmentedControl; note: ImageView.draw() uses fb.blit directly — no-op on Pythonista, needs shim)
+* Ideas how to implement View.right_button_items/View.left_button_items
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

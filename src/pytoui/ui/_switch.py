@@ -3,7 +3,11 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from pytoui._platform import _UI_DISABLE_ANIMATIONS
+from pytoui._platform import (
+    _UI_DISABLE_ANIMATIONS,
+    _UI_FORCE_PYTOUI_VIEWS,
+    IS_PYTHONISTA,
+)
 from pytoui.ui._draw import Path, parse_color, set_color
 from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
@@ -14,7 +18,7 @@ if TYPE_CHECKING:
 __all__ = ("Switch",)
 
 
-class Switch(View):
+class _Switch(View):
     _final_ = True
 
     __slots__ = (
@@ -268,3 +272,11 @@ class Switch(View):
             action(sender if sender is not None else self)
         else:
             action()
+
+
+if not IS_PYTHONISTA or _UI_FORCE_PYTOUI_VIEWS:
+    Switch = _Switch
+else:
+    import ui
+
+    Switch = ui.Switch  # type: ignore[misc,assignment]

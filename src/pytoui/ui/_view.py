@@ -1278,6 +1278,9 @@ class _View:
         """Resize to enclose all subviews."""
         self._internals_.size_to_fit()
 
+    def draw_snapshot(self):
+        self._internals_.pytoui_draw_snapshot()
+
     # ── presentation ──────────────────────────────────────────────────────────
 
     def present(

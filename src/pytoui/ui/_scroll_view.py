@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
@@ -13,7 +13,7 @@ from pytoui.ui._view import _View, _ViewInternals
 if TYPE_CHECKING:
     from pytoui.ui._types import MouseWheel, Touch, _PointLike, _SizeLike
 
-_ScrollIndicatorStyle = Literal["default", "white", "black"]
+_ScrollIndicatorStyle: TypeAlias = Literal["default", "white", "black"]
 
 __all__ = ("ScrollView", "_ScrollView", "_ScrollViewInternals", "_ScrollIndicatorStyle")
 
@@ -67,7 +67,7 @@ class _ScrollViewInternals(_ViewInternals):
     _UPDATE_INTERVAL: float = 1.0 / 60.0
     _PAGE_ANIM_DUR: float = 0.30  # paging slide animation duration (seconds)
 
-    def __init__(self, view: _View):
+    def __init__(self, view: _ScrollView):
         super().__init__(view)
         # ── Pythonista-compatible defaults ────────────────────────────────────
         self._always_bounce_horizontal: bool = False

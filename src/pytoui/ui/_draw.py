@@ -68,7 +68,7 @@ from pytoui.ui._types import (
 
 if TYPE_CHECKING:
     from pytoui._osdbuf import FrameBuffer
-    from pytoui.ui._types import _RGBA, _ColorLike, _RectLike
+    from pytoui.ui._types import _RGBA, _ColorLike, _RectLike, _UiStyle
 
 
 __all__ = (
@@ -148,7 +148,7 @@ class ImageContext:
         _sync_ctm_to_rust(ctx)
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, type, value, traceback):
         ctx = _get_draw_ctx()
         ctx.backend = self._prev_backend
         ctx.origin = self._prev_origin
@@ -1264,7 +1264,7 @@ class Path:
 
     # -- Instance path construction -------------------------------------------
 
-    def move_to(self, x: float, y: float):
+    def move_to(self, x: float, y: float) -> None:
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
@@ -1272,7 +1272,7 @@ class Path:
         type(backend).path_move_to(self._handle, x, y)
         self._has_segments = True
 
-    def line_to(self, x: float, y: float):
+    def line_to(self, x: float, y: float) -> None:
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
@@ -1288,7 +1288,7 @@ class Path:
         start: float,
         end: float,
         clockwise: bool = True,
-    ):
+    ) -> None:
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
@@ -1304,7 +1304,7 @@ class Path:
         cp1_y: float,
         cp2_x: float,
         cp2_y: float,
-    ):
+    ) -> None:
         """Append a cubic Bézier curve.  Argument order matches Pythonista:
         end point first, then the two control points.
         """
@@ -1323,7 +1323,9 @@ class Path:
         )
         self._has_segments = True
 
-    def add_quad_curve(self, end_x: float, end_y: float, cp_x: float, cp_y: float):
+    def add_quad_curve(
+        self, end_x: float, end_y: float, cp_x: float, cp_y: float
+    ) -> None:
         """Append a quadratic Bézier curve.  Argument order matches Pythonista:
         end point first, then the control point.
         """
@@ -1334,14 +1336,14 @@ class Path:
         type(backend).path_add_quad_curve(self._handle, end_x, end_y, cp_x, cp_y)
         self._has_segments = True
 
-    def close(self):
+    def close(self) -> None:
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
 
         type(backend).path_close(self._handle)
 
-    def append_path(self, other: Path):
+    def append_path(self, other: Path) -> None:
         """Append all segments of other into this path."""
         backend = _get_draw_ctx().backend
         if not backend:
@@ -1350,7 +1352,7 @@ class Path:
         type(backend).path_append_path(self._handle, other._handle)
         self._has_segments = True
 
-    def set_line_dash(self, sequence: Sequence[float], phase: float = 0.0):
+    def set_line_dash(self, sequence: Sequence[float], phase: float = 0.0) -> None:
         """Set dashed stroke pattern. Pass empty list to clear."""
         backend = _get_draw_ctx().backend
         if not backend:
@@ -1368,7 +1370,7 @@ class Path:
 
     # -- Drawing --------------------------------------------------------------
 
-    def fill(self):
+    def fill(self) -> None:
         """Fill the path using the current color."""
         ctx = _get_draw_ctx()
         fb = ctx.backend
@@ -1378,9 +1380,9 @@ class Path:
         if ctx.alpha != 1.0:
             color = (color[0], color[1], color[2], color[3] * ctx.alpha)
         c = _rgba_to_uint32(color)
-        fb.path_fill(self._handle, c, ctx.blend_mode)
+        fb.path_fill(self._handle, c, ctx.blend_mode)  # type: ignore[arg-type]
 
-    def stroke(self):
+    def stroke(self) -> None:
         """Stroke the path outline using the current color."""
         ctx = _get_draw_ctx()
         fb = ctx.backend
@@ -1390,9 +1392,9 @@ class Path:
         if ctx.alpha != 1.0:
             color = (color[0], color[1], color[2], color[3] * ctx.alpha)
         c = _rgba_to_uint32(color)
-        fb.path_stroke(self._handle, c, ctx.blend_mode)
+        fb.path_stroke(self._handle, c, ctx.blend_mode)  # type: ignore[arg-type]
 
-    def add_clip(self):
+    def add_clip(self) -> None:
         """Constrain the clipping region of the
         current graphics context to this path."""
         ctx = _get_draw_ctx()
@@ -1422,7 +1424,7 @@ def get_window_size() -> tuple[int, int]:
     return _gws()
 
 
-def get_ui_style() -> str:
+def get_ui_style() -> _UiStyle:
     from pytoui.ui._runtime import get_ui_style as _gus
 
     return _gus()

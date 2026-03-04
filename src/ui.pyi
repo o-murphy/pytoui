@@ -1,9 +1,11 @@
+from __future__ import annotations
 from collections.abc import Callable, Sequence
+import re
 from typing import Any, Literal, TypeAlias
 
-PY3: Any = True
+PY3: bool = True
 
-RECT_REGEX: Any = ...
+RECT_REGEX: re.Pattern = ...
 
 COLOR_REGEX: str = ...
 
@@ -50,7 +52,7 @@ CONTENT_TOP: Literal[5] = 5
 CONTENT_TOP_LEFT: Literal[9] = 9
 CONTENT_TOP_RIGHT: Literal[10] = 10
 
-CORRECTION_TYPES: Any = {"yes": True, "no": False, "default": None}
+CORRECTION_TYPES: dict[str, bool | None] = {"yes": True, "no": False, "default": None}
 
 DATE_PICKER_MODE_COUNTDOWN: Literal[3] = 3
 DATE_PICKER_MODE_DATE: Literal[1] = 1
@@ -61,7 +63,7 @@ ACTIVITY_INDICATOR_STYLE_GRAY: Literal[2] = 2
 ACTIVITY_INDICATOR_STYLE_WHITE: Literal[1] = 1
 ACTIVITY_INDICATOR_STYLE_WHITE_LARGE: Literal[0] = 0
 
-ALIGNMENTS: Any = {"left": 0, "right": 2, "center": 1}
+ALIGNMENTS: dict[str, Literal[0, 1, 2]] = {"left": 0, "right": 2, "center": 1}
 
 ALIGN_CENTER: Literal[1] = 1
 ALIGN_JUSTIFIED: Literal[3] = 3
@@ -104,33 +106,33 @@ RENDERING_MODE_AUTOMATIC: Literal[0] = 0
 RENDERING_MODE_ORIGINAL: Literal[1] = 1
 RENDERING_MODE_TEMPLATE: Literal[2] = 2
 
-__BlendMode = int
-__ContentMode = int
-__ActivityIndicatorStyle = int
-__DatePickerMode = int
-__KeyboardType = int
-__LineBrakeMode = int
-__LineJoinMode = int
-__LineCapStyle = int
-__CapitalizationType = int
-__RenderingMode = int
+__BlendMode: TypeAlias = int
+__ContentMode: TypeAlias = int
+__ActivityIndicatorStyle: TypeAlias = int
+__DatePickerMode: TypeAlias = int
+__KeyboardType: TypeAlias = int
+__LineBrakeMode: TypeAlias = int
+__LineJoinMode: TypeAlias = int
+__LineCapStyle: TypeAlias = int
+__CapitalizationType: TypeAlias = int
+__RenderingMode: TypeAlias = int
 __UiStyle: TypeAlias = Literal["dark", "light"]
 
 class Vector2:
-    x: Any = ...  # default: <attribute 'x' of 'Vector2' objects>
-    y: Any = ...  # default: <attribute 'y' of 'Vector2' objects>
+    x: float  # default: <attribute 'x' of 'Vector2' objects>
+    y: float  # default: <attribute 'y' of 'Vector2' objects>
 
     def __init__(self, *args) -> None: ...
-    def __add__(self, other) -> Vector2: ...
+    def __add__(self, other: Vector2) -> Vector2: ...
     def __len__(self) -> int: ...
     def __getitem__(self, index: int) -> float: ...
     def as_tuple(self) -> tuple[float, float]: ...
 
 class Size(Vector2):
-    h: Any = ...  # default: <attribute 'h' of 'Size' objects>
-    height: Any = ...  # default: <attribute 'height' of 'Size' objects>
-    w: Any = ...  # default: <attribute 'w' of 'Size' objects>
-    width: Any = ...  # default: <attribute 'width' of 'Size' objects>
+    h: float  # default: <attribute 'h' of 'Size' objects>
+    height: float  # default: <attribute 'height' of 'Size' objects>
+    w: float  # default: <attribute 'w' of 'Size' objects>
+    width: float  # default: <attribute 'width' of 'Size' objects>
 
 class Point(Vector2): ...
 
@@ -283,21 +285,21 @@ __PresentOrientation: TypeAlias = Literal[
 ]
 __Action: TypeAlias = Callable[[Any], None] | Callable[[], None]
 __Font: TypeAlias = tuple[str, float]
-__ScrollIndicatorStyle = Literal["default", "white", "black"]
+__ScrollIndicatorStyle: TypeAlias = Literal["default", "white", "black"]
 
 class Rect:
-    x: float = ...  # default: <attribute 'x' of 'Rect' objects>
-    y: float = ...  # default: <attribute 'y' of 'Rect' objects>
-    w: float = ...  # default: <attribute 'w' of 'Rect' objects>
-    width: float = ...  # default: <attribute 'width' of 'Rect' objects>
-    h: float = ...  # default: <attribute 'h' of 'Rect' objects>
-    height: float = ...  # default: <attribute 'height' of 'Rect' objects>
-    max_x: float = ...  # default: <attribute 'max_x' of 'Rect' objects>
-    max_y: float = ...  # default: <attribute 'max_y' of 'Rect' objects>
-    min_x: float = ...  # default: <attribute 'min_x' of 'Rect' objects>
-    min_y: float = ...  # default: <attribute 'min_y' of 'Rect' objects>
-    origin: Point = ...  # default: <attribute 'origin' of 'Rect' objects>
-    size: Size = ...  # default: <attribute 'size' of 'Rect' objects>
+    x: float  # default: <attribute 'x' of 'Rect' objects>
+    y: float  # default: <attribute 'y' of 'Rect' objects>
+    w: float  # default: <attribute 'w' of 'Rect' objects>
+    width: float  # default: <attribute 'width' of 'Rect' objects>
+    h: float  # default: <attribute 'h' of 'Rect' objects>
+    height: float  # default: <attribute 'height' of 'Rect' objects>
+    max_x: float  # default: <attribute 'max_x' of 'Rect' objects>
+    max_y: float  # default: <attribute 'max_y' of 'Rect' objects>
+    min_x: float  # default: <attribute 'min_x' of 'Rect' objects>
+    min_y: float  # default: <attribute 'min_y' of 'Rect' objects>
+    origin: Point  # default: <attribute 'origin' of 'Rect' objects>
+    size: Size  # default: <attribute 'size' of 'Rect' objects>
     def __init__(self, *args) -> None: ...
     def __getitem__(self, index: int) -> float: ...
     def __len__(self) -> int: ...
@@ -314,36 +316,29 @@ class Rect:
     def union(self, rect: __RectLike) -> Rect: ...
 
 class Touch:
-    location: Point = ...  # default: <attribute 'location' of '_ui.Touch' objects>
-    objc_instance: Any = (
-        ...
-    )  # default: <attribute 'objc_instance' of '_ui.Touch' objects>
-    phase: __TouchPhase = ...  # default: <attribute 'phase' of '_ui.Touch' objects>
-    prev_location: Point = (
-        ...
-    )  # default: <attribute 'prev_location' of '_ui.Touch' objects>
-    timestamp: int = ...  # default: <attribute 'timestamp' of '_ui.Touch' objects>
-    touch_id: int = ...  # default: <attribute 'touch_id' of '_ui.Touch' objects>
-
-    _objc_ptr: Any = ...  # default: <attribute '_objc_ptr' of '_ui.Touch' objects>
+    location: Point  # default: <attribute 'location' of '_ui.Touch' objects>
+    objc_instance: Any  # default: <attribute 'objc_instance' of '_ui.Touch' objects>
+    phase: __TouchPhase  # default: <attribute 'phase' of '_ui.Touch' objects>
+    prev_location: Point  # default: <attribute 'prev_location' of '_ui.Touch' objects>
+    timestamp: int  # default: <attribute 'timestamp' of '_ui.Touch' objects>
+    touch_id: int  # default: <attribute 'touch_id' of '_ui.Touch' objects>
 
     def __init__(self, *args, **kwargs) -> None: ...
 
 class GState:
-    def __enter__(self): ...
-    def __exit__(self): ...
+    def __enter__(self) -> None: ...
+    def __exit__(self, type, value, traceback) -> None: ...
     def __init__(self) -> None: ...
 
 class ImageContext:
-    def __enter__(self, *args, **kwargs) -> Any: ...
-    def __exit__(self, *args, **kwargs) -> Any: ...
+    def __enter__(self) -> None: ...
+    def __exit__(self, type, value, traceback) -> None: ...
     def __init__(self, *args, **kwargs) -> None: ...
-    def get_image(self, *args, **kwargs) -> Any: ...
+    def get_image(self) -> Image: ...
 
 class Path:
     def __init__(self) -> None: ...
     def _debug_quicklook_(self, *args, **kwargs) -> Any: ...
-    _objc_ptr: Any = ...  # default: <attribute '_objc_ptr' of '_ui.Path' objects>
     def add_arc(
         self,
         cx: float,
@@ -352,9 +347,9 @@ class Path:
         start: float,
         end: float,
         clockwise: bool = True,
-    ) -> Any: ...
-    def add_clip(self) -> Any: ...
-    def add_curveadd_curve(
+    ) -> None: ...
+    def add_clip(self) -> None: ...
+    def add_curve(
         self,
         end_x: float,
         end_y: float,
@@ -362,133 +357,113 @@ class Path:
         cp1_y: float,
         cp2_x: float,
         cp2_y: float,
-    ) -> Any: ...
+    ) -> None: ...
     def add_quad_curve(
         self,
         end_x: float,
         end_y: float,
         cp_x: float,
         cp_y: float,
-    ) -> Any: ...
-    def append_path(self, other: Path) -> Any: ...
-    bounds: Any = ...  # default: <attribute 'bounds' of '_ui.Path' objects>
-    def close(self) -> Any: ...
-    eo_fill_rule: bool = (
-        ...
-    )  # default: <attribute 'eo_fill_rule' of '_ui.Path' objects>
-    def fill(self) -> Any: ...
-    def hit_test(self, x: float, y: float) -> Any: ...
-    line_cap_style: __LineCapStyle = (
-        ...
-    )  # default: <attribute 'line_cap_style' of '_ui.Path' objects>
-    line_join_style: __LineJoinMode = (
-        ...
-    )  # default: <attribute 'line_join_style' of '_ui.Path' objects>
-    def line_to(self, x: float, y: float) -> Any: ...
-    line_width: Any = ...  # default: <attribute 'line_width' of '_ui.Path' objects>
-    def move_to(self, x: float, y: float) -> Any: ...
-    objc_instance: Any = (
-        ...
-    )  # default: <attribute 'objc_instance' of '_ui.Path' objects>
-    def oval(cls, x: float, y: float, w: float, h: float) -> Any: ...
-    def rect(cls, x: float, y: float, w: float, h: float) -> Any: ...
-    def rounded_rect(cls, x: float, y: float, w: float, h: float, r: float) -> Any: ...
-    def set_line_dash(self, sequence: Sequence[float], phase: float = 0.0) -> Any: ...
-    def stroke(self) -> Any: ...
+    ) -> None: ...
+    def append_path(self, other: Path) -> None: ...
+    bounds: Any  # default: <attribute 'bounds' of '_ui.Path' objects>
+    def close(self) -> None: ...
+    eo_fill_rule: bool  # default: <attribute 'eo_fill_rule' of '_ui.Path' objects>
+    def fill(self) -> None: ...
+    def hit_test(self, x: float, y: float) -> bool: ...
+    line_cap_style: (
+        __LineCapStyle  # default: <attribute 'line_cap_style' of '_ui.Path' objects>
+    )
+    line_join_style: (
+        __LineJoinMode  # default: <attribute 'line_join_style' of '_ui.Path' objects>
+    )
+    def line_to(self, x: float, y: float) -> None: ...
+    line_width: Any  # default: <attribute 'line_width' of '_ui.Path' objects>
+    def move_to(self, x: float, y: float) -> None: ...
+    objc_instance: Any  # default: <attribute 'objc_instance' of '_ui.Path' objects>
+    def oval(cls, x: float, y: float, w: float, h: float) -> Path: ...
+    def rect(cls, x: float, y: float, w: float, h: float) -> Path: ...
+    def rounded_rect(cls, x: float, y: float, w: float, h: float, r: float) -> Path: ...
+    def set_line_dash(self, sequence: Sequence[float], phase: float = 0.0) -> None: ...
+    def stroke(self) -> None: ...
 
 class Image:
     def __init__(self, *args, **kwargs) -> None: ...
     def _debug_quicklook_(self, *args, **kwargs) -> Any: ...
-    _objc_ptr: Any = ...  # default: <attribute '_objc_ptr' of '_ui.Image' objects>
     def clip_to_mask(self, *args, **kwargs) -> Any: ...
     def draw(self, *args, **kwargs) -> Any: ...
     def draw_as_pattern(self, *args, **kwargs) -> Any: ...
     def from_data(self, *args, **kwargs) -> Any: ...
     def from_image_context(self, *args, **kwargs) -> Any: ...
-    name: Any = ...  # default: <attribute 'name' of '_ui.Image' objects>
+    name: Any  # default: <attribute 'name' of '_ui.Image' objects>
     def named(self, *args, **kwargs) -> Any: ...
-    objc_instance: Any = (
-        ...
-    )  # default: <attribute 'objc_instance' of '_ui.Image' objects>
-    rendering_mode: __RenderingMode = (
-        ...
-    )  # default: <attribute 'rendering_mode' of '_ui.Image' objects>
+    objc_instance: Any  # default: <attribute 'objc_instance' of '_ui.Image' objects>
+    rendering_mode: (
+        __RenderingMode  # default: <attribute 'rendering_mode' of '_ui.Image' objects>
+    )
     def resizable_image(self, *args, **kwargs) -> Any: ...
-    scale: Any = ...  # default: <attribute 'scale' of '_ui.Image' objects>
+    scale: Any  # default: <attribute 'scale' of '_ui.Image' objects>
     def show(self, *args, **kwargs) -> Any: ...
-    size: Any = ...  # default: <attribute 'size' of '_ui.Image' objects>
+    size: Any  # default: <attribute 'size' of '_ui.Image' objects>
     def to_jpeg(self, *args, **kwargs) -> Any: ...
     def to_png(self, *args, **kwargs) -> Any: ...
     def with_rendering_mode(self, *args, **kwargs) -> Any: ...
 
 class autoreleasepool:
-    def __enter__(self): ...
-    def __exit__(self, **kwargs): ...
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __enter__(self) -> None: ...
+    def __exit__(self) -> None: ...
+    def __init__(self, type, value, traceback) -> None: ...
 
 class View:
-    _objc_ptr: Any = ...  # default: <attribute '_objc_ptr' of '_ui.View' objects>
-    alpha: float = ...  # default: <attribute 'alpha' of '_ui.View' objects>
-    autoresizing: str = ...  # default: <attribute 'autoresizing' of '_ui.View' objects>
-    background_color: __ColorLike = (
-        ...
-    )  # default: <attribute 'background_color' of '_ui.View' objects>
-    bg_color: __ColorLike = ...  # default: <attribute 'bg_color' of '_ui.View' objects>
-    border_color: __ColorLike = (
-        ...
-    )  # default: <attribute 'border_color' of '_ui.View' objects>
-    border_width: float = (
-        ...
-    )  # default: <attribute 'border_width' of '_ui.View' objects>
-    bounds: __RectLike = ...  # default: <attribute 'bounds' of '_ui.View' objects>
-    center: __PointLike = ...  # default: <attribute 'center' of '_ui.View' objects>
-    content_mode: __ContentMode = (
-        ...
-    )  # default: <attribute 'content_mode' of '_ui.View' objects>
-    corner_radius: float = (
-        ...
-    )  # default: <attribute 'corner_radius' of '_ui.View' objects>
-    flex: __ViewFlex = ...  # default: <attribute 'flex' of '_ui.View' objects>
-    frame: __RectLike = ...  # default: <attribute 'frame' of '_ui.View' objects>
-    height: float = ...  # default: <attribute 'height' of '_ui.View' objects>
-    hidden: bool = ...  # default: <attribute 'hidden' of '_ui.View' objects>
-    left_button_items: Any = (
-        ...
-    )  # default: <attribute 'left_button_items' of '_ui.View' objects>
-    multitouch_enabled: bool = (
-        ...
-    )  # default: <attribute 'multitouch_enabled' of '_ui.View' objects>
-    name: str = ...  # default: <attribute 'name' of '_ui.View' objects>
-    navigation_view: Any = (
-        ...
+    alpha: float  # default: <attribute 'alpha' of '_ui.View' objects>
+    autoresizing: str  # default: <attribute 'autoresizing' of '_ui.View' objects>
+    background_color: (
+        __ColorLike  # default: <attribute 'background_color' of '_ui.View' objects>
+    )
+    bg_color: __ColorLike  # default: <attribute 'bg_color' of '_ui.View' objects>
+    border_color: (
+        __ColorLike  # default: <attribute 'border_color' of '_ui.View' objects>
+    )
+    border_width: float  # default: <attribute 'border_width' of '_ui.View' objects>
+    bounds: __RectLike  # default: <attribute 'bounds' of '_ui.View' objects>
+    center: __PointLike  # default: <attribute 'center' of '_ui.View' objects>
+    content_mode: (
+        __ContentMode  # default: <attribute 'content_mode' of '_ui.View' objects>
+    )
+    corner_radius: float  # default: <attribute 'corner_radius' of '_ui.View' objects>
+    flex: __ViewFlex  # default: <attribute 'flex' of '_ui.View' objects>
+    frame: __RectLike  # default: <attribute 'frame' of '_ui.View' objects>
+    height: float  # default: <attribute 'height' of '_ui.View' objects>
+    hidden: bool  # default: <attribute 'hidden' of '_ui.View' objects>
+    left_button_items: (
+        Any  # default: <attribute 'left_button_items' of '_ui.View' objects>
+    )
+    multitouch_enabled: (
+        bool  # default: <attribute 'multitouch_enabled' of '_ui.View' objects>
+    )
+    name: str  # default: <attribute 'name' of '_ui.View' objects>
+    navigation_view: (
+        NavigationView | None
     )  # default: <attribute 'navigation_view' of '_ui.View' objects>
-    objc_instance: Any = (
-        ...
-    )  # default: <attribute 'objc_instance' of '_ui.View' objects>
-    on_screen: bool = ...  # default: <attribute 'on_screen' of '_ui.View' objects>
-    right_button_items: Any = (
-        ...
-    )  # default: <attribute 'right_button_items' of '_ui.View' objects>
+    objc_instance: Any  # default: <attribute 'objc_instance' of '_ui.View' objects>
+    on_screen: bool  # default: <attribute 'on_screen' of '_ui.View' objects>
+    right_button_items: (
+        Any  # default: <attribute 'right_button_items' of '_ui.View' objects>
+    )
     subviews: tuple[
         View,
         ...,
-    ] = ...  # default: <attribute 'subviews' of '_ui.View' objects>
-    superview: (
-        View | None
-    ) = ...  # default: <attribute 'superview' of '_ui.View' objects>
-    tint_color: __ColorLike = (
-        ...
-    )  # default: <attribute 'tint_color' of '_ui.View' objects>
-    touch_enabled: bool = (
-        ...
-    )  # default: <attribute 'touch_enabled' of '_ui.View' objects>
-    transform: Any = ...  # default: <attribute 'transform' of '_ui.View' objects>
-    update_interval: float = (
-        ...
-    )  # default: <attribute 'update_interval' of '_ui.View' objects>
-    width: float = ...  # default: <attribute 'width' of '_ui.View' objects>
-    x: float = ...  # default: <attribute 'x' of '_ui.View' objects>
-    y: float = ...  # default: <attribute 'y' of '_ui.View' objects>
+    ]  # default: <attribute 'subviews' of '_ui.View' objects>
+    superview: View | None  # default: <attribute 'superview' of '_ui.View' objects>
+    tint_color: __ColorLike  # default: <attribute 'tint_color' of '_ui.View' objects>
+    touch_enabled: bool  # default: <attribute 'touch_enabled' of '_ui.View' objects>
+    transform: Any  # default: <attribute 'transform' of '_ui.View' objects>
+    update_interval: (
+        float  # default: <attribute 'update_interval' of '_ui.View' objects>
+    )
+    width: float  # default: <attribute 'width' of '_ui.View' objects>
+    x: float  # default: <attribute 'x' of '_ui.View' objects>
+    y: float  # default: <attribute 'y' of '_ui.View' objects>
 
     def __init__(
         self,
@@ -502,11 +477,11 @@ class View:
     def __getitem__(self, name: str) -> View: ...
     def __len__(self) -> int: ...
     def _debug_quicklook_(self, *args, **kwargs) -> Any: ...
-    def add_subview(self, view: View): ...
-    def become_first_responder(self) -> Any: ...
-    def bring_to_front(self) -> Any: ...
-    def close(self) -> Any: ...
-    def draw_snapshot(self, *args, **kwargs) -> Any: ...
+    def add_subview(self, view: View) -> None: ...
+    def become_first_responder(self) -> None: ...
+    def bring_to_front(self) -> None: ...
+    def close(self) -> None: ...
+    def draw_snapshot(self) -> None: ...
     def get_key_commands(self) -> list[dict]: ...
     def key_command(self, sender: dict) -> None: ...
     def present(
@@ -519,88 +494,73 @@ class View:
         title_color: __ColorLike = None,
         orientations: Sequence[__PresentOrientation] | None = None,
         hide_close_button: bool = False,
-    ): ...
-    def remove_subview(self, view: View) -> Any: ...
-    def send_to_back(self) -> Any: ...
-    def set_needs_display(self) -> Any: ...
-    def size_to_fit(self) -> Any: ...
-    def wait_modal(self) -> Any: ...
+    ) -> None: ...
+    def remove_subview(self, view: View) -> None: ...
+    def send_to_back(self) -> None: ...
+    def set_needs_display(self) -> None: ...
+    def size_to_fit(self) -> None: ...
+    def wait_modal(self) -> None: ...
 
 class ActivityIndicator(View):
-    hides_when_stopped: Any = (
-        ...
-    )  # default: <attribute 'hides_when_stopped' of '_ui.ActivityIndicator' objects>
-    style: __ActivityIndicatorStyle = (
-        ...
-    )  # default: <attribute 'style' of '_ui.ActivityIndicator' objects>
+    hides_when_stopped: Any  # default: <attribute 'hides_when_stopped' of '_ui.ActivityIndicator' objects>
+    style: __ActivityIndicatorStyle  # default: <attribute 'style' of '_ui.ActivityIndicator' objects>
     def __init__(self, *args, **kwargs) -> None: ...
-    def start(self) -> Any: ...
-    def start_animating(self) -> Any: ...
-    def stop(self) -> Any: ...
-    def stop_animating(self) -> Any: ...
+    def start(self) -> None: ...
+    def start_animating(self) -> None: ...
+    def stop(self) -> None: ...
+    def stop_animating(self) -> None: ...
 
 class Button(View):
-    action: (
-        __Action | None
-    ) = ...  # default: <attribute 'action' of '_ui.Button' objects>
+    action: __Action | None  # default: <attribute 'action' of '_ui.Button' objects>
     background_image: (
         Image | None
-    ) = ...  # default: <attribute 'background_image' of '_ui.Button' objects>
-    enabled: bool = ...  # default: <attribute 'enabled' of '_ui.Button' objects>
-    font: __Font = ...  # default: <attribute 'font' of '_ui.Button' objects>
-    image: Image | None = ...  # default: <attribute 'image' of '_ui.Button' objects>
-    title: str = ...  # default: <attribute 'title' of '_ui.Button' objects>
+    )  # default: <attribute 'background_image' of '_ui.Button' objects>
+    enabled: bool  # default: <attribute 'enabled' of '_ui.Button' objects>
+    font: __Font  # default: <attribute 'font' of '_ui.Button' objects>
+    image: Image | None  # default: <attribute 'image' of '_ui.Button' objects>
+    title: str  # default: <attribute 'title' of '_ui.Button' objects>
     def __init__(self, *args, **kwargs) -> None: ...
 
 class ButtonItem:
+    action: __Action  # default: <attribute 'action' of '_ui.ButtonItem' objects>
+    enabled: bool  # default: <attribute 'enabled' of '_ui.ButtonItem' objects>
+    image: Image  # default: <attribute 'image' of '_ui.ButtonItem' objects>
+    tint_color: (
+        __ColorLike  # default: <attribute 'tint_color' of '_ui.ButtonItem' objects>
+    )
+    title: str  # default: <attribute 'title' of '_ui.ButtonItem' objects>
     def __init__(self, *args, **kwargs) -> None: ...
-    _objc_ptr: Any = ...  # default: <attribute '_objc_ptr' of '_ui.ButtonItem' objects>
-    action: __Action = ...  # default: <attribute 'action' of '_ui.ButtonItem' objects>
-    enabled: bool = ...  # default: <attribute 'enabled' of '_ui.ButtonItem' objects>
-    image: Image = ...  # default: <attribute 'image' of '_ui.ButtonItem' objects>
-    tint_color: __ColorLike = (
-        ...
-    )  # default: <attribute 'tint_color' of '_ui.ButtonItem' objects>
-    title: str = ...  # default: <attribute 'title' of '_ui.ButtonItem' objects>
 
 class DatePicker(View):
-    action: (
-        __Action | None
-    ) = ...  # default: <attribute 'action' of '_ui.DatePicker' objects>
-    countdown_duration: Any = (
-        ...
-    )  # default: <attribute 'countdown_duration' of '_ui.DatePicker' objects>
-    date: Any = ...  # default: <attribute 'date' of '_ui.DatePicker' objects>
-    mode: __DatePickerMode = (
-        ...
-    )  # default: <attribute 'mode' of '_ui.DatePicker' objects>
+    action: __Action | None  # default: <attribute 'action' of '_ui.DatePicker' objects>
+    countdown_duration: (
+        Any  # default: <attribute 'countdown_duration' of '_ui.DatePicker' objects>
+    )
+    date: Any  # default: <attribute 'date' of '_ui.DatePicker' objects>
+    mode: __DatePickerMode  # default: <attribute 'mode' of '_ui.DatePicker' objects>
     def __init__(self, *args, **kwargs) -> None: ...
 
 class ImageView(View):
-    image: Image = ...  # default: <attribute 'image' of '_ui.ImageView' objects>
+    image: Image  # default: <attribute 'image' of '_ui.ImageView' objects>
     def __init__(self, *args, **kwargs) -> None: ...
     def load_from_url(self, url: str) -> None: ...
 
 class Label(View):
-    font: __Font = ...  # default: <attribute 'font' of '_ui.Label' objects>
-    min_font_scale: float = (
-        ...
-    )  # default: <attribute 'min_font_scale' of '_ui.Label' objects>
-    number_of_lines: int = (
-        ...
-    )  # default: <attribute 'number_of_lines' of '_ui.Label' objects>
-    scales_font: float = (
-        ...
-    )  # default: <attribute 'scales_font' of '_ui.Label' objects>
-    text: str = ...  # default: <attribute 'text' of '_ui.Label' objects>
-    text_color: __ColorLike = (
-        ...
-    )  # default: <attribute 'text_color' of '_ui.Label' objects>
+    font: __Font  # default: <attribute 'font' of '_ui.Label' objects>
+    min_font_scale: (
+        float  # default: <attribute 'min_font_scale' of '_ui.Label' objects>
+    )
+    number_of_lines: (
+        int  # default: <attribute 'number_of_lines' of '_ui.Label' objects>
+    )
+    scales_font: float  # default: <attribute 'scales_font' of '_ui.Label' objects>
+    text: str  # default: <attribute 'text' of '_ui.Label' objects>
+    text_color: __ColorLike  # default: <attribute 'text_color' of '_ui.Label' objects>
     def __init__(self, *args, **kwargs) -> None: ...
 
 class ListDataSource:
     def __init__(self, *args, **kwargs) -> None: ...
-    items: Any = ...  # default: <property object at 0x1165fc720>
+    items: Any  # default: <property object at 0x1165fc720>
     def reload(self, *args, **kwargs) -> Any: ...
     def tableview_accessory_button_tapped(self, *args, **kwargs) -> Any: ...
     def tableview_can_delete(self, *args, **kwargs) -> Any: ...
@@ -632,294 +592,222 @@ class ListDataSourceList(list):
     def sort(self, *args, **kwargs) -> Any: ...
 
 class NavigationView(View):
-    bar_tint_color: __ColorLike = (
-        ...
-    )  # default: <attributbool 'bar_tint_color' of '_ui.NavigationView' objects>
-    navigation_bar_hidden: bool = (
-        ...
-    )  # default: <attribute 'navigation_bar_hidden' of '_ui.NavigationView' objects>
-    title_color: __ColorLike = (
-        ...
-    )  # default: <attribute 'title_color' of '_ui.NavigationView' objects>
-    def __init__(self, view: View, *args, **kwargs) -> None: ...
-    def pop_view(self, *args, **kwargs) -> Any: ...
-    def push_view(self, *args, **kwargs) -> Any: ...
+    bar_tint_color: __ColorLike  # default: <attributbool 'bar_tint_color' of '_ui.NavigationView' objects>
+    navigation_bar_hidden: bool  # default: <attribute 'navigation_bar_hidden' of '_ui.NavigationView' objects>
+    title_color: __ColorLike  # default: <attribute 'title_color' of '_ui.NavigationView' objects>
+    def __init__(self, view: View) -> None: ...
+    def pop_view(self, animated: bool = True) -> None: ...
+    def push_view(self, view: View, animated: bool = True) -> None: ...
 
 class ScrollView(View):
-    always_bounce_horizontal: bool = (
-        ...
-    )  # default: <attribute 'always_bounce_horizontal' of '_ui.ScrollView' objects>
-    always_bounce_vertical: bool = (
-        ...
-    )  # default: <attribute 'always_bounce_vertical' of '_ui.ScrollView' objects>
-    bounces: bool = ...  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
+    always_bounce_horizontal: bool  # default: <attribute 'always_bounce_horizontal' of '_ui.ScrollView' objects>
+    always_bounce_vertical: bool  # default: <attribute 'always_bounce_vertical' of '_ui.ScrollView' objects>
+    bounces: bool  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
     content_inset: tuple[
         float, float, float, float
-    ] = ...  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
-    content_offset: __PointLike = (
-        ...
-    )  # default: <attribute 'content_offset' of '_ui.ScrollView' objects>
-    content_size: __SizeLike = (
-        ...
-    )  # default: <attribute 'content_size' of '_ui.ScrollView' objects>
-    decelerating: bool = (
-        ...
-    )  # default: <attribute 'decelerating' of '_ui.ScrollView' objects>
-    delegate: (
-        Any | None
-    ) = ...  # default: <attribute 'delegate' of '_ui.ScrollView' objects>
-    directional_lock_enabled: bool = (
-        ...
-    )  # default: <attribute 'directional_lock_enabled' of '_ui.ScrollView' objects>
-    dragging: bool = ...  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
-    indicator_style: __ScrollIndicatorStyle = (
-        ...
-    )  # default: <attribute 'indicator_style' of '_ui.ScrollView' objects>
-    paging_enabled: bool = (
-        ...
-    )  # default: <attribute 'paging_enabled' of '_ui.ScrollView' objects>
-    scroll_enabled: bool = (
-        ...
-    )  # default: <attribute 'scroll_enabled' of '_ui.ScrollView' objects>
+    ]  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
+    content_offset: (
+        __PointLike  # default: <attribute 'content_offset' of '_ui.ScrollView' objects>
+    )
+    content_size: (
+        __SizeLike  # default: <attribute 'content_size' of '_ui.ScrollView' objects>
+    )
+    decelerating: (
+        bool  # default: <attribute 'decelerating' of '_ui.ScrollView' objects>
+    )
+    delegate: Any | None  # default: <attribute 'delegate' of '_ui.ScrollView' objects>
+    directional_lock_enabled: bool  # default: <attribute 'directional_lock_enabled' of '_ui.ScrollView' objects>
+    dragging: bool  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
+    indicator_style: __ScrollIndicatorStyle  # default: <attribute 'indicator_style' of '_ui.ScrollView' objects>
+    paging_enabled: (
+        bool  # default: <attribute 'paging_enabled' of '_ui.ScrollView' objects>
+    )
+    scroll_enabled: (
+        bool  # default: <attribute 'scroll_enabled' of '_ui.ScrollView' objects>
+    )
     scroll_indicator_insets: tuple[
         float, float, float, float
-    ] = (
-        ...
-    )  # default: <attribute 'scroll_indicator_insets' of '_ui.ScrollView' objects>
-    shows_horizontal_scroll_indicator: bool = ...  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
-    shows_vertical_scroll_indicator: bool = ...  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
-    tracking: bool = ...  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
+    ]  # default: <attribute 'scroll_indicator_insets' of '_ui.ScrollView' objects>
+    shows_horizontal_scroll_indicator: bool  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
+    shows_vertical_scroll_indicator: bool  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
+    tracking: bool  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
     def __init__(self, *args, **kwargs) -> None: ...
 
 class SegmentedControl(View):
     action: (
         __Action | None
-    ) = ...  # default: <attribute 'action' of '_ui.SegmentedControl' objects>
-    enabled: bool = (
-        ...
-    )  # default: <attribute 'enabled' of '_ui.SegmentedControl' objects>
+    )  # default: <attribute 'action' of '_ui.SegmentedControl' objects>
+    enabled: bool  # default: <attribute 'enabled' of '_ui.SegmentedControl' objects>
     segments: Sequence[
         str
-    ] = ...  # default: <attribute 'segments' of '_ui.SegmentedControl' objects>
-    selected_index: int = (
-        ...
-    )  # default: <attribute 'selected_index' of '_ui.SegmentedControl' objects>
+    ]  # default: <attribute 'segments' of '_ui.SegmentedControl' objects>
+    selected_index: (
+        int  # default: <attribute 'selected_index' of '_ui.SegmentedControl' objects>
+    )
     def __init__(self, *args, **kwargs) -> None: ...
 
 class Slider(View):
-    action: (
-        __Action | None
-    ) = ...  # default: <attribute 'action' of '_ui.Slider' objects>
-    continuous: Any = ...  # default: <attribute 'continuous' of '_ui.Slider' objects>
-    value: Any = ...  # default: <attribute 'value' of '_ui.Slider' objects>
+    action: __Action | None  # default: <attribute 'action' of '_ui.Slider' objects>
+    continuous: bool  # default: <attribute 'continuous' of '_ui.Slider' objects>
+    value: float  # default: <attribute 'value' of '_ui.Slider' objects>
     def __init__(self, *args, **kwargs) -> None: ...
 
 class Switch(View):
-    action: (
-        __Action | None
-    ) = ...  # default: <attribute 'action' of '_ui.Switch' objects>
-    enabled: bool = ...  # default: <attribute 'enabled' of '_ui.Switch' objects>
-    value: Any = ...  # default: <attribute 'value' of '_ui.Switch' objects>
+    action: __Action | None  # default: <attribute 'action' of '_ui.Switch' objects>
+    enabled: bool  # default: <attribute 'enabled' of '_ui.Switch' objects>
+    value: bool  # default: <attribute 'value' of '_ui.Switch' objects>
     def __init__(self, *args, **kwargs) -> None: ...
 
 class TableView(ScrollView, View):
-    allows_multiple_selection: Any = (
-        ...
-    )  # default: <attribute 'allows_multiple_selection' of '_ui.TableView' objects>
-    allows_multiple_selection_during_editing: Any = ...  # default: <attribute 'allows_multiple_selection_during_editing' of '_ui.TableView' objects>
-    allows_selection: Any = (
-        ...
-    )  # default: <attribute 'allows_selection' of '_ui.TableView' objects>
-    allows_selection_during_editing: Any = ...  # default: <attribute 'allows_selection_during_editing' of '_ui.TableView' objects>
-    always_bounce_horizontal: Any = (
-        ...
-    )  # default: <attribute 'always_bounce_horizontal' of '_ui.ScrollView' objects>
-    always_bounce_vertical: Any = (
-        ...
-    )  # default: <attribute 'always_bounce_vertical' of '_ui.ScrollView' objects>
-    bounces: Any = ...  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
-    content_inset: Any = (
-        ...
-    )  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
-    content_offset: Any = (
-        ...
-    )  # default: <attribute 'content_offset' of '_ui.ScrollView' objects>
-    content_size: Any = (
-        ...
-    )  # default: <attribute 'content_size' of '_ui.ScrollView' objects>
-    data_source: Any = (
-        ...
-    )  # default: <attribute 'data_source' of '_ui.TableView' objects>
-    decelerating: Any = (
-        ...
-    )  # default: <attribute 'decelerating' of '_ui.ScrollView' objects>
-    delegate: Any = ...  # default: <attribute 'delegate' of '_ui.TableView' objects>
+    allows_multiple_selection: Any  # default: <attribute 'allows_multiple_selection' of '_ui.TableView' objects>
+    allows_multiple_selection_during_editing: Any  # default: <attribute 'allows_multiple_selection_during_editing' of '_ui.TableView' objects>
+    allows_selection: (
+        Any  # default: <attribute 'allows_selection' of '_ui.TableView' objects>
+    )
+    allows_selection_during_editing: Any  # default: <attribute 'allows_selection_during_editing' of '_ui.TableView' objects>
+    always_bounce_horizontal: Any  # default: <attribute 'always_bounce_horizontal' of '_ui.ScrollView' objects>
+    always_bounce_vertical: (
+        Any  # default: <attribute 'always_bounce_vertical' of '_ui.ScrollView' objects>
+    )
+    bounces: Any  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
+    content_inset: (
+        Any  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
+    )
+    content_offset: (
+        Any  # default: <attribute 'content_offset' of '_ui.ScrollView' objects>
+    )
+    content_size: Any  # default: <attribute 'content_size' of '_ui.ScrollView' objects>
+    data_source: Any  # default: <attribute 'data_source' of '_ui.TableView' objects>
+    decelerating: Any  # default: <attribute 'decelerating' of '_ui.ScrollView' objects>
+    delegate: Any  # default: <attribute 'delegate' of '_ui.TableView' objects>
     def delete_rows(self, *args, **kwargs) -> Any: ...
-    directional_lock_enabled: Any = (
-        ...
-    )  # default: <attribute 'directional_lock_enabled' of '_ui.ScrollView' objects>
-    dragging: Any = ...  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
-    editing: Any = ...  # default: <attribute 'editing' of '_ui.TableView' objects>
-    indicator_style: Any = (
-        ...
-    )  # default: <attribute 'indicator_style' of '_ui.ScrollView' objects>
+    directional_lock_enabled: Any  # default: <attribute 'directional_lock_enabled' of '_ui.ScrollView' objects>
+    dragging: Any  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
+    editing: Any  # default: <attribute 'editing' of '_ui.TableView' objects>
+    indicator_style: (
+        Any  # default: <attribute 'indicator_style' of '_ui.ScrollView' objects>
+    )
     def __init__(self, *args, **kwargs) -> None: ...
     def insert_rows(self, *args, **kwargs) -> Any: ...
-    paging_enabled: Any = (
-        ...
-    )  # default: <attribute 'paging_enabled' of '_ui.ScrollView' objects>
+    paging_enabled: (
+        Any  # default: <attribute 'paging_enabled' of '_ui.ScrollView' objects>
+    )
     def reload(self, *args, **kwargs) -> Any: ...
     def reload_data(self, *args, **kwargs) -> Any: ...
-    row_height: Any = (
-        ...
-    )  # default: <attribute 'row_height' of '_ui.TableView' objects>
-    scroll_enabled: Any = (
-        ...
-    )  # default: <attribute 'scroll_enabled' of '_ui.ScrollView' objects>
-    scroll_indicator_insets: Any = (
-        ...
-    )  # default: <attribute 'scroll_indicator_insets' of '_ui.ScrollView' objects>
-    selected_row: Any = (
-        ...
-    )  # default: <attribute 'selected_row' of '_ui.TableView' objects>
-    selected_rows: Any = (
-        ...
-    )  # default: <attribute 'selected_rows' of '_ui.TableView' objects>
-    separator_color: Any = (
-        ...
-    )  # default: <attribute 'separator_color' of '_ui.TableView' objects>
+    row_height: Any  # default: <attribute 'row_height' of '_ui.TableView' objects>
+    scroll_enabled: (
+        Any  # default: <attribute 'scroll_enabled' of '_ui.ScrollView' objects>
+    )
+    scroll_indicator_insets: Any  # default: <attribute 'scroll_indicator_insets' of '_ui.ScrollView' objects>
+    selected_row: Any  # default: <attribute 'selected_row' of '_ui.TableView' objects>
+    selected_rows: (
+        Any  # default: <attribute 'selected_rows' of '_ui.TableView' objects>
+    )
+    separator_color: (
+        Any  # default: <attribute 'separator_color' of '_ui.TableView' objects>
+    )
     def set_editing(self, *args, **kwargs) -> Any: ...
-    shows_horizontal_scroll_indicator: Any = ...  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
-    shows_vertical_scroll_indicator: Any = ...  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
-    tracking: Any = ...  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
+    shows_horizontal_scroll_indicator: Any  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
+    shows_vertical_scroll_indicator: Any  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
+    tracking: Any  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
 
 class TableViewCell(View):
-    accessory_type: Any = (
-        ...
-    )  # default: <attribute 'accessory_type' of '_ui.TableViewCell' objects>
-    content_view: Any = (
-        ...
-    )  # default: <attribute 'content_view' of '_ui.TableViewCell' objects>
-    corner_radius: Any = (
-        ...
-    )  # default: <attribute 'corner_radius' of '_ui.View' objects>
-    detail_text_label: Any = (
-        ...
-    )  # default: <attribute 'detail_text_label' of '_ui.TableViewCell' objects>
-    image_view: Any = (
-        ...
-    )  # default: <attribute 'image_view' of '_ui.TableViewCell' objects>
-    selectable: Any = (
-        ...
-    )  # default: <attribute 'selectable' of '_ui.TableViewCell' objects>
-    selected_background_view: Any = (
-        ...
-    )  # default: <attribute 'selected_background_view' of '_ui.TableViewCell' objects>
-    text_label: Any = (
-        ...
-    )  # default: <attribute 'text_label' of '_ui.TableViewCell' objects>
+    accessory_type: (
+        Any  # default: <attribute 'accessory_type' of '_ui.TableViewCell' objects>
+    )
+    content_view: (
+        Any  # default: <attribute 'content_view' of '_ui.TableViewCell' objects>
+    )
+    corner_radius: Any  # default: <attribute 'corner_radius' of '_ui.View' objects>
+    detail_text_label: (
+        Any  # default: <attribute 'detail_text_label' of '_ui.TableViewCell' objects>
+    )
+    image_view: Any  # default: <attribute 'image_view' of '_ui.TableViewCell' objects>
+    selectable: Any  # default: <attribute 'selectable' of '_ui.TableViewCell' objects>
+    selected_background_view: Any  # default: <attribute 'selected_background_view' of '_ui.TableViewCell' objects>
+    text_label: Any  # default: <attribute 'text_label' of '_ui.TableViewCell' objects>
 
 class TextField(View):
-    action: (
-        __Action | None
-    ) = ...  # default: <attribute 'action' of '_ui.TextField' objects>
-    autocapitalization_type: __CapitalizationType = (
-        ...
-    )  # default: <attribute 'autocapitalization_type' of '_ui.TextField' objects>
-    autocorrection_type: Any = (
-        ...
-    )  # default: <attribute 'autocorrection_type' of '_ui.TextField' objects>
+    action: __Action | None  # default: <attribute 'action' of '_ui.TextField' objects>
+    autocapitalization_type: __CapitalizationType  # default: <attribute 'autocapitalization_type' of '_ui.TextField' objects>
+    autocorrection_type: (
+        Any  # default: <attribute 'autocorrection_type' of '_ui.TextField' objects>
+    )
     def begin_editing(self, *args, **kwargs) -> Any: ...
-    bordered: Any = ...  # default: <attribute 'bordered' of '_ui.TextField' objects>
-    clear_button_mode: Any = (
-        ...
-    )  # default: <attribute 'clear_button_mode' of '_ui.TextField' objects>
-    delegate: Any = ...  # default: <attribute 'delegate' of '_ui.TextField' objects>
-    enabled: bool = ...  # default: <attribute 'enabled' of '_ui.TextField' objects>
+    bordered: Any  # default: <attribute 'bordered' of '_ui.TextField' objects>
+    clear_button_mode: (
+        Any  # default: <attribute 'clear_button_mode' of '_ui.TextField' objects>
+    )
+    delegate: Any  # default: <attribute 'delegate' of '_ui.TextField' objects>
+    enabled: bool  # default: <attribute 'enabled' of '_ui.TextField' objects>
     def end_editing(self, *args, **kwargs) -> Any: ...
-    font: __Font = ...  # default: <attribute 'font' of '_ui.TextField' objects>
-    keyboard_type: __KeyboardType = (
-        ...
-    )  # default: <attribute 'keyboard_type' of '_ui.TextField' objects>
-    placeholder: Any = (
-        ...
-    )  # default: <attribute 'placeholder' of '_ui.TextField' objects>
-    secure: Any = ...  # default: <attribute 'secure' of '_ui.TextField' objects>
-    spellchecking_type: Any = (
-        ...
-    )  # default: <attribute 'spellchecking_type' of '_ui.TextField' objects>
-    text: str = ...  # default: <attribute 'text' of '_ui.TextField' objects>
-    text_color: __ColorLike = (
-        ...
-    )  # default: <attribute 'text_color' of '_ui.TextField' objects>
+    font: __Font  # default: <attribute 'font' of '_ui.TextField' objects>
+    keyboard_type: __KeyboardType  # default: <attribute 'keyboard_type' of '_ui.TextField' objects>
+    placeholder: Any  # default: <attribute 'placeholder' of '_ui.TextField' objects>
+    secure: Any  # default: <attribute 'secure' of '_ui.TextField' objects>
+    spellchecking_type: (
+        Any  # default: <attribute 'spellchecking_type' of '_ui.TextField' objects>
+    )
+    text: str  # default: <attribute 'text' of '_ui.TextField' objects>
+    text_color: (
+        __ColorLike  # default: <attribute 'text_color' of '_ui.TextField' objects>
+    )
 
 class TextView(ScrollView, View):
-    alignment: Any = ...  # default: <attribute 'alignment' of '_ui.TextView' objects>
-    always_bounce_horizontal: Any = (
-        ...
-    )  # default: <attribute 'always_bounce_horizontal' of '_ui.ScrollView' objects>
-    always_bounce_vertical: Any = (
-        ...
-    )  # default: <attribute 'always_bounce_vertical' of '_ui.ScrollView' objects>
-    auto_content_inset: Any = (
-        ...
-    )  # default: <attribute 'auto_content_inset' of '_ui.TextView' objects>
-    autocapitalization_type: Any = (
-        ...
-    )  # default: <attribute 'autocapitalization_type' of '_ui.TextView' objects>
-    autocorrection_type: Any = (
-        ...
-    )  # default: <attribute 'autocorrection_type' of '_ui.TextView' objects>
+    alignment: Any  # default: <attribute 'alignment' of '_ui.TextView' objects>
+    always_bounce_horizontal: Any  # default: <attribute 'always_bounce_horizontal' of '_ui.ScrollView' objects>
+    always_bounce_vertical: (
+        Any  # default: <attribute 'always_bounce_vertical' of '_ui.ScrollView' objects>
+    )
+    auto_content_inset: (
+        Any  # default: <attribute 'auto_content_inset' of '_ui.TextView' objects>
+    )
+    autocapitalization_type: (
+        Any  # default: <attribute 'autocapitalization_type' of '_ui.TextView' objects>
+    )
+    autocorrection_type: (
+        Any  # default: <attribute 'autocorrection_type' of '_ui.TextView' objects>
+    )
     def begin_editing(self, *args, **kwargs) -> Any: ...
-    bounces: Any = ...  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
-    content_inset: Any = (
-        ...
-    )  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
-    content_offset: Any = (
-        ...
-    )  # default: <attribute 'content_offset' of '_ui.ScrollView' objects>
-    content_size: Any = (
-        ...
-    )  # default: <attribute 'content_size' of '_ui.ScrollView' objects>
-    decelerating: Any = (
-        ...
-    )  # default: <attribute 'decelerating' of '_ui.ScrollView' objects>
-    delegate: Any = ...  # default: <attribute 'delegate' of '_ui.ScrollView' objects>
-    directional_lock_enabled: Any = (
-        ...
-    )  # default: <attribute 'directional_lock_enabled' of '_ui.ScrollView' objects>
-    dragging: Any = ...  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
-    editable: Any = ...  # default: <attribute 'editable' of '_ui.TextView' objects>
+    bounces: Any  # default: <attribute 'bounces' of '_ui.ScrollView' objects>
+    content_inset: (
+        Any  # default: <attribute 'content_inset' of '_ui.ScrollView' objects>
+    )
+    content_offset: (
+        Any  # default: <attribute 'content_offset' of '_ui.ScrollView' objects>
+    )
+    content_size: Any  # default: <attribute 'content_size' of '_ui.ScrollView' objects>
+    decelerating: Any  # default: <attribute 'decelerating' of '_ui.ScrollView' objects>
+    delegate: Any  # default: <attribute 'delegate' of '_ui.ScrollView' objects>
+    directional_lock_enabled: Any  # default: <attribute 'directional_lock_enabled' of '_ui.ScrollView' objects>
+    dragging: Any  # default: <attribute 'dragging' of '_ui.ScrollView' objects>
+    editable: Any  # default: <attribute 'editable' of '_ui.TextView' objects>
     def end_editing(self, *args, **kwargs) -> Any: ...
-    font: __Font = ...  # default: <attribute 'font' of '_ui.TextView' objects>
-    indicator_style: Any = (
-        ...
-    )  # default: <attribute 'indicator_style' of '_ui.ScrollView' objects>
-    keyboard_type: Any = (
-        ...
-    )  # default: <attribute 'keyboard_type' of '_ui.TextView' objects>
-    paging_enabled: Any = (
-        ...
-    )  # default: <attribute 'paging_enabled' of '_ui.ScrollView' objects>
+    font: __Font  # default: <attribute 'font' of '_ui.TextView' objects>
+    indicator_style: (
+        Any  # default: <attribute 'indicator_style' of '_ui.ScrollView' objects>
+    )
+    keyboard_type: Any  # default: <attribute 'keyboard_type' of '_ui.TextView' objects>
+    paging_enabled: (
+        Any  # default: <attribute 'paging_enabled' of '_ui.ScrollView' objects>
+    )
     def replace_range(self, *args, **kwargs) -> Any: ...
-    scroll_enabled: Any = (
-        ...
-    )  # default: <attribute 'scroll_enabled' of '_ui.ScrollView' objects>
-    scroll_indicator_insets: Any = (
-        ...
-    )  # default: <attribute 'scroll_indicator_insets' of '_ui.ScrollView' objects>
-    selectable: Any = ...  # default: <attribute 'selectable' of '_ui.TextView' objects>
-    selected_range: Any = (
-        ...
-    )  # default: <attribute 'selected_range' of '_ui.TextView' objects>
-    shows_horizontal_scroll_indicator: Any = ...  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
-    shows_vertical_scroll_indicator: Any = ...  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
-    spellchecking_type: Any = (
-        ...
-    )  # default: <attribute 'spellchecking_type' of '_ui.TextView' objects>
-    text: Any = ...  # default: <attribute 'text' of '_ui.TextView' objects>
-    text_color: Any = ...  # default: <attribute 'text_color' of '_ui.TextView' objects>
-    tracking: Any = ...  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
+    scroll_enabled: (
+        Any  # default: <attribute 'scroll_enabled' of '_ui.ScrollView' objects>
+    )
+    scroll_indicator_insets: Any  # default: <attribute 'scroll_indicator_insets' of '_ui.ScrollView' objects>
+    selectable: Any  # default: <attribute 'selectable' of '_ui.TextView' objects>
+    selected_range: (
+        Any  # default: <attribute 'selected_range' of '_ui.TextView' objects>
+    )
+    shows_horizontal_scroll_indicator: Any  # default: <attribute 'shows_horizontal_scroll_indicator' of '_ui.ScrollView' objects>
+    shows_vertical_scroll_indicator: Any  # default: <attribute 'shows_vertical_scroll_indicator' of '_ui.ScrollView' objects>
+    spellchecking_type: (
+        Any  # default: <attribute 'spellchecking_type' of '_ui.TextView' objects>
+    )
+    text: Any  # default: <attribute 'text' of '_ui.TextView' objects>
+    text_color: Any  # default: <attribute 'text_color' of '_ui.TextView' objects>
+    tracking: Any  # default: <attribute 'tracking' of '_ui.ScrollView' objects>
 
 class Transform:
     def __init__(self, a=1.0, b=0.0, c=0.0, d=1.0, tx=0.0, ty=0.0) -> None: ...
@@ -930,7 +818,7 @@ class Transform:
     def translation(cls, tx: float, ty: float) -> Transform: ...
 
 class WebView(View):
-    delegate: Any = ...  # default: <attribute 'delegate' of '_ui.WebView' objects>
+    delegate: Any  # default: <attribute 'delegate' of '_ui.WebView' objects>
     def eval_js(self, *args, **kwargs) -> Any: ...
     def evaluate_javascript(self, *args, **kwargs) -> Any: ...
     def go_back(self, *args, **kwargs) -> Any: ...
@@ -938,9 +826,9 @@ class WebView(View):
     def load_html(self, *args, **kwargs) -> Any: ...
     def load_url(self, *args, **kwargs) -> Any: ...
     def reload(self, *args, **kwargs) -> Any: ...
-    scales_page_to_fit: Any = (
-        ...
-    )  # default: <attribute 'scales_page_to_fit' of '_ui.WebView' objects>
+    scales_page_to_fit: (
+        Any  # default: <attribute 'scales_page_to_fit' of '_ui.WebView' objects>
+    )
     def stop(self, *args, **kwargs) -> Any: ...
 
 def _bind_action(*args, **kwargs) -> Any: ...
@@ -957,64 +845,12 @@ def animate(
     completion: Callable | None = None,
 ) -> None: ...
 
-class basestring:
-    def __add__(self, *args, **kwargs) -> Any: ...
-    def __getitem__(self, *args, **kwargs) -> Any: ...
-    def __init__(self, *args, **kwargs) -> None: ...
-    def __iter__(self, *args, **kwargs) -> Any: ...
-    def __len__(self, *args, **kwargs) -> Any: ...
-    def capitalize(self, *args, **kwargs) -> Any: ...
-    def casefold(self, *args, **kwargs) -> Any: ...
-    def center(self, *args, **kwargs) -> Any: ...
-    def count(self, *args, **kwargs) -> Any: ...
-    def encode(self, *args, **kwargs) -> Any: ...
-    def endswith(self, *args, **kwargs) -> Any: ...
-    def expandtabs(self, *args, **kwargs) -> Any: ...
-    def find(self, *args, **kwargs) -> Any: ...
-    def format(self, *args, **kwargs) -> Any: ...
-    def format_map(self, *args, **kwargs) -> Any: ...
-    def index(self, *args, **kwargs) -> Any: ...
-    def isalnum(self, *args, **kwargs) -> Any: ...
-    def isalpha(self, *args, **kwargs) -> Any: ...
-    def isascii(self, *args, **kwargs) -> Any: ...
-    def isdecimal(self, *args, **kwargs) -> Any: ...
-    def isdigit(self, *args, **kwargs) -> Any: ...
-    def isidentifier(self, *args, **kwargs) -> Any: ...
-    def islower(self, *args, **kwargs) -> Any: ...
-    def isnumeric(self, *args, **kwargs) -> Any: ...
-    def isprintable(self, *args, **kwargs) -> Any: ...
-    def isspace(self, *args, **kwargs) -> Any: ...
-    def istitle(self, *args, **kwargs) -> Any: ...
-    def isupper(self, *args, **kwargs) -> Any: ...
-    def join(self, *args, **kwargs) -> Any: ...
-    def ljust(self, *args, **kwargs) -> Any: ...
-    def lower(self, *args, **kwargs) -> Any: ...
-    def lstrip(self, *args, **kwargs) -> Any: ...
-    def maketrans(self, *args, **kwargs) -> Any: ...
-    def partition(self, *args, **kwargs) -> Any: ...
-    def removeprefix(self, *args, **kwargs) -> Any: ...
-    def removesuffix(self, *args, **kwargs) -> Any: ...
-    def replace(self, *args, **kwargs) -> Any: ...
-    def rfind(self, *args, **kwargs) -> Any: ...
-    def rindex(self, *args, **kwargs) -> Any: ...
-    def rjust(self, *args, **kwargs) -> Any: ...
-    def rpartition(self, *args, **kwargs) -> Any: ...
-    def rsplit(self, *args, **kwargs) -> Any: ...
-    def rstrip(self, *args, **kwargs) -> Any: ...
-    def split(self, *args, **kwargs) -> Any: ...
-    def splitlines(self, *args, **kwargs) -> Any: ...
-    def startswith(self, *args, **kwargs) -> Any: ...
-    def strip(self, *args, **kwargs) -> Any: ...
-    def swapcase(self, *args, **kwargs) -> Any: ...
-    def title(self, *args, **kwargs) -> Any: ...
-    def translate(self, *args, **kwargs) -> Any: ...
-    def upper(self, *args, **kwargs) -> Any: ...
-    def zfill(self, *args, **kwargs) -> Any: ...
+basestring: TypeAlias = str
 
 def begin_image_context(*args, **kwargs) -> Any: ...
 def cancel_delays() -> Any: ...
 def close_all(*args, **kwargs) -> Any: ...
-def concat_ctm(transform: Transform): ...
+def concat_ctm(transform: Transform) -> None: ...
 def convert_point(
     point=(0, 0),
     from_view=None,
@@ -1033,11 +869,11 @@ def draw_string(
     color: __ColorLike | None = None,
     alignment: int = ...,
     line_break_mode: int = ...,
-): ...
+) -> None: ...
 def dump_view(*args, **kwargs) -> Any: ...
 def end_editing(*args, **kwargs) -> Any: ...
 def end_image_context(*args, **kwargs) -> Any: ...
-def fill_rect(x: float, y: float, w: float, h: float): ...
+def fill_rect(x: float, y: float, w: float, h: float) -> None: ...
 def get_keyboard_frame(*args, **kwargs) -> Any: ...
 def get_screen_size() -> tuple[int, int]: ...
 def get_ui_style() -> __UiStyle: ...
@@ -1053,13 +889,13 @@ def measure_string(
     line_break_mode: int = ...,
 ) -> tuple[float, float]: ...
 def parse_color(c: __ColorLike) -> __RGBA: ...
-def set_alpha(alpha: float): ...
-def set_blend_mode(mode: __BlendMode): ...
-def set_color(c: __ColorLike): ...
+def set_alpha(alpha: float) -> None: ...
+def set_blend_mode(mode: __BlendMode) -> None: ...
+def set_color(c: __ColorLike) -> None: ...
 def set_shadow(
     color: __ColorLike,
     offset_x: float,
     offset_y: float,
     blur_radius: float,
-): ...
+) -> None: ...
 def settrace(*args, **kwargs) -> Any: ...

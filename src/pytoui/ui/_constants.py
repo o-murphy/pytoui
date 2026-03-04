@@ -22,7 +22,8 @@ ALIGN_JUSTIFIED: Literal[3] = 3
 ALIGN_LEFT: Literal[0] = 0
 ALIGN_NATURAL: Literal[4] = 4
 ALIGN_RIGHT: Literal[2] = 2
-ALIGNMENTS: dict = {"left": 0, "right": 2, "center": 1}
+
+ALIGNMENTS: dict[str, Literal[0, 1, 2]] = {"left": 0, "right": 2, "center": 1}
 
 # --- Autocapitalization ---
 AUTOCAPITALIZE_ALL: Literal[3] = 3
@@ -76,7 +77,7 @@ CONTENT_TOP_LEFT: Literal[9] = 9
 CONTENT_TOP_RIGHT: Literal[10] = 10
 
 # --- Correction Types ---
-CORRECTION_TYPES: dict = {"yes": True, "no": False, "default": None}
+CORRECTION_TYPES: dict[str, bool | None] = {"yes": True, "no": False, "default": None}
 
 # --- Date Picker Modes ---
 DATE_PICKER_MODE_COUNTDOWN: Literal[3] = 3

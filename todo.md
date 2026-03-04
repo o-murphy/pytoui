@@ -60,7 +60,7 @@ View classes:
 * ~~ActivityIndicator~~
 
 Other Classes:
-* ~~Image~~
+* Image (idk how it works but not implemented)
 * ~~ImageContext~~
 * ~~Path~~
 * ~~Touch~~

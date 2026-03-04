@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Literal, Union
+from typing import Any, Literal, TypeAlias, Union
 
 from pytoui.ui._internals import _final_
 
@@ -17,6 +17,7 @@ __all__ = (
     "MouseWheel",
     "Vector2",
     "_Action",
+    "_UiStyle",
     "_ColorLike",
     "_Font",
     "_PointLike",
@@ -29,12 +30,13 @@ __all__ = (
     "autoreleasepool",
 )
 
-_RGB = tuple[float, float, float]
-_RGBA = tuple[float, float, float, float]
-_HEX = str | int
-_ColorLike = _RGB | _RGBA | _HEX | None
+_RGB: TypeAlias = tuple[float, float, float]
+_RGBA: TypeAlias = tuple[float, float, float, float]
+_HEX: TypeAlias = str | int
+_ColorLike: TypeAlias = _RGB | _RGBA | _HEX | None
 
-_Action = Callable[[Any], None] | Callable[[], None]
+_Action: TypeAlias = Callable[[Any], None] | Callable[[], None]
+_UiStyle: TypeAlias = Literal["dark", "light"]
 
 _Font = tuple[str, float]
 _ViewFlex = Literal[

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import ctypes
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from pytoui._base_runtime import BaseRuntime
 from pytoui._osdbuf import FrameBuffer
@@ -28,6 +28,7 @@ from pytoui._platform import (
 )
 
 if TYPE_CHECKING:
+    from pytoui.ui._types import _UiStyle
     from pytoui.ui._view import _ViewInternals
 
 
@@ -93,14 +94,14 @@ def get_window_size() -> tuple[int, int]:
     return get_screen_size()
 
 
-def get_ui_style() -> str:
+def get_ui_style() -> _UiStyle:
     """Return the current UI style: 'dark' or 'light'.
 
     Controlled by the UI_STYLE environment variable (default: 'dark').
     """
     import os
 
-    style = os.environ.get("UI_STYLE", "dark").lower()
+    style = cast(_UiStyle, os.environ.get("UI_STYLE", "dark").lower())
     return style if style in ("dark", "light") else "dark"
 
 

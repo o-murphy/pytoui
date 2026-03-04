@@ -6,6 +6,7 @@ from threading import Event
 from typing import (
     TYPE_CHECKING,
     Callable,
+    cast,
 )
 from uuid import uuid4
 
@@ -33,6 +34,7 @@ from pytoui.ui._internals import _getset_descriptor
 from pytoui.ui._types import Rect, Size
 
 if TYPE_CHECKING:
+    from pytoui.ui._navigation_view import _NavigationView, _NavigationViewInternals
     from pytoui.ui._types import (
         _RGBA,
         MouseEvent,
@@ -145,6 +147,7 @@ class _ViewInternals:
         "_on_screen",
         "_subviews",
         "_superview",
+        "_navigation_view",
         # pytoui attributes
         "_pytoui_presented",
         "_pytoui_needs_display",
@@ -176,6 +179,7 @@ class _ViewInternals:
         self._name: str = str(uuid4())
         self._subviews: list[_ViewInternals] = []
         self._superview: _ViewInternals | None = None
+        self._navigation_view: _NavigationViewInternals | None = None
         self._tint_color: _RGBA | None = None
         self._transform: Transform | None = None
         self._update_interval: float = 0.0
@@ -346,6 +350,14 @@ class _ViewInternals:
     def superview(self) -> _ViewInternals | None:
         """(readonly) The view's parent view."""
         sv = self._superview
+        if sv is not None:
+            return sv
+        return None
+
+    @property
+    def navigation_view(self) -> _NavigationViewInternals | None:
+        """(readonly) The view's navigation_view view."""
+        sv = self._navigation_view
         if sv is not None:
             return sv
         return None
@@ -1191,6 +1203,14 @@ class _View:
         sv = self._internals_.superview
         if sv is not None:
             return sv.ref
+        return None
+
+    @property
+    def navigation_view(self) -> _NavigationView | None:
+        """(readonly) The view's navigation_view view."""
+        sv = self._internals_.navigation_view
+        if sv is not None:
+            return cast(_NavigationView, sv.ref)
         return None
 
     @property

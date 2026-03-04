@@ -29,7 +29,7 @@ class _NavigationViewInternals(_ViewInternals):
 
     NAVIGATION_BAR_HEIGHT = 60
 
-    def __init__(self, view: _View):
+    def __init__(self, view: _NavigationView):
         super().__init__(view)
         self.content_mode = CONTENT_REDRAW
 
@@ -113,6 +113,8 @@ class _NavigationViewInternals(_ViewInternals):
 
         # add to stack
         self._navigation_stack.append(view)
+        view._navigation_view = self
+
         self._current_content_view = view
 
         # update UI
@@ -131,6 +133,8 @@ class _NavigationViewInternals(_ViewInternals):
 
         # remove current view
         removed = self._navigation_stack.pop()
+        removed._navigation_view = None
+
         self.pytoui_remove_internal_subview(removed)
 
         # update current view
@@ -151,8 +155,6 @@ class _NavigationViewInternals(_ViewInternals):
 
 @_final_
 class _NavigationView(_View):
-    __slots__ = ("__internals_",)
-
     _internals_: _getset_descriptor["_NavigationView", "_NavigationViewInternals"] = (
         _getset_descriptor(
             "internals_",

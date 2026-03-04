@@ -8,7 +8,6 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* update_interval based animated of internal_subviews are not work
 * NavigationView on stack pop/push animations like ScrollView paging animation
 
 NEXT:

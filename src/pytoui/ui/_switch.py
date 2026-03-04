@@ -48,7 +48,7 @@ class Switch(View):
     _LOGICAL_WIDTH = 51.0
     _LOGICAL_HEIGHT = 31.0
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._action: _Action | None = None
         self._enabled: bool = True
         self._value: bool = False
@@ -69,6 +69,8 @@ class Switch(View):
         self._tracked_value: bool = False
 
         self.frame = Rect(0, 0, 51, 31)
+
+        super().__init__(*args, **kwargs)
 
     @property
     def action(self) -> _Action | None:

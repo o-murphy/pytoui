@@ -46,7 +46,7 @@ class SegmentedControl(View):
     _TEXT_COLOR = (0.0, 0.0, 0.0, 1.0)
     _FONT_SIZE = 15.0
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._action: _Action | None = None
         self._enabled: bool = True
         self._segments: Sequence[str] = []
@@ -66,6 +66,8 @@ class SegmentedControl(View):
         self.frame = Rect(0.00, 0.00, 120.0, 32.0)
         if not IS_PYTHONISTA:
             self.mouse_scroll_enabled = True
+
+        super().__init__(*args, **kwargs)
 
     @property
     def action(self) -> _Action | None:

@@ -628,6 +628,9 @@ class _ScrollView(_View):
         )
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @property
     def always_bounce_horizontal(self) -> bool:
         """A boolean value that determines whether bouncing always occurs

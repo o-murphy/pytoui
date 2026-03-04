@@ -45,9 +45,10 @@ class Button(View):
     _IOS_BLUE: _RGBA = (0.0, 122 / 255, 1.0, 1.0)
     _WHITE: _RGBA = (1.0, 1.0, 1.0, 1.0)
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._action: _Action | None = None
         self._enabled: bool = True
+        # FIXME: _image and _background_image is not drawn yet
         self._background_image: Image | None = None
         self._image: Image | None = None
         self._title: str | None = None
@@ -66,6 +67,8 @@ class Button(View):
         self._content_insets: Size = Size(8.0, 8.0)
 
         self.frame = Rect(0.0, 0.0, 80.0, 44.0)
+
+        super().__init__(*args, **kwargs)
 
     def _get_contrast_text_color(self) -> _RGBA:
         """Determines the best text color based on background brightness."""

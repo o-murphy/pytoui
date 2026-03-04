@@ -40,13 +40,15 @@ class _ImageView(View):
 
     __slots__ = ("_image", "_content_mode")
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._image: Image | None = None
         self._content_mode: _ContentMode = CONTENT_SCALE_TO_FILL
         self.touch_enabled = False
         # pytoui_render must always call draw() without applying any CTM transform —
         # ImageView handles all content_mode layout internally inside draw().
         self._internals_.content_mode = CONTENT_REDRAW
+
+        super().__init__(*args, **kwargs)
 
     @property
     def content_mode(self) -> _ContentMode:

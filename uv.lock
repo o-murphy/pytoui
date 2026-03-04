@@ -574,6 +574,7 @@ dev = [
     { name = "pysdl2-dll", marker = "sys_platform == 'win32'" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "typing-extensions" },
 ]
 
 [package.metadata]
@@ -594,6 +595,7 @@ dev = [
     { name = "pysdl2-dll", marker = "sys_platform == 'win32'", specifier = ">=2.32.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.15.0" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]

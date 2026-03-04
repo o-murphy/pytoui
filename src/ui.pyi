@@ -1,7 +1,16 @@
 from __future__ import annotations
 from collections.abc import Callable, Sequence
 import re
-from typing import Any, Literal, TypeAlias
+from typing import (
+    Any,
+    Literal,
+    TypeAlias,
+    TypedDict,
+    TYPE_CHECKING,
+)
+
+if TYPE_CHECKING:
+    from typing_extensions import Unpack, NotRequired
 
 PY3: bool = True
 
@@ -459,6 +468,39 @@ class autoreleasepool:
     def __exit__(self) -> None: ...
     def __init__(self, type, value, traceback) -> None: ...
 
+class __ViewKwargs(TypedDict, total=False):
+    frame: NotRequired[__RectLike]
+    flex: NotRequired[__ViewFlex]
+    background_color: NotRequired[__ColorLike]
+    name: NotRequired[str | None]
+
+    alpha: NotRequired[float]
+    autoresizing: NotRequired[str]
+    bg_color: NotRequired[__ColorLike]
+    border_color: NotRequired[__ColorLike]
+    border_width: NotRequired[float]
+    bounds: NotRequired[__RectLike]
+    center: NotRequired[__PointLike]
+    content_mode: NotRequired[__ContentMode]
+    corner_radius: NotRequired[float]
+    height: NotRequired[float]
+    hidden: NotRequired[bool]
+    left_button_items: NotRequired[Sequence[ButtonItem] | None]
+    multitouch_enabled: NotRequired[bool]
+    # navigation_view: NavigationView | None  # readonly
+    right_button_items: NotRequired[Sequence[ButtonItem] | None]
+    tint_color: NotRequired[__ColorLike]
+    touch_enabled: NotRequired[bool]
+    transform: NotRequired[Transform | None]
+    update_interval: NotRequired[float]
+    width: NotRequired[float]
+    x: NotRequired[float]
+    y: NotRequired[float]
+
+    # # ObjC-compat
+    # objc_instance: NotRequired[Any]
+    # _objc_ptr: NotRequired[Any]
+
 class View:
     alpha: float
     autoresizing: str
@@ -480,7 +522,7 @@ class View:
     def left_button_items(self, value: Sequence[ButtonItem] | None): ...
     multitouch_enabled: bool
     name: str
-    navigation_view: NavigationView | None
+    navigation_view: NavigationView | None  # readonly
     on_screen: bool
     @property
     def right_button_items(self) -> tuple[ButtonItem] | None: ...
@@ -501,15 +543,7 @@ class View:
 
     objc_instance: Any
     _objc_ptr: Any
-    def __init__(
-        self,
-        *,
-        frame: __RectLike = (0, 0, 100, 100),
-        flex: __ViewFlex = "",
-        background_color: __ColorLike = None,
-        name=None,
-        **kwargs,
-    ) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__ViewKwargs]) -> None: ...
     def __getitem__(self, name: str) -> View: ...
     def __len__(self) -> int: ...
     def _debug_quicklook_(self) -> str: ...
@@ -537,14 +571,26 @@ class View:
     def size_to_fit(self) -> None: ...
     def wait_modal(self) -> None: ...
 
+class __ActivityIndicatorKwargs(__ViewKwargs, total=False):
+    hides_when_stopped: NotRequired[bool]
+    style: NotRequired[__ActivityIndicatorStyle]
+
 class ActivityIndicator(View):
     hides_when_stopped: bool
     style: __ActivityIndicatorStyle
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__ActivityIndicatorKwargs]) -> None: ...
     def start(self) -> None: ...
     def start_animating(self) -> None: ...
     def stop(self) -> None: ...
     def stop_animating(self) -> None: ...
+
+class __ButtonKwargs(__ViewKwargs, total=False):
+    action: NotRequired[__Action | None]
+    background_image: NotRequired[Image | None]
+    enabled: NotRequired[bool]
+    font: NotRequired[__Font]
+    image: NotRequired[Image | None]
+    title: NotRequired[str]
 
 class Button(View):
     action: __Action | None
@@ -553,7 +599,7 @@ class Button(View):
     font: __Font
     image: Image | None
     title: str
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__ButtonKwargs]) -> None: ...
 
 class ButtonItem:
     action: __Action
@@ -571,15 +617,22 @@ class DatePicker(View):
     mode: __DatePickerMode
     def __init__(self, *args, **kwargs) -> None: ...
 
+class __ImageViewKwargs(__ViewKwargs, total=False):
+    image: NotRequired[Image]
+
 class ImageView(View):
     image: Image
-    objc_instance: Any
-
-    _objc_ptr: Any
-
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__ImageViewKwargs]) -> None: ...
     def load_from_url(self, url: str) -> None: ...
-    def _debug_quicklook_(self) -> str: ...
+
+class __LabelKwargs(__ViewKwargs, total=False):
+    alignment: NotRequired[__Alignment]
+    font: NotRequired[__Font]
+    min_font_scale: NotRequired[float]
+    number_of_lines: NotRequired[int]
+    scales_font: NotRequired[float]
+    text: NotRequired[str]
+    text_color: NotRequired[__ColorLike]
 
 class Label(View):
     alignment: __Alignment
@@ -589,7 +642,7 @@ class Label(View):
     scales_font: float
     text: str
     text_color: __ColorLike
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__LabelKwargs]) -> None: ...
 
 class ListDataSource:
     def __init__(self, *args, **kwargs) -> None: ...
@@ -624,13 +677,39 @@ class ListDataSourceList(list):
     def reverse(self, *args, **kwargs) -> Any: ...
     def sort(self, *args, **kwargs) -> Any: ...
 
+class __NavigationViewKwargs(__ViewKwargs, total=False):
+    navigation_bar_hidden: NotRequired[bool]
+    bar_tint_color: NotRequired[__ColorLike]
+    title_color: NotRequired[__ColorLike]
+
 class NavigationView(View):
     bar_tint_color: __ColorLike  # default: <attributbool 'bar_tint_color' of '_ui.NavigationView' objects>
     navigation_bar_hidden: bool
     title_color: __ColorLike
-    def __init__(self, view: View) -> None: ...
+    def __init__(
+        self, view: View, /, **kwargs: Unpack[__NavigationViewKwargs]
+    ) -> None: ...
     def pop_view(self, animated: bool = True) -> None: ...
     def push_view(self, view: View, animated: bool = True) -> None: ...
+
+class __ScrollViewKwargs(__ViewKwargs, total=False):
+    always_bounce_horizontal: NotRequired[bool]
+    always_bounce_vertical: NotRequired[bool]
+    bounces: NotRequired[bool]
+    content_inset: NotRequired[tuple[float, float, float, float]]
+    content_offset: NotRequired[__PointLike]
+    content_size: NotRequired[__SizeLike]
+    decelerating: NotRequired[bool]
+    delegate: NotRequired[Any | None]
+    directional_lock_enabled: NotRequired[bool]
+    dragging: NotRequired[bool]
+    indicator_style: NotRequired[__ScrollIndicatorStyle]
+    paging_enabled: NotRequired[bool]
+    scroll_enabled: NotRequired[bool]
+    scroll_indicator_insets: NotRequired[tuple[float, float, float, float]]
+    shows_horizontal_scroll_indicator: NotRequired[bool]
+    shows_vertical_scroll_indicator: NotRequired[bool]
+    tracking: NotRequired[bool]
 
 class ScrollView(View):
     always_bounce_horizontal: bool
@@ -650,26 +729,42 @@ class ScrollView(View):
     shows_horizontal_scroll_indicator: bool
     shows_vertical_scroll_indicator: bool
     tracking: bool
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__ScrollViewKwargs]) -> None: ...
+
+class __SegmentedControlKwargs(__ViewKwargs, total=False):
+    action: NotRequired[__Action | None]
+    enabled: NotRequired[bool]
+    segments: NotRequired[Sequence[str]]
+    selected_index: NotRequired[int]
 
 class SegmentedControl(View):
     action: __Action | None
     enabled: bool
     segments: Sequence[str]
     selected_index: int
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__SegmentedControlKwargs]) -> None: ...
+
+class __SliderKwargs(__ViewKwargs, total=False):
+    action: NotRequired[__Action | None]
+    continuous: NotRequired[bool]
+    value: NotRequired[float]
 
 class Slider(View):
     action: __Action | None
     continuous: bool
     value: float
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__SliderKwargs]) -> None: ...
+
+class __SwitchKwargs(__ViewKwargs, total=False):
+    action: NotRequired[__Action | None]
+    enabled: NotRequired[bool]
+    value: NotRequired[bool]
 
 class Switch(View):
     action: __Action | None
     enabled: bool
     value: bool
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__SwitchKwargs]) -> None: ...
 
 class TableView(ScrollView, View):
     allows_multiple_selection: Any

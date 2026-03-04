@@ -31,7 +31,7 @@ class _ActivityIndicator(View):
         "_anim_disabled",
     )
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._style: _ActivityIndicatorStyle = ACTIVITY_INDICATOR_STYLE_WHITE
         self._hides_when_stopped = True
         self._anim_step = 0
@@ -43,6 +43,8 @@ class _ActivityIndicator(View):
         # default size for standard style; frame is user-settable and must not
         # change automatically when style changes
         self.frame = Rect(0.0, 0.0, 20.0, 20.0)
+
+        super().__init__(*args, **kwargs)
 
     @property
     def style(self) -> _ActivityIndicatorStyle:

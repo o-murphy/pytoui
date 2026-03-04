@@ -22,12 +22,13 @@ def main():
     root.push_view(v3)
 
     def add_push_btn(to_view, next_view):
-        btn = ui.Button()
-        btn.corner_radius = 8
-        btn.background_color = "black"
-        btn.title = "Next"
-        btn.action = lambda _: root.push_view(next_view)
-        btn.center = (v1.center.x, v1.center.y)
+        btn = ui.Button(
+            title="Next",
+            bg_color="black",
+            corner_radius=8,
+            action=lambda _: root.push_view(next_view),
+            center=(v1.center.x, v1.center.y),
+        )
         to_view.add_subview(btn)
 
     add_push_btn(v1, v2)

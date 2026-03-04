@@ -40,7 +40,7 @@ class Slider(View):
     _IOS_TRACK = (0.85, 0.85, 0.85, 1.0)
     _LOGICAL_HEIGHT = 31.0
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._action: _Action | None = None
         self._enabled: bool = True
         self._value: float = 0.0
@@ -61,6 +61,8 @@ class Slider(View):
         self.frame = Rect(0, 0, 200, 31)
         if not IS_PYTHONISTA:
             self.mouse_scroll_enabled = True
+
+        super().__init__(*args, **kwargs)
 
     @property
     def action(self) -> _Action | None:

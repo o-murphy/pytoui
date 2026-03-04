@@ -41,7 +41,7 @@ class Label(View):
         "_text_color",
     )
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Basic text properties
         self._text: str | None = None
         self._font: _Font = ("<system>", 17.0)
@@ -56,6 +56,8 @@ class Label(View):
 
         self.frame = Rect(0.0, 0.0, 100.0, 20.0)
         self.touch_enabled = False
+
+        super().__init__(*args, **kwargs)
 
     @property
     def text(self) -> str | None:

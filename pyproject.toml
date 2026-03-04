@@ -120,4 +120,5 @@ dev = [
     "pysdl2-dll>=2.32.0; platform_system == 'Windows'",
     "pytest>=9.0.2",
     "ruff>=0.15.0",
+    "typing-extensions>=4.15.0",
 ]

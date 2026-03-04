@@ -51,7 +51,13 @@ if TYPE_CHECKING:
         _ViewFlex,
     )
 
-__all__ = ("View", "_View", "_ViewInternals", "_RenderContext", "_RenderLoop")
+__all__ = (
+    "View",
+    "_View",
+    "_ViewInternals",
+    "_RenderContext",
+    "_RenderLoop",
+)
 
 
 class _RenderContext:
@@ -1054,9 +1060,10 @@ class _View:
     # Keyboard commands (for hardware keyboard)
     key_command: Callable[[dict], None]  # Shortcut triggered
 
-    # ── descriptor ────────────────────────────────────────────────────────────
-    def __init__(self):
-        pass
+    # ── initialization ────────────────────────────────────────────────────────────
+    def __init__(self, *args, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     # ── properties ────────────────────────────────────────────────────────────
 
@@ -1424,11 +1431,11 @@ class _View:
 
 
 if not IS_PYTHONISTA:
-    View = _View
+
+    class View(_View):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
 else:
     import ui
 
-    class View(ui.View):  # type: ignore[assignment,misc,no-redef]
-        def __init__(self):
-            # NOTE: override cause we can't handle *args, **kwargs for a while
-            pass
+    View = ui.View  # type: ignore[assignment,misc]

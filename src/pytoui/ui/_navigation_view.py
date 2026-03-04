@@ -180,8 +180,10 @@ class _NavigationView(_View):
         )
     )
 
-    def __init__(self, view: _View):
+    def __init__(self, view: _View, /, **kwargs):
         self.push_view(view)
+
+        super().__init__(view, **kwargs)
 
     @property
     def navigation_bar_hidden(self) -> bool:

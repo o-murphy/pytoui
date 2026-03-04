@@ -6,7 +6,6 @@ from threading import Event
 from typing import (
     TYPE_CHECKING,
     Callable,
-    cast,
 )
 from uuid import uuid4
 
@@ -20,13 +19,14 @@ from pytoui.ui._draw import (
     Path,
     Transform,
     _content_mode_transform,
+    _get_draw_ctx,
     _record,
     _screen_origin,
     _set_origin,
+    _sync_ctm_to_rust,
     fill_rect,
     parse_color,
     set_alpha,
-    set_backend,
     set_color,
 )
 from pytoui.ui._internals import _getset_descriptor
@@ -45,7 +45,76 @@ if TYPE_CHECKING:
         _ViewFlex,
     )
 
-__all__ = ("View", "_View", "_ViewInternals")
+__all__ = ("View", "_View", "_ViewInternals", "_RenderContext", "_RenderLoop")
+
+
+class _RenderContext:
+    """Context manager for rendering a view to a framebuffer.
+
+    Saves and restores the drawing context state, similar to ImageContext.
+    """
+
+    def __init__(self, view: _ViewInternals, fb):
+        self.view = view
+        self.fb = fb
+        self._prev_backend = None
+        self._prev_origin = None
+
+    def __enter__(self):
+        ctx = _get_draw_ctx()
+
+        # Save previous state
+        self._prev_backend = ctx.backend
+        self._prev_origin = ctx.origin
+
+        # Set new backend
+        ctx.backend = self.fb
+        ctx.origin = (0.0, 0.0)  # Render at origin
+
+        # Sync state to Rust
+        _sync_ctm_to_rust(ctx)
+
+        return self
+
+    def __exit__(self, *args):
+        ctx = _get_draw_ctx()
+
+        # Restore previous state
+        ctx.backend = self._prev_backend
+        ctx.origin = self._prev_origin
+
+        # Sync restored state
+        _sync_ctm_to_rust(ctx)
+
+
+class _RenderLoop:
+    """Helper for animation and rendering loop."""
+
+    def __init__(self, view: _ViewInternals, animated: bool = True):
+        self.view = view
+        self.animated = animated and not _UI_DISABLE_ANIMATIONS
+        self.start_time = None
+        self.anim_duration = 0.25
+
+    def __call__(self, fb):
+        with _RenderContext(self.view, fb):
+            if self.animated:
+                self._animate_frame()
+            self.view.pytoui_render()
+
+    def _animate_frame(self):
+        if self.start_time is None:
+            self.start_time = time.time()
+            self.view._alpha = 0.0
+
+        elapsed = time.time() - self.start_time
+        if elapsed < self.anim_duration:
+            p = elapsed / self.anim_duration
+            p = p * p * (3.0 - 2.0 * p)  # smoothstep
+            self.view._alpha = p
+            self.view._pytoui_needs_display = True
+        elif self.view._alpha < 1.0:
+            self.view._alpha = 1.0
 
 
 class _ViewInternals:
@@ -86,6 +155,7 @@ class _ViewInternals:
         # System-level overlay draw function called after subviews.
         # Each entry is a zero-argument callable rendered in the current GState
         # (clipped to this view's bounds). Used by ScrollView for indicators.
+        "_pytoui_internal_subviews",
         "_pytoui_draw_overlay",
     )
 
@@ -123,6 +193,8 @@ class _ViewInternals:
         self._pytoui_close_event: Event = Event()
         self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
 
+        # CUSTOM RENDER LAYERS
+        self._pytoui_internal_subviews: list[_ViewInternals] = []
         self._pytoui_draw_overlay: Callable[[], None] | None = None
 
     @property
@@ -262,6 +334,11 @@ class _ViewInternals:
     def subviews(self) -> list[_ViewInternals]:
         """(readonly) A tuple of the view's children."""
         return self._subviews
+
+    @property
+    def pytoui_internal_subviews(self) -> list[_ViewInternals]:
+        """(readonly) A tuple of the view's children."""
+        return self._pytoui_internal_subviews
 
     @property
     def superview(self) -> _ViewInternals | None:
@@ -431,6 +508,27 @@ class _ViewInternals:
         if hasattr(self._ref, "update"):
             self._ref.update()
 
+    def _apply_autoresizing_to_view(self, sv: _ViewInternals, dw: float, dh: float):
+        flex = sv._flex
+        if not flex:
+            return
+        f = sv.frame
+        h_flexible = sum(c in flex for c in "LWR")
+        if h_flexible:
+            share = dw / h_flexible
+            x = f.x + (share if "L" in flex else 0.0)
+            w = f.w + (share if "W" in flex else 0.0)
+        else:
+            x, w = f.x, f.w
+        v_flexible = sum(c in flex for c in "THB")
+        if v_flexible:
+            share = dh / v_flexible
+            y = f.y + (share if "T" in flex else 0.0)
+            h = f.h + (share if "H" in flex else 0.0)
+        else:
+            y, h = f.y, f.h
+        sv.frame = Rect(x, y, w, h)
+
     def pytoui_apply_autoresizing(self, old_w: float, old_h: float):
         """Resize subviews based on their flex flags after this view's size changed."""
         bw, bh = self._bounds.size
@@ -438,26 +536,12 @@ class _ViewInternals:
         dh = bh - old_h
         if dw == 0.0 and dh == 0.0:
             return
+
         for sv in self._subviews:
-            flex = sv._flex
-            if not flex:
-                continue
-            f = sv.frame
-            h_flexible = sum(c in flex for c in "LWR")
-            if h_flexible:
-                share = dw / h_flexible
-                x = f.x + (share if "L" in flex else 0.0)
-                w = f.w + (share if "W" in flex else 0.0)
-            else:
-                x, w = f.x, f.w
-            v_flexible = sum(c in flex for c in "THB")
-            if v_flexible:
-                share = dh / v_flexible
-                y = f.y + (share if "T" in flex else 0.0)
-                h = f.h + (share if "H" in flex else 0.0)
-            else:
-                y, h = f.y, f.h
-            sv.frame = Rect(x, y, w, h)  # bypass setter to avoid recursion
+            self._apply_autoresizing_to_view(sv, dw, dh)
+
+        for sv in self._pytoui_internal_subviews:
+            self._apply_autoresizing_to_view(sv, dw, dh)
 
     def pytoui_hit_test(self, x: float, y: float) -> _ViewInternals | None:
         """Recursively searches for the highest Z-index View
@@ -469,10 +553,21 @@ class _ViewInternals:
         fw, fh = self._frame.size
         if not (ox <= x < ox + fw and oy <= y < oy + fh):
             return None
+
+        # 1. Overlay has not hit-test
+
+        # 2. Public subviews
         for child in reversed(self._subviews):
             target = child.pytoui_hit_test(x, y)
             if target is not None and target._touch_enabled:
                 return target
+
+        # 3. Internal subviews
+        for child in reversed(self._pytoui_internal_subviews):
+            target = child.pytoui_hit_test(x, y)
+            if target and target._touch_enabled:
+                return target
+
         return self if self._touch_enabled else None
 
     def pytoui_scroll_hit_test(self, x: float, y: float) -> _ViewInternals | None:
@@ -487,6 +582,10 @@ class _ViewInternals:
         fw, fh = self._frame.size
         if not (ox <= x < ox + fw and oy <= y < oy + fh):
             return None
+
+        # 1. Overlay has not hit-test
+
+        # 2. Public subviews
         for child in reversed(self._subviews):
             target = child.pytoui_scroll_hit_test(x, y)
             if target is not None and getattr(
@@ -501,6 +600,23 @@ class _ViewInternals:
                 ):
                     break
                 return target
+
+        # 3. Internal subviews
+        for child in reversed(self._pytoui_internal_subviews):
+            target = child.pytoui_scroll_hit_test(x, y)
+            if target is not None and getattr(
+                target, "_pytoui_mouse_scroll_enabled", False
+            ):
+                # If the current view is a scroll container but the child is
+                # not (e.g. Slider/SegmentedControl inside a ScrollView),
+                # prefer the container — matches iOS where wheel events go to
+                # the scroll view, not to inline controls inside it.
+                if self._pytoui_is_scroll_container and not getattr(
+                    target, "_pytoui_is_scroll_container", False
+                ):
+                    break
+                return target
+
         return self if getattr(self, "_pytoui_mouse_scroll_enabled", False) else None
 
     # ── rendering ─────────────────────────────────────────────────────────────
@@ -509,6 +625,8 @@ class _ViewInternals:
         """Recursively clear needs_display without rendering (used for culled views)."""
         self._pytoui_needs_display = False
         for sv in self._subviews:
+            sv._clear_dirty_tree()
+        for sv in self._pytoui_internal_subviews:
             sv._clear_dirty_tree()
 
     def _pytoui_render_self(self, fw: float, fh: float):
@@ -560,6 +678,21 @@ class _ViewInternals:
                 continue
             sv.pytoui_render()
 
+    def _pytoui_render_internal_subviews(self, fw: float, fh: float):
+        """Traverse children"""
+        bx, by = self._bounds.x, self._bounds.y
+        for sv in self._pytoui_internal_subviews:
+            sf = sv._frame
+            if (
+                sf.x + sf.w <= bx
+                or sf.x >= bx + fw
+                or sf.y + sf.h <= by
+                or sf.y >= by + fh
+            ):
+                sv._clear_dirty_tree()
+                continue
+            sv.pytoui_render()
+
     def _pytoui_render_overlay(self):
         """
         System overlay: drawn on top of all regular subviews,
@@ -569,13 +702,29 @@ class _ViewInternals:
         if callable(fn):
             fn()
 
-    def pytoui_render(self):
+    def pytoui_layout(self):
         if self._pytoui_needs_layout:
             if hasattr(self._ref, "layout"):
                 self._ref.layout()
-            self._pytoui_needs_layout = False
 
-        self._pytoui_needs_display = False
+    def pytoui_update_tree(self, now: float):
+        """Update this view and propagate to all subviews (public and internal)."""
+        # Update self if needed
+        if self._update_interval > 0:
+            if now - self._pytoui_last_update_time >= self._update_interval:
+                self.pytoui_update()
+                self._pytoui_last_update_time = now
+
+        # Update public subviews
+        for sv in self._subviews:
+            sv.pytoui_update_tree(now)
+
+        # Update internal subviews
+        for sv in self._pytoui_internal_subviews:
+            sv.pytoui_update_tree(now)
+
+    def pytoui_draw_snapshot(self):
+        self.pytoui_layout()
 
         # Hidden views don't render and don't traverse
         if self._hidden:
@@ -587,27 +736,32 @@ class _ViewInternals:
             return
         cr = self._corner_radius
 
+        # render self
+        _set_origin(ox, oy)
+        set_alpha(self._alpha)
+
+        clip_path = (
+            Path.rounded_rect(0, 0, fw, fh, cr) if cr > 0 else Path.rect(0, 0, fw, fh)
+        )
+        clip_path.add_clip()
+
+        self._pytoui_render_background(clip_path, fw, fh, cr)
+        self._pytoui_render_self(fw, fh)
+
+        # --- Traverse children ALWAYS ---
+        self._pytoui_render_internal_subviews(fw, fh)
+        self._pytoui_render_subviews(fw, fh)
+
+        # System overlay: drawn on top of all regular subviews,
+        # within the same clip. Each entry is a zero-arg callable.
+        self._pytoui_render_overlay()
+
+    def pytoui_render(self):
+
         with GState():
-            # render self
-            _set_origin(ox, oy)
-            set_alpha(self._alpha)
-
-            clip_path = (
-                Path.rounded_rect(0, 0, fw, fh, cr)
-                if cr > 0
-                else Path.rect(0, 0, fw, fh)
-            )
-            clip_path.add_clip()
-
-            self._pytoui_render_background(clip_path, fw, fh, cr)
-            self._pytoui_render_self(fw, fh)
-
-            # --- Traverse children ALWAYS ---
-            self._pytoui_render_subviews(fw, fh)
-
-            # System overlay: drawn on top of all regular subviews,
-            # within the same clip. Each entry is a zero-arg callable.
-            self._pytoui_render_overlay()
+            self.pytoui_draw_snapshot()
+        self._pytoui_needs_display = False
+        self._pytoui_needs_layout = False
 
     def __getitem__(self, name: str) -> _ViewInternals:
         for view in self._subviews:
@@ -617,35 +771,77 @@ class _ViewInternals:
 
     def add_subview(self, view: _ViewInternals):
         """Add another view as a child of this view."""
-        if view._superview is self._ref:
+        if view._superview is self:
             return
         if view._superview is not None:
             view._superview.remove_subview(view)
         self._subviews.append(view)
         view._superview = self
+        view.set_needs_display()
 
     def remove_subview(self, view: _ViewInternals):
         """Remove a child view."""
-        self._subviews.remove(view)
-        view._superview = None
+        if view in self._subviews:
+            self._subviews.remove(view)
+            view._superview = None
+            view.set_needs_display()
+
+    def pytoui_add_internal_subview(self, view: _ViewInternals):
+        """Add another view as a child of this view."""
+        if view._superview is self:
+            return
+        if view._superview is not None:
+            view._superview.pytoui_remove_internal_subview(view)
+        self._pytoui_internal_subviews.append(view)
+        view._superview = self
+        view.set_needs_display()
+
+    def pytoui_remove_internal_subview(self, view: _ViewInternals):
+        """Remove a child view."""
+        if view in self._pytoui_internal_subviews:
+            self._pytoui_internal_subviews.remove(view)
+            view._superview = None
+            view.set_needs_display()
 
     def bring_to_front(self):
         """Show the view on top of its sibling views."""
         sv = self._superview
         if sv is None:
             return
-        siblings = self._subviews
-        siblings.remove(self)
-        siblings.append(self)
+
+        changed = False
+
+        if self in sv._subviews:
+            sv._subviews.remove(self)
+            sv._subviews.append(self)
+            changed = True
+        elif self in sv._pytoui_internal_subviews:
+            sv._pytoui_internal_subviews.remove(self)
+            sv._pytoui_internal_subviews.append(self)
+            changed = True
+
+        if changed:
+            sv.set_needs_display()
 
     def send_to_back(self):
         """Put the view behind its sibling views."""
         sv = self._superview
         if sv is None:
             return
-        siblings = self._subviews
-        siblings.remove(self)
-        siblings.insert(0, self)
+
+        changed = False
+
+        if self in sv._subviews:
+            sv._subviews.remove(self)
+            sv._subviews.insert(0, self)
+            changed = True
+        elif self in sv._pytoui_internal_subviews:
+            sv._pytoui_internal_subviews.remove(self)
+            sv._pytoui_internal_subviews.insert(0, self)
+            changed = True
+
+        if changed:
+            sv.set_needs_display()
 
     def set_needs_display(self):
         self._pytoui_needs_display = True
@@ -655,11 +851,21 @@ class _ViewInternals:
         self.set_needs_display()
 
     def size_to_fit(self):
-        """Resize to enclose all subviews."""
-        if not self._subviews:
+        """Resize to enclose all subviews (including internal ones)."""
+        if not self._subviews and not self._pytoui_internal_subviews:
             return
-        max_w = max(sv.frame.x + sv.frame.w for sv in self._subviews)
-        max_h = max(sv.frame.y + sv.frame.h for sv in self._subviews)
+
+        max_w = 0.0
+        max_h = 0.0
+
+        for sv in self._subviews:
+            max_w = max(max_w, sv.frame.x + sv.frame.w)
+            max_h = max(max_h, sv.frame.y + sv.frame.h)
+
+        for sv in self._pytoui_internal_subviews:
+            max_w = max(max_w, sv.frame.x + sv.frame.w)
+            max_h = max(max_h, sv.frame.y + sv.frame.h)
+
         self.frame = Rect(self._frame.x, self._frame.y, max_w, max_h)
 
     def present(
@@ -688,38 +894,9 @@ class _ViewInternals:
         if hasattr(self._ref, "layout"):
             self._ref.layout()
 
-        if animated and not _UI_DISABLE_ANIMATIONS:
-            self._alpha = 0.0
-            _ANIM_DUR = 0.25
-            _start: list[float | None] = [None]
+        animated = animated and not _UI_DISABLE_ANIMATIONS
 
-            def _render_frame(fb) -> None:
-                t = time.time()
-                if _start[0] is None:
-                    _start[0] = t
-                elapsed = t - cast("float", _start[0])
-                animating = elapsed < _ANIM_DUR
-                if animating:
-                    p = elapsed / _ANIM_DUR
-                    p = p * p * (3.0 - 2.0 * p)  # smoothstep
-                    self._alpha = p
-                elif self._alpha < 1.0:
-                    self._alpha = 1.0
-                set_backend(fb)
-                self.pytoui_render()
-                set_backend(None)
-                if animating:
-                    self._pytoui_needs_display = (
-                        True  # after _render() so it's not cleared
-                    )
-        else:
-
-            def _render_frame(fb) -> None:
-                set_backend(fb)
-                self.pytoui_render()
-                set_backend(None)
-
-        launch_runtime(self, _render_frame)
+        launch_runtime(self, _RenderLoop(self, animated))
 
     def close(self):
         """Close a view that was presented via View.present()."""
@@ -739,6 +916,61 @@ class _ViewInternals:
 
 
 class _View:
+    """Base class for all views.
+
+    # Overridable hooks:
+
+    ## Basic lifecycle
+    - did_load() - Called after view is loaded
+    - will_close() - Called before view closes
+    - layout() - Called when view needs layout
+    - draw() - Called to draw the view
+    - update() - Called at update_interval
+
+    ## Touch events
+    - touch_began(touch) - Touch started
+    - touch_moved(touch) - Touch moved
+    - touch_ended(touch) - Touch ended
+
+    ## Mouse events (desktop)
+    - mouse_down(event) - Mouse button pressed
+    - mouse_up(event) - Mouse button released
+    - mouse_moved(event) - Mouse moved (without button)
+    - mouse_dragged(event) - Mouse moved with button down
+    - mouse_wheel(event) - Mouse wheel scrolled
+
+    ## Keyboard (desktop only)
+    - keyboard_frame_will_change(rect) - Keyboard about to change
+    - keyboard_frame_did_change(rect) - Keyboard changed
+
+    ## Responder chain (desktop only)
+    - did_become_first_responder() - Became first responder
+    - did_resign_first_responder() - Resigned first responder
+
+    ## Keyboard shortcuts (hardware keyboard)
+    - get_key_commands() -> list[dict] - Return keyboard shortcuts
+        Override to return hardware keyboard shortcuts for this view.
+
+        Returns a list of dicts, each with:
+          'input'     (required) – key string, e.g. 'a', KEY_INPUT_UP, KEY_INPUT_ESC
+          'modifiers' (optional) – comma-separated modifier string, e.g. 'cmd,shift'
+          'title'     (optional) – label shown in the keyboard shortcut HUD
+
+        When the user presses a matching shortcut, key_command() is called
+        with the matching dict as the sender argument.
+
+        Example::
+
+            def get_key_commands(self):
+                return [
+                    {"input": "n", "modifiers": "cmd", "title": "New"},
+                    {"input": KEY_INPUT_ESC, "title": "Cancel"},
+                ]
+    - key_command(sender) - Shortcut triggered
+        Called when a registered keyboard shortcut is triggered.
+        sender – the dict returned by get_key_commands() that matched.
+    """
+
     __slots__ = ("__internals_",)
 
     _internals_: _getset_descriptor["_View", "_ViewInternals"] = _getset_descriptor(
@@ -747,18 +979,37 @@ class _View:
 
     # ── overridable hooks ─────────────────────────────────────────────────────
 
-    did_load: Callable[[], None]
-    will_close: Callable[[], None]
-    layout: Callable[[], None]
-    draw: Callable[[], None]
-    touch_began: Callable[[Touch], None]
-    touch_moved: Callable[[Touch], None]
-    touch_ended: Callable[[Touch], None]
-    keyboard_frame_will_change: Callable[[Rect], None]
-    keyboard_frame_did_change: Callable[[Rect], None]
+    # Basic lifecycle
+    did_load: Callable[[], None]  # Called after view is loaded
+    will_close: Callable[[], None]  # Called before view closes
+    layout: Callable[[], None]  # Called when view needs layout
+    draw: Callable[[], None]  # Called to draw the view
+    # NOTE: View.update() is an implicit behaviour
+    update: Callable[[], None]  # Called at update_interval
 
-    # NOTE: View.update() is an implicit beahaviour
-    update: Callable[[], None]
+    # Touch events
+    touch_began: Callable[[Touch], None]  # Touch started
+    touch_moved: Callable[[Touch], None]  # Touch moved
+    touch_ended: Callable[[Touch], None]  # Touch ended
+
+    # Mouse events (desktop)
+    mouse_down: Callable[[MouseEvent], None]  # Mouse button pressed
+    mouse_up: Callable[[MouseEvent], None]  # Mouse button released
+    mouse_moved: Callable[[MouseEvent], None]  # Mouse moved (without button)
+    mouse_dragged: Callable[[MouseEvent], None]  # Mouse moved with button down
+    mouse_wheel: Callable[[MouseWheel], None]  # Mouse wheel scrolled
+
+    # Keyboard (desktop only)
+    keyboard_frame_will_change: Callable[[Rect], None]  # Keyboard about to change
+    keyboard_frame_did_change: Callable[[Rect], None]  # Keyboard changed
+
+    # Responder chain (desktop only)
+    did_become_first_responder: Callable[[], None]  # Became first responder
+    did_resign_first_responder: Callable[[], None]  # Resigned first responder
+
+    # Keyboard commands (for hardware keyboard)
+    get_key_commands: Callable[[], list[dict]]  # Return keyboard shortcuts
+    key_command: Callable[[dict], None]  # Shortcut triggered
 
     # ── descriptor ────────────────────────────────────────────────────────────
     def __init__(self):
@@ -1073,33 +1324,6 @@ class _View:
             return False
         rt._set_first_responder(self._internals_)
         return True
-
-    def get_key_commands(self) -> list[dict]:
-        """Override to return hardware keyboard shortcuts for this view.
-
-        Returns a list of dicts, each with:
-          'input'     (required) – key string, e.g. 'a', KEY_INPUT_UP, KEY_INPUT_ESC
-          'modifiers' (optional) – comma-separated modifier string, e.g. 'cmd,shift'
-          'title'     (optional) – label shown in the keyboard shortcut HUD
-
-        When the user presses a matching shortcut, key_command() is called
-        with the matching dict as the sender argument.
-
-        Example::
-
-            def get_key_commands(self):
-                return [
-                    {"input": "n", "modifiers": "cmd", "title": "New"},
-                    {"input": KEY_INPUT_ESC, "title": "Cancel"},
-                ]
-        """
-        return []
-
-    def key_command(self, sender: dict) -> None:
-        """Called when a registered keyboard shortcut is triggered.
-
-        sender – the dict returned by get_key_commands() that matched.
-        """
 
 
 if not IS_PYTHONISTA:

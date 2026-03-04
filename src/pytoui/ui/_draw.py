@@ -454,16 +454,6 @@ def _sync_ctm_to_rust(ctx) -> None:
 
 
 @pytoui_desktop_only
-def set_backend(backend):
-    """Set the active drawing backend (e.g. osdbuf.FrameBuffer instance).
-    Called by the render loop before View.draw().
-    """
-    ctx = _get_draw_ctx()
-    ctx.backend = backend
-    _sync_ctm_to_rust(ctx)
-
-
-@pytoui_desktop_only
 def _set_origin(x: float, y: float):
     """Set the coordinate origin for subsequent draw calls.
     Called by the render loop to translate to the view's absolute position.

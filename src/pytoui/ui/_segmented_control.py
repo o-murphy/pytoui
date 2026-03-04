@@ -309,7 +309,7 @@ class SegmentedControl(View):
         if not (self._tracked and self.enabled):
             return
 
-        if touch.phase == "ended":
+        if touch.phase == "ended" or "cancelled":
             # Change actual value and call action ONLY on release
             new_index = self._get_index_at_location(touch.location[0])
             if new_index != -1:
@@ -319,6 +319,11 @@ class SegmentedControl(View):
             else:
                 # Reset tracking to actual selection if released outside
                 self._tracking_index = float(self._selected_index)
+
+        # # NOTE: maybe need this behaviour for canceled
+        # elif touch.phase == "cancelled":
+        #     # Return to previous
+        #     self._tracking_index = float(self._selected_index)
 
         self._tracked = False
         # Ensure scale and position return to final states

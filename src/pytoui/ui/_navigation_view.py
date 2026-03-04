@@ -4,9 +4,10 @@ from typing import TYPE_CHECKING
 
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._button import Button
-from pytoui.ui._constants import CONTENT_REDRAW
-from pytoui.ui._draw import fill_rect, parse_color, set_color
+from pytoui.ui._constants import ALIGN_CENTER, CONTENT_REDRAW
+from pytoui.ui._draw import parse_color
 from pytoui.ui._internals import _final_, _getset_descriptor
+from pytoui.ui._label import Label
 from pytoui.ui._view import _View, _ViewInternals
 
 if TYPE_CHECKING:
@@ -18,13 +19,15 @@ __all__ = ("NavigationView", "_NavigationViewInternals")
 class _NavigationViewInternals(_ViewInternals):
     __slots__ = (
         "_navigation_stack",
+        "_current_content_view",
         "_navigation_bar_hidden",
         "_bar_tint_color",
         "_title_color",
-        "_back_btn",
+        "_back_button",
+        "_title_label",
     )
 
-    NAVIGATION_BAR_SIZE = 60
+    NAVIGATION_BAR_HEIGHT = 60
 
     def __init__(self, view: _View):
         super().__init__(view)
@@ -35,11 +38,36 @@ class _NavigationViewInternals(_ViewInternals):
         self._title_color: _RGBA | None = None
 
         self._navigation_stack: list[_ViewInternals] = []
+        self._current_content_view: _ViewInternals | None = None
 
-        self._back_btn = Button()
-        self._back_btn.title = "<- Back"
-        self._back_btn.frame = (0, 0, 100, self.NAVIGATION_BAR_SIZE)
-        self._back_btn.action = lambda sender: self.pop_view()
+        # Create UI elements
+        self._back_button = Button()
+        self._back_button.title = "< Back"
+        self._back_button.hidden = True  # Спочатку схована
+        self._back_button.action = lambda _: self.pop_view()
+
+        self._title_label = Label()
+        self._title_label.alignment = ALIGN_CENTER
+        self.pytoui_add_internal_subview(self._back_button._internals_)
+        self.pytoui_add_internal_subview(self._title_label._internals_)
+
+    def pytoui_layout(self):
+        nav_h = self.NAVIGATION_BAR_HEIGHT if not self._navigation_bar_hidden else 0
+
+        if not self._navigation_bar_hidden:
+            self._back_button.frame = (10, (nav_h - 30) / 2, 80, 30)  # Центруємо кнопку
+            self._title_label.frame = (
+                100,
+                0,
+                self._frame.width - 200,
+                nav_h,
+            )
+
+        if self._current_content_view:
+            x, y, w, h = self._bounds
+            self._current_content_view.frame = (x, y + nav_h, w, h - nav_h)
+
+        super().pytoui_layout()
 
     @property
     def navigation_stack(self) -> list[_ViewInternals]:
@@ -53,6 +81,7 @@ class _NavigationViewInternals(_ViewInternals):
     def navigation_bar_hidden(self, value: bool):
         self._navigation_bar_hidden = bool(value)
         self.set_needs_display()
+        self.set_needs_layout()
 
     @property
     def bar_tint_color(self) -> _RGBA | None:
@@ -70,77 +99,54 @@ class _NavigationViewInternals(_ViewInternals):
     @title_color.setter
     def title_color(self, value: _ColorLike):
         self._title_color = parse_color(value)
+        self._title_label.text_color = self._title_color
         self.set_needs_display()
 
-    def push_view(self, view: _ViewInternals):
-        if view not in self._navigation_stack:
-            self._navigation_stack.append(view)
-            self.set_needs_display()
+    def push_view(self, view: _ViewInternals, animated: bool = True):
+        """Add view to nav stack"""
+        if view in self._navigation_stack:
+            return
 
-    def pop_view(self):
-        # prevent from deleting last view
-        if len(self._navigation_stack) > 1:
-            self._navigation_stack.pop()
-            self.set_needs_display()
+        # remove current view
+        if self._current_content_view:
+            self.pytoui_remove_internal_subview(self._current_content_view)
 
-    def pytoui_hit_test(self, x, y):
-        # FIXME: fix if needed, idk which priority should be
-        v = self.current_view()
-        if v is not None:
-            child_target = v.pytoui_hit_test(x, y)
-            if child_target is not None:
-                return child_target
-        back_btn = self._back_btn._internals_.pytoui_hit_test(x, y)
-        if back_btn is not None:
-            return back_btn
-        return super().pytoui_hit_test(x, y)
+        # add to stack
+        self._navigation_stack.append(view)
+        self._current_content_view = view
 
-    def pytoui_scroll_hit_test(self, x, y):
-        # FIXME: fix if needed, idk which priority should be
-        v = self.current_view()
-        if v is not None:
-            child_target = v.pytoui_scroll_hit_test(x, y)
-            if child_target is not None:
-                return child_target
-        back_btn = self._back_btn._internals_.pytoui_scroll_hit_test(x, y)
-        if back_btn is not None:
-            return back_btn
-        return super().pytoui_scroll_hit_test(x, y)
+        # update UI
+        self._back_button.hidden = len(self._navigation_stack) <= 1
+        self._title_label.text = view.name or "Screen"
+
+        # add new view as internal
+        self.pytoui_add_internal_subview(view)
+
+        self.set_needs_layout()
+
+    def pop_view(self, animated: bool = True):
+        """Removes top view from nav stack"""
+        if len(self._navigation_stack) <= 1:
+            return  # prevent last view from deletion
+
+        # remove current view
+        removed = self._navigation_stack.pop()
+        self.pytoui_remove_internal_subview(removed)
+
+        # update current view
+        self._current_content_view = (
+            self._navigation_stack[-1] if self._navigation_stack else None
+        )
+
+        if self._current_content_view:
+            self.pytoui_add_internal_subview(self._current_content_view)
+            self._title_label.text = self._current_content_view.name or ""
+
+        self._back_button.hidden = len(self._navigation_stack) <= 1
+        self.set_needs_layout()
 
     def current_view(self) -> _ViewInternals | None:
-        if len(self._navigation_stack):
-            return self._navigation_stack[-1]
-        return None
-
-    def draw(self):
-        # FIXME: temp behaviour
-        set_color(self.title_color)
-        x, y, w, _ = self._frame
-        bar_frame = (x, y, w, self.NAVIGATION_BAR_SIZE)
-        fill_rect(bar_frame)
-
-    def pytoui_render(self):
-        # FIXME: fix: animations of current and back_btn is not working
-        current = self.current_view()
-        if current:
-            margin = self.NAVIGATION_BAR_SIZE
-            if current._pytoui_needs_display:
-                self.set_needs_display()
-                current.frame = (
-                    self.frame.x,
-                    self.frame.y + margin,
-                    self.frame.width,
-                    self.frame.height - margin,
-                )
-
-        super().pytoui_render()
-
-        self._back_btn.background_color = self.title_color
-        self._back_btn.set_needs_display()
-        self._back_btn._internals_.pytoui_render()
-
-        if current:
-            current.pytoui_render()
+        return self._current_content_view
 
 
 @_final_
@@ -183,10 +189,10 @@ class _NavigationView(_View):
         self._internals_.title_color = value
 
     def pop_view(self, animated: bool = True):
-        self._internals_.pop_view()
+        self._internals_.pop_view(animated)
 
     def push_view(self, view: _View, animated: bool = True):
-        self._internals_.push_view(view._internals_)
+        self._internals_.push_view(view._internals_, animated)
 
 
 if not IS_PYTHONISTA:

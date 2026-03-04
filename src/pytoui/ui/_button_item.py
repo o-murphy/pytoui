@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pytoui._platform import IS_PYTHONISTA
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 
 if TYPE_CHECKING:
     from pytoui.ui._image import Image

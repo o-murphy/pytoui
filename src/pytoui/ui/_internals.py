@@ -1,0 +1,80 @@
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Generic,
+    TypeVar,
+    Union,
+    overload,
+)
+
+if TYPE_CHECKING:
+    pass
+
+
+__all__ = (
+    "_final_",
+    "_getset_descriptor",
+)
+
+
+def _final_(cls):
+    """Decorator to mark class an non accessible base class"""
+
+    def __init_subclass__(cls, **kwargs):
+        raise TypeError(f"{cls.__name__} is not an acceptable base type")
+
+    cls.__init_subclass__ = classmethod(__init_subclass__)
+    return cls
+
+
+__ClassT = TypeVar("__ClassT")
+__PropT = TypeVar("__PropT")
+
+
+class _getset_descriptor(Generic[__ClassT, __PropT]):
+    def __init__(
+        self,
+        name: str,
+        factory: Callable[[__ClassT], __PropT] | None = None,
+        readonly: bool = True,
+    ):
+        self._public_name = name
+        self._mangled_name: str = f"__{name}"
+        self._factory = factory
+        self._readonly: bool = readonly
+
+    def __set_name__(self, owner: type[__ClassT], name: str):
+        self._mangled_name = (
+            f"_{owner.__name__.lstrip('_')}__{self._public_name.lstrip('_')}"
+        )
+
+    @overload
+    def __get__(
+        self, obj: None, objtype: type[__ClassT] | None = None
+    ) -> _getset_descriptor[__ClassT, __PropT]: ...
+
+    @overload
+    def __get__(
+        self, obj: __ClassT, objtype: type[__ClassT] | None = None
+    ) -> __PropT: ...
+
+    def __get__(
+        self, obj: __ClassT | None, objtype: type[__ClassT] | None = None
+    ) -> Union["_getset_descriptor"[__ClassT, __PropT], __PropT]:
+        if obj is None:
+            return self
+        if not hasattr(obj, self._mangled_name):
+            if self._factory is None:
+                raise AttributeError(f"{self._public_name} not initialized")
+            setattr(obj, self._mangled_name, self._factory(obj))
+        return getattr(obj, self._mangled_name)
+
+    def __set__(self, obj: __ClassT, value: __PropT):
+        if self._readonly:
+            raise AttributeError()
+        setattr(obj, self._mangled_name, value)
+
+    def __delete__(self, obj: __ClassT):
+        raise AttributeError(f"Can't delete {self._public_name} attribute")

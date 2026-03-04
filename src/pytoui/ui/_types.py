@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Literal, Union
 
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 
 __all__ = (
     "_HEX",

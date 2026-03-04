@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import RENDERING_MODE_AUTOMATIC
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 from pytoui.ui._types import Size
 
 __all__ = ("Image",)

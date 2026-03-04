@@ -553,14 +553,14 @@ wheels = [
 [[package]]
 name = "pytoui"
 source = { editable = "." }
-dependencies = [
-    { name = "pysdl2" },
-    { name = "pysdl2-dll", marker = "sys_platform == 'win32'" },
-]
 
 [package.optional-dependencies]
 image = [
     { name = "pillow" },
+]
+sdl = [
+    { name = "pysdl2" },
+    { name = "pysdl2-dll", marker = "sys_platform == 'win32'" },
 ]
 
 [package.dev-dependencies]
@@ -570,6 +570,8 @@ dev = [
     { name = "mypy" },
     { name = "pillow" },
     { name = "pre-commit" },
+    { name = "pysdl2" },
+    { name = "pysdl2-dll", marker = "sys_platform == 'win32'" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -577,10 +579,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pillow", marker = "extra == 'image'", specifier = ">=12.1.1" },
-    { name = "pysdl2", specifier = ">=0.9.17" },
-    { name = "pysdl2-dll", marker = "sys_platform == 'win32'", specifier = ">=2.32.0" },
+    { name = "pysdl2", marker = "extra == 'sdl'", specifier = ">=0.9.17" },
+    { name = "pysdl2-dll", marker = "sys_platform == 'win32' and extra == 'sdl'", specifier = ">=2.32.0" },
 ]
-provides-extras = ["image"]
+provides-extras = ["image", "sdl"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -588,6 +590,8 @@ dev = [
     { name = "mypy", specifier = ">=1.19.1" },
     { name = "pillow", specifier = ">=12.1.1" },
     { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pysdl2", specifier = ">=0.9.17" },
+    { name = "pysdl2-dll", marker = "sys_platform == 'win32'", specifier = ">=2.32.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.15.0" },
 ]

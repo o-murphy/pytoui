@@ -7,7 +7,7 @@ from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
 )
 from pytoui.ui._draw import Path, parse_color, set_color
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 from pytoui.ui._types import Rect, Touch
 from pytoui.ui._view import View
 

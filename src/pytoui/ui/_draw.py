@@ -59,7 +59,7 @@ from pytoui.ui._constants import (
     LINE_CAP_BUTT,
     LINE_JOIN_MITER,
 )
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 from pytoui.ui._types import (
     Point,
     Rect,

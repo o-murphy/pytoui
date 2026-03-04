@@ -10,10 +10,7 @@ description = "Pythonista UI simulator"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
-dependencies = [
-    "pysdl2>=0.9.17",
-    "pysdl2-dll>=2.32.0; platform_system == 'Windows'",
-]
+dependencies = []
 
 classifiers = [
     "Intended Audience :: Developers",
@@ -38,9 +35,8 @@ classifiers = [
 "Source" = "https://github.com/o-murphy/pytoui"
 
 [project.optional-dependencies]
-image = [
-    "pillow>=12.1.1",
-]
+image = ["pillow>=12.1.1"]
+sdl = ["pysdl2>=0.9.17", "pysdl2-dll>=2.32.0; platform_system == 'Windows'"]
 
 [tool.hatch.version]
 source = "vcs"
@@ -93,7 +89,7 @@ before-all = [
 testpaths = ["tests"]
 
 [tool.ruff]
-src = ["src","examples"]
+src = ["src", "examples"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -120,6 +116,8 @@ dev = [
     "mypy>=1.19.1",
     "pillow>=12.1.1",
     "pre-commit>=4.5.1",
+    "pysdl2>=0.9.17",
+    "pysdl2-dll>=2.32.0; platform_system == 'Windows'",
     "pytest>=9.0.2",
     "ruff>=0.15.0",
 ]

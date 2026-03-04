@@ -6,11 +6,7 @@ from threading import Event
 from typing import (
     TYPE_CHECKING,
     Callable,
-    Generic,
-    TypeVar,
-    Union,
     cast,
-    overload,
 )
 from uuid import uuid4
 
@@ -33,6 +29,7 @@ from pytoui.ui._draw import (
     set_backend,
     set_color,
 )
+from pytoui.ui._internals import _getset_descriptor
 from pytoui.ui._types import Rect, Size, _ColorLike, _PresentOrientation
 
 if TYPE_CHECKING:
@@ -48,57 +45,7 @@ if TYPE_CHECKING:
         _ViewFlex,
     )
 
-__all__ = ("View", "_getset_descriptor", "_View", "_ViewInternals")
-
-__ClassT = TypeVar("__ClassT")
-__PropT = TypeVar("__PropT")
-
-
-class _getset_descriptor(Generic[__ClassT, __PropT]):
-    def __init__(
-        self,
-        name: str,
-        factory: Callable[[__ClassT], __PropT] | None = None,
-        readonly: bool = True,
-    ):
-        self._public_name = name
-        self._mangled_name: str = f"__{name}"
-        self._factory = factory
-        self._readonly: bool = readonly
-
-    def __set_name__(self, owner: type[__ClassT], name: str):
-        self._mangled_name = (
-            f"_{owner.__name__.lstrip('_')}__{self._public_name.lstrip('_')}"
-        )
-
-    @overload
-    def __get__(
-        self, obj: None, objtype: type[__ClassT] | None = None
-    ) -> _getset_descriptor[__ClassT, __PropT]: ...
-
-    @overload
-    def __get__(
-        self, obj: __ClassT, objtype: type[__ClassT] | None = None
-    ) -> __PropT: ...
-
-    def __get__(
-        self, obj: __ClassT | None, objtype: type[__ClassT] | None = None
-    ) -> Union["_getset_descriptor"[__ClassT, __PropT], __PropT]:
-        if obj is None:
-            return self
-        if not hasattr(obj, self._mangled_name):
-            if self._factory is None:
-                raise AttributeError(f"{self._public_name} not initialized")
-            setattr(obj, self._mangled_name, self._factory(obj))
-        return getattr(obj, self._mangled_name)
-
-    def __set__(self, obj: __ClassT, value: __PropT):
-        if self._readonly:
-            raise AttributeError()
-        setattr(obj, self._mangled_name, value)
-
-    def __delete__(self, obj: __ClassT):
-        raise AttributeError(f"Can't delete {self._public_name} attribute")
+__all__ = ("View", "_View", "_ViewInternals")
 
 
 class _ViewInternals:
@@ -136,10 +83,10 @@ class _ViewInternals:
         "_pytoui_is_scroll_container",
         "_pytoui_close_event",
         "_pytoui_content_draw_size",
-        # System-level overlay draw functions called after subviews.
+        # System-level overlay draw function called after subviews.
         # Each entry is a zero-argument callable rendered in the current GState
         # (clipped to this view's bounds). Used by ScrollView for indicators.
-        "_pytoui_system_subviews",
+        "_pytoui_draw_overlay",
     )
 
     def __init__(self, view: _View):
@@ -175,7 +122,8 @@ class _ViewInternals:
         # INTERNAL ONLY
         self._pytoui_close_event: Event = Event()
         self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
-        self._pytoui_system_subviews: list = []
+
+        self._pytoui_draw_overlay: Callable[[], None] | None = None
 
     @property
     def ref(self) -> _View:
@@ -563,6 +511,64 @@ class _ViewInternals:
         for sv in self._subviews:
             sv._clear_dirty_tree()
 
+    def _pytoui_render_self(self, fw: float, fh: float):
+        cm = self._content_mode
+        draw = getattr(self._ref, "draw", None)
+        if callable(draw):
+            if cm == CONTENT_REDRAW:
+                draw()
+            else:
+                cw, ch = self._pytoui_content_draw_size.as_tuple()
+                if cw <= 0.0 or ch <= 0.0:
+                    # First render — record the size draw() was called at
+                    self._pytoui_content_draw_size = Size(fw, fh)
+                    draw()
+                else:
+                    with GState():
+                        _content_mode_transform(cm, cw, ch, fw, fh)
+                        draw()
+
+    def _pytoui_render_background(
+        self, clip_path: Path, fw: float, fh: float, cr: float
+    ):
+        bg = self._background_color
+        if bg and bg[3] > 0:
+            set_color(bg)
+            if cr > 0:
+                clip_path.fill()
+            else:
+                fill_rect(0, 0, fw, fh)
+
+        if self._border_width > 0 and self._border_color is not None:
+            set_color(self._border_color)
+            p = clip_path if cr > 0 else Path.rect(0, 0, fw, fh)
+            p.line_width = self._border_width
+            p.stroke()
+
+    def _pytoui_render_subviews(self, fw: float, fh: float):
+        """Traverse children"""
+        bx, by = self._bounds.x, self._bounds.y
+        for sv in self._subviews:
+            sf = sv._frame
+            if (
+                sf.x + sf.w <= bx
+                or sf.x >= bx + fw
+                or sf.y + sf.h <= by
+                or sf.y >= by + fh
+            ):
+                sv._clear_dirty_tree()
+                continue
+            sv.pytoui_render()
+
+    def _pytoui_render_overlay(self):
+        """
+        System overlay: drawn on top of all regular subviews,
+        within the same clip. Each entry is a zero-arg callable.
+        """
+        fn = self._pytoui_draw_overlay
+        if callable(fn):
+            fn()
+
     def pytoui_render(self):
         if self._pytoui_needs_layout:
             if hasattr(self._ref, "layout"):
@@ -593,53 +599,15 @@ class _ViewInternals:
             )
             clip_path.add_clip()
 
-            bg = self._background_color
-            if bg and bg[3] > 0:
-                set_color(bg)
-                if cr > 0:
-                    clip_path.fill()
-                else:
-                    fill_rect(0, 0, fw, fh)
-
-            if self._border_width > 0 and self._border_color is not None:
-                set_color(self._border_color)
-                p = clip_path if cr > 0 else Path.rect(0, 0, fw, fh)
-                p.line_width = self._border_width
-                p.stroke()
-
-            cm = self._content_mode
-            draw = getattr(self._ref, "draw", lambda: False)
-            if cm == CONTENT_REDRAW:
-                draw()
-            else:
-                cw, ch = self._pytoui_content_draw_size.as_tuple()
-                if cw <= 0.0 or ch <= 0.0:
-                    # First render — record the size draw() was called at
-                    self._pytoui_content_draw_size = Size(fw, fh)
-                    draw()
-                else:
-                    with GState():
-                        _content_mode_transform(cm, cw, ch, fw, fh)
-                        draw()
+            self._pytoui_render_background(clip_path, fw, fh, cr)
+            self._pytoui_render_self(fw, fh)
 
             # --- Traverse children ALWAYS ---
-            bx, by = self._bounds.x, self._bounds.y
-            for sv in self._subviews:
-                sf = sv._frame
-                if (
-                    sf.x + sf.w <= bx
-                    or sf.x >= bx + fw
-                    or sf.y + sf.h <= by
-                    or sf.y >= by + fh
-                ):
-                    sv._clear_dirty_tree()
-                    continue
-                sv.pytoui_render()
+            self._pytoui_render_subviews(fw, fh)
 
-            # System subviews: drawn on top of all regular subviews,
+            # System overlay: drawn on top of all regular subviews,
             # within the same clip. Each entry is a zero-arg callable.
-            for fn in self._pytoui_system_subviews:
-                fn()
+            self._pytoui_render_overlay()
 
     def __getitem__(self, name: str) -> _ViewInternals:
         for view in self._subviews:

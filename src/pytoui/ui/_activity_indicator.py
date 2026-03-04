@@ -12,7 +12,7 @@ from pytoui.ui._constants import (
     ACTIVITY_INDICATOR_STYLE_WHITE_LARGE,
 )
 from pytoui.ui._draw import GState, Path, Transform, concat_ctm, set_color
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 from pytoui.ui._types import Rect
 from pytoui.ui._view import View
 

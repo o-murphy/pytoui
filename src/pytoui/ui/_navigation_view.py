@@ -6,8 +6,8 @@ from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._button import Button
 from pytoui.ui._constants import CONTENT_REDRAW
 from pytoui.ui._draw import fill_rect, parse_color, set_color
-from pytoui.ui._final import _final_
-from pytoui.ui._view import _getset_descriptor, _View, _ViewInternals
+from pytoui.ui._internals import _final_, _getset_descriptor
+from pytoui.ui._view import _View, _ViewInternals
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _RGBA, _ColorLike

@@ -20,7 +20,7 @@ from pytoui.ui._constants import (
     CONTENT_TOP_RIGHT,
     RENDERING_MODE_TEMPLATE,
 )
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:

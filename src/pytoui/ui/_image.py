@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import RENDERING_MODE_AUTOMATIC
 from pytoui.ui._internals import _final_
 from pytoui.ui._types import Size
+
+if TYPE_CHECKING:
+    from pytoui.ui._types import _RenderingMode
 
 __all__ = ("Image",)
 
@@ -26,7 +31,7 @@ class _Image:
         self._scale: float = 1.0
         self._size: Size = Size(0.0, 0.0)
         self._data: bytes | None = None
-        self._rendering_mode: int = RENDERING_MODE_AUTOMATIC
+        self._rendering_mode: _RenderingMode = RENDERING_MODE_AUTOMATIC
 
     @classmethod
     def _make(
@@ -218,11 +223,11 @@ class _Image:
             return b""
 
     @property
-    def rendering_mode(self) -> int:
+    def rendering_mode(self) -> _RenderingMode:
         """The image's rendering mode (RENDERING_MODE_*)."""
         return self._rendering_mode
 
-    def with_rendering_mode(self, mode: int) -> _Image:
+    def with_rendering_mode(self, mode: _RenderingMode) -> _Image:
         """Return a copy of this image with the specified rendering mode."""
         img = _Image._make(
             width=self._size.w,

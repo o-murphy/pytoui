@@ -18,8 +18,10 @@ from pytoui.ui._view import View
 if TYPE_CHECKING:
     from pytoui.ui._types import (
         _RGBA,
+        _Alignment,
         _ColorLike,
         _Font,
+        _LineBrakeMode,
     )
 
 
@@ -44,8 +46,8 @@ class Label(View):
         self._text: str | None = None
         self._font: _Font = ("<system>", 17.0)
         self._text_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
-        self._alignment: int = ALIGN_NATURAL
-        self._line_break_mode: int = LB_TRUNCATE_TAIL
+        self._alignment: _Alignment = ALIGN_NATURAL
+        self._line_break_mode: _LineBrakeMode = LB_TRUNCATE_TAIL
         self._number_of_lines: int = 1
 
         # Automatic scaling (iOS Auto-shrink)
@@ -87,12 +89,12 @@ class Label(View):
         self.set_needs_display()
 
     @property
-    def alignment(self) -> int:
+    def alignment(self) -> _Alignment:
         """Text alignment (ALIGN_NATURAL, ALIGN_CENTER, ALIGN_RIGHT)."""
         return self._alignment
 
     @alignment.setter
-    def alignment(self, value: int):
+    def alignment(self, value: _Alignment):
         self._alignment = value
         self.set_needs_display()
 

@@ -11,6 +11,7 @@ from typing import (
 from uuid import uuid4
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
+from pytoui.ui._button_item import ButtonItem
 from pytoui.ui._constants import (
     CONTENT_REDRAW,
     CONTENT_SCALE_TO_FILL,
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
         Point,
         Touch,
         _ColorLike,
+        _ContentMode,
         _PointLike,
         _PresentOrientation,
         _PresentStyle,
@@ -148,6 +150,8 @@ class _ViewInternals:
         "_subviews",
         "_superview",
         "_navigation_view",
+        "_left_button_items",
+        "_right_button_items",
         # pytoui attributes
         "_pytoui_presented",
         "_pytoui_needs_display",
@@ -171,7 +175,7 @@ class _ViewInternals:
         self._border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
         self._border_width: float = 0.0
         self._bounds: Rect = Rect(0.0, 0.0, 100.0, 100.0)
-        self._content_mode: int = CONTENT_SCALE_TO_FILL
+        self._content_mode: _ContentMode = CONTENT_SCALE_TO_FILL
         self._corner_radius: float = 0.0
         self._flex: _ViewFlex = ""
         self._frame: Rect = Rect(0.0, 0.0, 100.0, 100.0)
@@ -186,6 +190,9 @@ class _ViewInternals:
         self._on_screen: bool = False
         self._touch_enabled: bool = True
         self._multitouch_enabled: bool = False
+        self._left_button_items: tuple[ButtonItem, ...] | None = None
+        self._right_button_items: tuple[ButtonItem, ...] | None = None
+
         self._pytoui_mouse_scroll_enabled: bool = False
         self._pytoui_is_scroll_container: bool = False
 
@@ -279,12 +286,12 @@ class _ViewInternals:
         self.set_needs_display()
 
     @property
-    def content_mode(self) -> int:
+    def content_mode(self) -> _ContentMode:
         """Determines how a view lays out its content when its bounds change."""
         return self._content_mode
 
     @content_mode.setter
-    def content_mode(self, value: int):
+    def content_mode(self, value: _ContentMode):
         self._content_mode = value
         self._pytoui_content_draw_size = Size(0.0, 0.0)
         self.set_needs_display()
@@ -361,6 +368,28 @@ class _ViewInternals:
         if sv is not None:
             return sv
         return None
+
+    @property
+    def left_button_items(self) -> tuple[ButtonItem, ...] | None:
+        items = self._left_button_items
+        if items:
+            return tuple(items)
+        return None
+
+    @left_button_items.setter
+    def left_button_items(self, value: Sequence[ButtonItem] | None):
+        self._left_button_items = tuple(value) if value else None
+
+    @property
+    def right_button_items(self) -> tuple[ButtonItem, ...] | None:
+        items = self._right_button_items
+        if items:
+            return tuple(items)
+        return None
+
+    @right_button_items.setter
+    def right_button_items(self, value: Sequence[ButtonItem] | None):
+        self._right_button_items = tuple(value) if value else None
 
     @property
     def touch_enabled(self) -> bool:
@@ -505,11 +534,8 @@ class _ViewInternals:
     def pytoui_mouse_wheel(self) -> Callable[[MouseWheel], None] | None:
         return getattr(self._ref, "mouse_wheel", None)
 
-    def pytoui_get_key_commands(self) -> list[dict]:
-        fn = getattr(self._ref, "get_key_commands", None)
-        if fn is None:
-            return []
-        return fn() or []
+    def pytoui_get_key_commands(self) -> list[dict[str, str]]:
+        return self._ref.get_key_commands()
 
     @property
     def pytoui_key_command(self) -> Callable[[dict], None] | None:
@@ -928,6 +954,28 @@ class _ViewInternals:
             return
         self._pytoui_close_event.wait()
 
+    def become_first_responder(self) -> None:
+        from pytoui._base_runtime import _get_runtime_for_view
+
+        rt = _get_runtime_for_view(self)
+        if rt is None:
+            # return False
+            return
+        rt._set_first_responder(self)
+        # return True
+
+    # ObjC-compat
+    @property
+    def objc_instance(self) -> None:
+        return None
+
+    @property
+    def _objc_ptr(self) -> None:
+        return None
+
+    def _debug_quicklook_(self) -> str:
+        return self.__repr__()
+
 
 class _View:
     """Base class for all views.
@@ -962,24 +1010,6 @@ class _View:
     - did_resign_first_responder() - Resigned first responder
 
     ## Keyboard shortcuts (hardware keyboard)
-    - get_key_commands() -> list[dict] - Return keyboard shortcuts
-        Override to return hardware keyboard shortcuts for this view.
-
-        Returns a list of dicts, each with:
-          'input'     (required) – key string, e.g. 'a', KEY_INPUT_UP, KEY_INPUT_ESC
-          'modifiers' (optional) – comma-separated modifier string, e.g. 'cmd,shift'
-          'title'     (optional) – label shown in the keyboard shortcut HUD
-
-        When the user presses a matching shortcut, key_command() is called
-        with the matching dict as the sender argument.
-
-        Example::
-
-            def get_key_commands(self):
-                return [
-                    {"input": "n", "modifiers": "cmd", "title": "New"},
-                    {"input": KEY_INPUT_ESC, "title": "Cancel"},
-                ]
     - key_command(sender) - Shortcut triggered
         Called when a registered keyboard shortcut is triggered.
         sender – the dict returned by get_key_commands() that matched.
@@ -1022,7 +1052,6 @@ class _View:
     did_resign_first_responder: Callable[[], None]  # Resigned first responder
 
     # Keyboard commands (for hardware keyboard)
-    get_key_commands: Callable[[], list[dict]]  # Return keyboard shortcuts
     key_command: Callable[[dict], None]  # Shortcut triggered
 
     # ── descriptor ────────────────────────────────────────────────────────────
@@ -1131,12 +1160,12 @@ class _View:
         self.frame = Rect(f.x, f.y, f.w, value)
 
     @property
-    def content_mode(self) -> int:
+    def content_mode(self) -> _ContentMode:
         """Determines how a view lays out its content when its bounds change."""
         return self._internals_.content_mode
 
     @content_mode.setter
-    def content_mode(self, value: int):
+    def content_mode(self, value: _ContentMode):
         self._internals_.content_mode = value
 
     @property
@@ -1221,6 +1250,22 @@ class _View:
     @tint_color.setter
     def tint_color(self, value: _ColorLike):
         self._internals_.tint_color = value
+
+    @property
+    def left_button_items(self) -> tuple[ButtonItem, ...] | None:
+        return self._internals_.left_button_items
+
+    @left_button_items.setter
+    def left_button_items(self, value: Sequence[ButtonItem] | None):
+        self._internals_.left_button_items = value
+
+    @property
+    def right_button_items(self) -> tuple[ButtonItem, ...] | None:
+        return self._internals_.right_button_items
+
+    @right_button_items.setter
+    def right_button_items(self, value: Sequence[ButtonItem] | None):
+        self._internals_.right_button_items = value
 
     @property
     def touch_enabled(self) -> bool:
@@ -1334,7 +1379,7 @@ class _View:
         """Block until the view is dismissed."""
         self._internals_.wait_modal()
 
-    def become_first_responder(self) -> bool:
+    def become_first_responder(self) -> None:
         """Ask the owning window to make this view the first responder.
 
         Returns True if the runtime was found and the request was accepted,
@@ -1342,13 +1387,40 @@ class _View:
         When this view becomes the first responder the previous one
         automatically loses it (resign is implicit, no public resign call).
         """
-        from pytoui._base_runtime import _get_runtime_for_view
+        self._internals_.become_first_responder()
 
-        rt = _get_runtime_for_view(self._internals_)
-        if rt is None:
-            return False
-        rt._set_first_responder(self._internals_)
-        return True
+    def get_key_commands(self) -> list[dict[str, str]]:
+        """Return keyboard shortcuts
+
+        Returns a list of dicts, each with:
+        'input'     (required) – key string, e.g. 'a', KEY_INPUT_UP, KEY_INPUT_ESC
+        'modifiers' (optional) – comma-separated modifier string, e.g. 'cmd,shift'
+        'title'     (optional) – label shown in the keyboard shortcut HUD
+
+        When the user presses a matching shortcut, key_command() is called
+        with the matching dict as the sender argument.
+
+        Example::
+
+            def get_key_commands(self):
+                return [
+                    {"input": "n", "modifiers": "cmd", "title": "New"},
+                    {"input": KEY_INPUT_ESC, "title": "Cancel"},
+                ]
+        """
+        return []
+
+    # ObjC-compat
+    @property
+    def objc_instance(self):
+        return self._internals_.objc_instance
+
+    @property
+    def _objc_ptr(self):
+        return self._internals_._objc_ptr
+
+    def _debug_quicklook_(self):
+        return self._internals_._debug_quicklook_()
 
 
 if not IS_PYTHONISTA:
@@ -1358,4 +1430,5 @@ else:
 
     class View(ui.View):  # type: ignore[assignment,misc,no-redef]
         def __init__(self):
+            # NOTE: override cause we can't handle *args, **kwargs for a while
             pass

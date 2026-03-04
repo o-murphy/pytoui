@@ -25,6 +25,7 @@ from pytoui.ui._view import View
 
 if TYPE_CHECKING:
     from pytoui.ui._image import Image
+    from pytoui.ui._types import _ContentMode
 
 __all__ = ("ImageView",)
 
@@ -41,21 +42,21 @@ class _ImageView(View):
 
     def __init__(self):
         self._image: Image | None = None
-        self._content_mode = CONTENT_SCALE_TO_FILL
+        self._content_mode: _ContentMode = CONTENT_SCALE_TO_FILL
         self.touch_enabled = False
         # pytoui_render must always call draw() without applying any CTM transform —
         # ImageView handles all content_mode layout internally inside draw().
         self._internals_.content_mode = CONTENT_REDRAW
 
     @property
-    def content_mode(self) -> int:
+    def content_mode(self) -> _ContentMode:
         """
         The image content mode (CONTENT_SCALE_TO_FILL, CONTENT_SCALE_ASPECT_FIT, etc.).
         """
         return self._content_mode
 
     @content_mode.setter
-    def content_mode(self, value: int):
+    def content_mode(self, value: _ContentMode):
         # Store the image-layout mode in _content_mode (used by draw()).
         # _internals_.content_mode stays CONTENT_REDRAW so pytoui_render never
         # applies its own CTM transform on top of the image.

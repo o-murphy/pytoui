@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
@@ -16,6 +17,9 @@ from pytoui.ui._internals import _final_
 from pytoui.ui._types import Rect
 from pytoui.ui._view import View
 
+if TYPE_CHECKING:
+    from pytoui.ui._types import _ActivityIndicatorStyle
+
 
 @_final_
 class _ActivityIndicator(View):
@@ -28,7 +32,7 @@ class _ActivityIndicator(View):
     )
 
     def __init__(self):
-        self._style: int = ACTIVITY_INDICATOR_STYLE_WHITE
+        self._style: _ActivityIndicatorStyle = ACTIVITY_INDICATOR_STYLE_WHITE
         self._hides_when_stopped = True
         self._anim_step = 0
         self._is_animating = False
@@ -41,11 +45,11 @@ class _ActivityIndicator(View):
         self.frame = Rect(0.0, 0.0, 20.0, 20.0)
 
     @property
-    def style(self) -> int:
+    def style(self) -> _ActivityIndicatorStyle:
         return self._style
 
     @style.setter
-    def style(self, value: int):
+    def style(self, value: _ActivityIndicatorStyle):
         self._style = value
         self.set_needs_display()
 

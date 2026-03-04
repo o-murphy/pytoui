@@ -132,7 +132,8 @@ class KeyCommandsView(ui.View):
     # ── Touch: grab focus ──────────────────────────────────────────────────────
 
     def touch_began(self, touch):
-        self._focused = self.become_first_responder()
+        self.become_first_responder()
+        self._focused = True
         self.set_needs_display()
 
     def did_become_first_responder(self):

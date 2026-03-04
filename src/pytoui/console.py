@@ -2,7 +2,7 @@ from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._button import Button
 from pytoui.ui._constants import ALIGN_CENTER
 from pytoui.ui._draw import fill_rect, measure_string, set_color
-from pytoui.ui._final import _final_
+from pytoui.ui._internals import _final_
 from pytoui.ui._label import Label
 from pytoui.ui._view import View
 

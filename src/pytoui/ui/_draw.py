@@ -68,7 +68,18 @@ from pytoui.ui._types import (
 
 if TYPE_CHECKING:
     from pytoui._osdbuf import FrameBuffer
-    from pytoui.ui._types import _RGBA, _ColorLike, _RectLike, _UiStyle
+    from pytoui.ui._types import (
+        _RGBA,
+        _Alignment,
+        _BlendMode,
+        _ColorLike,
+        _ContentMode,
+        _LineBrakeMode,
+        _LineCapStyle,
+        _LineJoinMode,
+        _RectLike,
+        _UiStyle,
+    )
 
 
 __all__ = (
@@ -342,7 +353,7 @@ class _DrawingContext:
     """Description of the context structure for static analysis."""
 
     color: tuple[float, float, float, float]
-    blend_mode: int
+    blend_mode: _BlendMode
     backend: FrameBuffer | None
     clip: Rect | None
     origin: tuple[float, float]
@@ -876,7 +887,7 @@ def set_color(c: _ColorLike):
     ctx.color = parse_color(c) or (0.0, 0.0, 0.0, 1.0)
 
 
-def set_blend_mode(mode: int):
+def set_blend_mode(mode: _BlendMode):
     """Set the current blend mode
     (BlendMode.NORMAL = alpha-over, BlendMode.COPY = direct)."""
     ctx = _get_draw_ctx()
@@ -902,7 +913,7 @@ def fill_rect(x: float, y: float, w: float, h: float):
 
 @pytoui_desktop_only
 def _content_mode_transform(
-    mode: int,
+    mode: _ContentMode,
     cw: float,
     ch: float,
     fw: float,
@@ -1000,8 +1011,8 @@ def draw_string(
     rect: _RectLike = (0, 0, 0, 0),
     font: tuple[str, float] = ("<system>", 17.0),
     color: _ColorLike | None = (0.0, 0.0, 0.0, 1.0),
-    alignment: int = ALIGN_NATURAL,
-    line_break_mode: int = LB_TRUNCATE_TAIL,
+    alignment: _Alignment = ALIGN_NATURAL,
+    line_break_mode: _LineBrakeMode = LB_TRUNCATE_TAIL,
 ):
     ctx = _get_draw_ctx()
     fb = ctx.backend
@@ -1047,8 +1058,8 @@ def measure_string(
     s: str,
     max_width: float = 0,
     font: tuple[str, float] = ("<system>", 12.0),
-    alignment: int = ALIGN_LEFT,
-    line_break_mode: int = LB_WORD_WRAP,
+    alignment: _Alignment = ALIGN_LEFT,
+    line_break_mode: _LineBrakeMode = LB_WORD_WRAP,
 ) -> tuple[float, float]:
     backend = _get_draw_ctx().backend
     if not backend:
@@ -1137,8 +1148,8 @@ class Path:
 
         self._handle = type(backend).create_path()
         self._line_width: float = 1.0
-        self._line_join_style: int = LINE_JOIN_MITER
-        self._line_cap_style: int = LINE_CAP_BUTT
+        self._line_join_style: _LineJoinMode = LINE_JOIN_MITER
+        self._line_cap_style: _LineCapStyle = LINE_CAP_BUTT
         self._has_segments: bool = False
         self._eo_fill_rule: bool = False
 
@@ -1169,29 +1180,29 @@ class Path:
         type(backend).path_set_line_width(self._handle, value)
 
     @property
-    def line_join_style(self) -> int:
+    def line_join_style(self) -> _LineJoinMode:
         return self._line_join_style
 
     @line_join_style.setter
-    def line_join_style(self, value: int):
+    def line_join_style(self, value: _LineJoinMode):
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
 
-        self._line_join_style = int(value)
+        self._line_join_style = cast(_LineJoinMode, int(value))
         type(backend).path_set_line_join_style(self._handle, value)
 
     @property
-    def line_cap_style(self) -> int:
+    def line_cap_style(self) -> _LineCapStyle:
         return self._line_cap_style
 
     @line_cap_style.setter
-    def line_cap_style(self, value: int):
+    def line_cap_style(self, value: _LineCapStyle):
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
 
-        self._line_cap_style = int(value)
+        self._line_cap_style = cast(_LineCapStyle, int(value))
         type(backend).path_set_line_cap_style(self._handle, value)
 
     @property
@@ -1410,6 +1421,18 @@ class Path:
 
     def __repr__(self):
         return f"<Path handle={self._handle}>"
+
+    # ObjC-compat
+    @property
+    def objc_instance(self) -> None:
+        return None
+
+    @property
+    def _objc_ptr(self) -> None:
+        return None
+
+    def _debug_quicklook_(self) -> str:
+        return self.__repr__()
 
 
 def get_screen_size() -> tuple[int, int]:

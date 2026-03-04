@@ -9,6 +9,8 @@ NOTE:
 
 HOT:
 * NavigationView on stack pop/push animations like ScrollView paging animation
+* View:
+  * scroll_enabled (we have just mouse_scroll_enabled)
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

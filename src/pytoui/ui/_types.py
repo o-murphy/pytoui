@@ -18,6 +18,17 @@ __all__ = (
     "Vector2",
     "_Action",
     "_UiStyle",
+    "_Alignment",
+    "_BlendMode",
+    "_ContentMode",
+    "_ActivityIndicatorStyle",
+    "_DatePickerMode",
+    "_KeyboardType",
+    "_LineBrakeMode",
+    "_LineJoinMode",
+    "_LineCapStyle",
+    "_CapitalizationType",
+    "_RenderingMode",
     "_ColorLike",
     "_Font",
     "_PointLike",
@@ -36,7 +47,62 @@ _HEX: TypeAlias = str | int
 _ColorLike: TypeAlias = _RGB | _RGBA | _HEX | None
 
 _Action: TypeAlias = Callable[[Any], None] | Callable[[], None]
+_Alignment: TypeAlias = Literal[0, 1, 2, 3, 4]
+_BlendMode: TypeAlias = Literal[
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+]
+_ContentMode: TypeAlias = Literal[
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+]
+_ActivityIndicatorStyle: TypeAlias = Literal[0, 1, 2]
+_DatePickerMode: TypeAlias = Literal[0, 1, 2, 3]
+_KeyboardType: TypeAlias = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+_LineBrakeMode: TypeAlias = Literal[0, 1, 2, 3, 4, 5]
+_LineJoinMode: TypeAlias = Literal[0, 1, 2]
+_LineCapStyle: TypeAlias = Literal[0, 1, 2]
+_CapitalizationType: TypeAlias = Literal[0, 1, 2, 3]
+_RenderingMode: TypeAlias = Literal[0, 1, 2]
 _UiStyle: TypeAlias = Literal["dark", "light"]
+
 
 _Font = tuple[str, float]
 _ViewFlex = Literal[
@@ -566,6 +632,18 @@ class Touch:
         self.prev_location = Point(*prev_location)
         self.timestamp = timestamp
         self.touch_id = touch_id
+
+    # ObjC-compat
+    @property
+    def objc_instance(self) -> None:
+        return None
+
+    @property
+    def _objc_ptr(self) -> None:
+        return None
+
+    def _debug_quicklook_(self) -> str:
+        return self.__repr__()
 
 
 from pytoui.hid import MOUSE_SCROLL_ID

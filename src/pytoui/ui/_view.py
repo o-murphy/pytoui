@@ -30,7 +30,7 @@ from pytoui.ui._draw import (
     set_color,
 )
 from pytoui.ui._internals import _getset_descriptor
-from pytoui.ui._types import Rect, Size, _ColorLike, _PresentOrientation
+from pytoui.ui._types import Rect, Size
 
 if TYPE_CHECKING:
     from pytoui.ui._types import (
@@ -39,7 +39,9 @@ if TYPE_CHECKING:
         MouseWheel,
         Point,
         Touch,
+        _ColorLike,
         _PointLike,
+        _PresentOrientation,
         _PresentStyle,
         _RectLike,
         _ViewFlex,

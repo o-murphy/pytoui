@@ -283,7 +283,7 @@ __PresentOrientation: TypeAlias = Literal[
     "landscape-left",
     "landscape-right",
 ]
-__Action: TypeAlias = Callable[[Any], None] | Callable[[], None]
+__Action: TypeAlias = Callable[[View], None] | Callable[[], None]
 __Font: TypeAlias = tuple[str, float]
 __ScrollIndicatorStyle: TypeAlias = Literal["default", "white", "black"]
 
@@ -366,7 +366,7 @@ class Path:
         cp_y: float,
     ) -> None: ...
     def append_path(self, other: Path) -> None: ...
-    bounds: Any  # default: <attribute 'bounds' of '_ui.Path' objects>
+    bounds: Rect  # default: <attribute 'bounds' of '_ui.Path' objects>
     def close(self) -> None: ...
     eo_fill_rule: bool  # default: <attribute 'eo_fill_rule' of '_ui.Path' objects>
     def fill(self) -> None: ...
@@ -378,7 +378,7 @@ class Path:
         __LineJoinMode  # default: <attribute 'line_join_style' of '_ui.Path' objects>
     )
     def line_to(self, x: float, y: float) -> None: ...
-    line_width: Any  # default: <attribute 'line_width' of '_ui.Path' objects>
+    line_width: float  # default: <attribute 'line_width' of '_ui.Path' objects>
     def move_to(self, x: float, y: float) -> None: ...
     objc_instance: Any  # default: <attribute 'objc_instance' of '_ui.Path' objects>
     def oval(cls, x: float, y: float, w: float, h: float) -> Path: ...
@@ -457,7 +457,9 @@ class View:
     superview: View | None  # default: <attribute 'superview' of '_ui.View' objects>
     tint_color: __ColorLike  # default: <attribute 'tint_color' of '_ui.View' objects>
     touch_enabled: bool  # default: <attribute 'touch_enabled' of '_ui.View' objects>
-    transform: Any  # default: <attribute 'transform' of '_ui.View' objects>
+    transform: (
+        Transform | None
+    )  # default: <attribute 'transform' of '_ui.View' objects>
     update_interval: (
         float  # default: <attribute 'update_interval' of '_ui.View' objects>
     )
@@ -502,7 +504,7 @@ class View:
     def wait_modal(self) -> None: ...
 
 class ActivityIndicator(View):
-    hides_when_stopped: Any  # default: <attribute 'hides_when_stopped' of '_ui.ActivityIndicator' objects>
+    hides_when_stopped: bool  # default: <attribute 'hides_when_stopped' of '_ui.ActivityIndicator' objects>
     style: __ActivityIndicatorStyle  # default: <attribute 'style' of '_ui.ActivityIndicator' objects>
     def __init__(self, *args, **kwargs) -> None: ...
     def start(self) -> None: ...
@@ -848,7 +850,7 @@ def animate(
 basestring: TypeAlias = str
 
 def begin_image_context(*args, **kwargs) -> Any: ...
-def cancel_delays() -> Any: ...
+def cancel_delays() -> None: ...
 def close_all(*args, **kwargs) -> Any: ...
 def concat_ctm(transform: Transform) -> None: ...
 def convert_point(
@@ -861,7 +863,7 @@ def convert_rect(
     from_view=None,
     to_view=None,
 ) -> Rect: ...
-def delay(func: Callable, seconds: float) -> Any: ...
+def delay(func: Callable, seconds: float) -> None: ...
 def draw_string(
     s: str,
     rect: __RectLike = (0, 0, 0, 0),

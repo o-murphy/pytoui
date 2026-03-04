@@ -1210,13 +1210,13 @@ class Path:
         type(backend).path_set_eo_fill_rule(self._handle, value)
 
     @property
-    def bounds(self):
+    def bounds(self) -> Rect:
         """(readonly) The path's bounding rectangle as a Rect(x, y, w, h)."""
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")
 
-        return type(backend).path_get_bounds(self._handle)
+        return Rect(*type(backend).path_get_bounds(self._handle))
 
     # -- Class method constructors --------------------------------------------
 

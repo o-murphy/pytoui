@@ -36,6 +36,7 @@ def main():
     root.background_color = "black"
     root.frame = (0.0, 0.0, 400.0, 600.0)
     root.title_color = "red"
+    root.bar_tint_color = "yellow"
 
     root.present()
 

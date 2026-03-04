@@ -91,6 +91,9 @@ class _NavigationViewInternals(_ViewInternals):
     @bar_tint_color.setter
     def bar_tint_color(self, value: _ColorLike):
         self._bar_tint_color = parse_color(value)
+        if value is None:
+            self._bar_tint_color = self._tint_color
+        self._back_button._text_color = self._bar_tint_color
         self.set_needs_display()
 
     @property

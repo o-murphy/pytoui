@@ -691,12 +691,14 @@ class _ViewInternals:
             view._superview.remove_subview(view)
         self._subviews.append(view)
         view._superview = self
+        view.set_needs_display()
 
     def remove_subview(self, view: _ViewInternals):
         """Remove a child view."""
         if view in self._subviews:
             self._subviews.remove(view)
             view._superview = None
+            view.set_needs_display()
 
     def pytoui_add_internal_subview(self, view: _ViewInternals):
         """Add another view as a child of this view."""
@@ -706,6 +708,7 @@ class _ViewInternals:
             view._superview.pytoui_remove_internal_subview(view)
         self._pytoui_internal_subviews.append(view)
         view._superview = self
+        view.set_needs_display()
 
     def pytoui_remove_internal_subview(self, view: _ViewInternals):
         """Remove a child view."""
@@ -720,24 +723,39 @@ class _ViewInternals:
         if sv is None:
             return
 
+        changed = False
+
         if self in sv._subviews:
             sv._subviews.remove(self)
             sv._subviews.append(self)
+            changed = True
         elif self in sv._pytoui_internal_subviews:
             sv._pytoui_internal_subviews.remove(self)
             sv._pytoui_internal_subviews.append(self)
+            changed = True
+
+        if changed:
+            sv.set_needs_display()
 
     def send_to_back(self):
         """Put the view behind its sibling views."""
         sv = self._superview
         if sv is None:
             return
+
+        changed = False
+
         if self in sv._subviews:
             sv._subviews.remove(self)
             sv._subviews.insert(0, self)
+            changed = True
         elif self in sv._pytoui_internal_subviews:
             sv._pytoui_internal_subviews.remove(self)
             sv._pytoui_internal_subviews.insert(0, self)
+            changed = True
+
+        if changed:
+            sv.set_needs_display()
 
     def set_needs_display(self):
         self._pytoui_needs_display = True
@@ -841,6 +859,61 @@ class _ViewInternals:
 
 
 class _View:
+    """Base class for all views.
+
+    # Overridable hooks:
+
+    ## Basic lifecycle
+    - did_load() - Called after view is loaded
+    - will_close() - Called before view closes
+    - layout() - Called when view needs layout
+    - draw() - Called to draw the view
+    - update() - Called at update_interval
+
+    ## Touch events
+    - touch_began(touch) - Touch started
+    - touch_moved(touch) - Touch moved
+    - touch_ended(touch) - Touch ended
+
+    ## Mouse events (desktop)
+    - mouse_down(event) - Mouse button pressed
+    - mouse_up(event) - Mouse button released
+    - mouse_moved(event) - Mouse moved (without button)
+    - mouse_dragged(event) - Mouse moved with button down
+    - mouse_wheel(event) - Mouse wheel scrolled
+
+    ## Keyboard (desktop only)
+    - keyboard_frame_will_change(rect) - Keyboard about to change
+    - keyboard_frame_did_change(rect) - Keyboard changed
+
+    ## Responder chain (desktop only)
+    - did_become_first_responder() - Became first responder
+    - did_resign_first_responder() - Resigned first responder
+
+    ## Keyboard shortcuts (hardware keyboard)
+    - get_key_commands() -> list[dict] - Return keyboard shortcuts
+        Override to return hardware keyboard shortcuts for this view.
+
+        Returns a list of dicts, each with:
+          'input'     (required) – key string, e.g. 'a', KEY_INPUT_UP, KEY_INPUT_ESC
+          'modifiers' (optional) – comma-separated modifier string, e.g. 'cmd,shift'
+          'title'     (optional) – label shown in the keyboard shortcut HUD
+
+        When the user presses a matching shortcut, key_command() is called
+        with the matching dict as the sender argument.
+
+        Example::
+
+            def get_key_commands(self):
+                return [
+                    {"input": "n", "modifiers": "cmd", "title": "New"},
+                    {"input": KEY_INPUT_ESC, "title": "Cancel"},
+                ]
+    - key_command(sender) - Shortcut triggered
+        Called when a registered keyboard shortcut is triggered.
+        sender – the dict returned by get_key_commands() that matched.
+    """
+
     __slots__ = ("__internals_",)
 
     _internals_: _getset_descriptor["_View", "_ViewInternals"] = _getset_descriptor(
@@ -849,18 +922,37 @@ class _View:
 
     # ── overridable hooks ─────────────────────────────────────────────────────
 
-    did_load: Callable[[], None]
-    will_close: Callable[[], None]
-    layout: Callable[[], None]
-    draw: Callable[[], None]
-    touch_began: Callable[[Touch], None]
-    touch_moved: Callable[[Touch], None]
-    touch_ended: Callable[[Touch], None]
-    keyboard_frame_will_change: Callable[[Rect], None]
-    keyboard_frame_did_change: Callable[[Rect], None]
+    # Basic lifecycle
+    did_load: Callable[[], None]  # Called after view is loaded
+    will_close: Callable[[], None]  # Called before view closes
+    layout: Callable[[], None]  # Called when view needs layout
+    draw: Callable[[], None]  # Called to draw the view
+    # NOTE: View.update() is an implicit behaviour
+    update: Callable[[], None]  # Called at update_interval
 
-    # NOTE: View.update() is an implicit beahaviour
-    update: Callable[[], None]
+    # Touch events
+    touch_began: Callable[[Touch], None]  # Touch started
+    touch_moved: Callable[[Touch], None]  # Touch moved
+    touch_ended: Callable[[Touch], None]  # Touch ended
+
+    # Mouse events (desktop)
+    mouse_down: Callable[[MouseEvent], None]  # Mouse button pressed
+    mouse_up: Callable[[MouseEvent], None]  # Mouse button released
+    mouse_moved: Callable[[MouseEvent], None]  # Mouse moved (without button)
+    mouse_dragged: Callable[[MouseEvent], None]  # Mouse moved with button down
+    mouse_wheel: Callable[[MouseWheel], None]  # Mouse wheel scrolled
+
+    # Keyboard (desktop only)
+    keyboard_frame_will_change: Callable[[Rect], None]  # Keyboard about to change
+    keyboard_frame_did_change: Callable[[Rect], None]  # Keyboard changed
+
+    # Responder chain (desktop only)
+    did_become_first_responder: Callable[[], None]  # Became first responder
+    did_resign_first_responder: Callable[[], None]  # Resigned first responder
+
+    # Keyboard commands (for hardware keyboard)
+    get_key_commands: Callable[[], list[dict]]  # Return keyboard shortcuts
+    key_command: Callable[[dict], None]  # Shortcut triggered
 
     # ── descriptor ────────────────────────────────────────────────────────────
     def __init__(self):
@@ -1175,33 +1267,6 @@ class _View:
             return False
         rt._set_first_responder(self._internals_)
         return True
-
-    def get_key_commands(self) -> list[dict]:
-        """Override to return hardware keyboard shortcuts for this view.
-
-        Returns a list of dicts, each with:
-          'input'     (required) – key string, e.g. 'a', KEY_INPUT_UP, KEY_INPUT_ESC
-          'modifiers' (optional) – comma-separated modifier string, e.g. 'cmd,shift'
-          'title'     (optional) – label shown in the keyboard shortcut HUD
-
-        When the user presses a matching shortcut, key_command() is called
-        with the matching dict as the sender argument.
-
-        Example::
-
-            def get_key_commands(self):
-                return [
-                    {"input": "n", "modifiers": "cmd", "title": "New"},
-                    {"input": KEY_INPUT_ESC, "title": "Cancel"},
-                ]
-        """
-        return []
-
-    def key_command(self, sender: dict) -> None:
-        """Called when a registered keyboard shortcut is triggered.
-
-        sender – the dict returned by get_key_commands() that matched.
-        """
 
 
 if not IS_PYTHONISTA:

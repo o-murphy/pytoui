@@ -28,6 +28,7 @@ class _NavigationViewInternals(_ViewInternals):
     )
 
     NAVIGATION_BAR_HEIGHT = 60
+    DEFAULT_BACK_BTN_TITLE = "Back"
 
     def __init__(self, view: _NavigationView):
         super().__init__(view)
@@ -42,7 +43,7 @@ class _NavigationViewInternals(_ViewInternals):
 
         # Create UI elements
         self._back_button = Button()
-        self._back_button.title = "< Back"
+        self._back_button.title = f"< {self.DEFAULT_BACK_BTN_TITLE}"
         self._back_button.hidden = True  # Спочатку схована
         self._back_button.action = lambda _: self.pop_view()
 
@@ -55,11 +56,11 @@ class _NavigationViewInternals(_ViewInternals):
         nav_h = self.NAVIGATION_BAR_HEIGHT if not self._navigation_bar_hidden else 0
 
         if not self._navigation_bar_hidden:
-            self._back_button.frame = (10, (nav_h - 30) / 2, 80, 30)  # Центруємо кнопку
+            self._back_button.frame = (0, (nav_h - 30) / 2, 120, 30)  # Центруємо кнопку
             self._title_label.frame = (
-                100,
+                120,
                 0,
-                self._frame.width - 200,
+                self._frame.width - 240,
                 nav_h,
             )
 
@@ -116,10 +117,16 @@ class _NavigationViewInternals(_ViewInternals):
         view._navigation_view = self
 
         self._current_content_view = view
+        self._title_label.text = view.name or ""
 
         # update UI
-        self._back_button.hidden = len(self._navigation_stack) <= 1
-        self._title_label.text = view.name or "Screen"
+        count = len(self._navigation_stack)
+        self._back_button.hidden = count <= 1
+        if count > 1:
+            prev_view = self._navigation_stack[-2]
+            self._back_button.title = (
+                f"< {prev_view.name if prev_view.name else self.DEFAULT_BACK_BTN_TITLE}"
+            )
 
         # add new view as internal
         self.pytoui_add_internal_subview(view)
@@ -146,7 +153,14 @@ class _NavigationViewInternals(_ViewInternals):
             self.pytoui_add_internal_subview(self._current_content_view)
             self._title_label.text = self._current_content_view.name or ""
 
-        self._back_button.hidden = len(self._navigation_stack) <= 1
+        count = len(self._navigation_stack)
+        self._back_button.hidden = count <= 1
+        if count > 1:
+            prev_view = self._navigation_stack[-2]
+            self._back_button.title = (
+                f"< {prev_view.name if prev_view.name else self.DEFAULT_BACK_BTN_TITLE}"
+            )
+
         self.set_needs_layout()
 
     def current_view(self) -> _ViewInternals | None:

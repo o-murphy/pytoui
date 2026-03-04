@@ -8,15 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* continue implementing of `NavigationView` (bar, internal drawing, stack animations, etc.)
-  * known `Pythonista.ui.NavigationView` native behaviour:
-    * Uses SUINavigationView in background (objc_instance, _objc_ptr)
-    * Very bugged
-    * Should not display `back button` for the initial view!
-    * Implicit behaviour / bug: When we init `NavigationView` with a some view `NavigationView(view=my_view)`, if we push same `my_view` instance agains to the same `NavigationView` it displays `back button` for a this view, and clicking on this button craches the Pythonista app
-  * we should have some method to propagate events (updates/touches/keyboard/etc) for views that not in View.subviews list
-    *  maybe we need some API to allow add internal subviews (like nav bars) for desktop view, which works same as View.subviews (can handle mouse/touch events etc), but not displaying in View.subviews list, only in some way like `_ViewInternals.internal_subviews`.
-  * maybe we can keep index or ref  to current top view and update it on pop/push for fast lookup
+* update_interval based animated of internal_subviews are not work
+* NavigationView on stack pop/push animations like ScrollView paging animation
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

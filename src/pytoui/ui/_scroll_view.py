@@ -17,12 +17,6 @@ _ScrollIndicatorStyle = Literal["default", "white", "black"]
 
 __all__ = ("ScrollView", "_ScrollView", "_ScrollViewInternals", "_ScrollIndicatorStyle")
 
-# Kinetic deceleration constants
-_DECEL_RATE: float = 0.95  # velocity multiplier per frame (≈60 fps)
-_MIN_VEL: float = 0.5  # px/frame threshold to stop deceleration
-_UPDATE_INTERVAL: float = 1.0 / 60.0
-_PAGE_ANIM_DUR: float = 0.30  # paging slide animation duration (seconds)
-
 
 class _ScrollViewInternals(_ViewInternals):
     __slots__ = (
@@ -66,6 +60,12 @@ class _ScrollViewInternals(_ViewInternals):
         "_page_anim_start",
         "_page_anim_t0",
     )
+
+    # Kinetic deceleration constants
+    _DECEL_RATE: float = 0.95  # velocity multiplier per frame (≈60 fps)
+    _MIN_VEL: float = 0.5  # px/frame threshold to stop deceleration
+    _UPDATE_INTERVAL: float = 1.0 / 60.0
+    _PAGE_ANIM_DUR: float = 0.30  # paging slide animation duration (seconds)
 
     def __init__(self, view: _View):
         super().__init__(view)
@@ -263,7 +263,7 @@ class _ScrollViewInternals(_ViewInternals):
         """Briefly show the scroll indicators."""
         self._flash_until = time.monotonic() + 0.5
         if self.update_interval <= 0:
-            self.update_interval = _UPDATE_INTERVAL
+            self.update_interval = self._UPDATE_INTERVAL
         self.set_needs_display()
 
     # ── Internal helpers ───────────────────────────────────────────────────────
@@ -460,9 +460,9 @@ class _ScrollViewInternals(_ViewInternals):
             return
 
         # Start kinetic deceleration if there's meaningful velocity
-        if abs(self._vel_x) > _MIN_VEL or abs(self._vel_y) > _MIN_VEL:
+        if abs(self._vel_x) > self._MIN_VEL or abs(self._vel_y) > self._MIN_VEL:
             self._decelerating = True
-            self.update_interval = _UPDATE_INTERVAL
+            self.update_interval = self._UPDATE_INTERVAL
         else:
             self._vel_x = 0.0
             self._vel_y = 0.0
@@ -479,7 +479,7 @@ class _ScrollViewInternals(_ViewInternals):
         self._page_anim_target = (tx, ty)
         self._page_anim_t0 = time.monotonic()
         if self.update_interval <= 0:
-            self.update_interval = _UPDATE_INTERVAL
+            self.update_interval = self._UPDATE_INTERVAL
 
     def _snap_to_page(self):
         fw = self.width
@@ -512,7 +512,7 @@ class _ScrollViewInternals(_ViewInternals):
         # Page animation has priority over deceleration
         if self._page_anim_target is not None:
             elapsed = now - self._page_anim_t0
-            t = min(1.0, elapsed / _PAGE_ANIM_DUR)
+            t = min(1.0, elapsed / self._PAGE_ANIM_DUR)
             e = 1.0 - (1.0 - t) ** 3  # cubic easeOut
             sx, sy = self._page_anim_start
             tx, ty = self._page_anim_target
@@ -533,16 +533,16 @@ class _ScrollViewInternals(_ViewInternals):
             return
 
         # Per-frame delta from velocity (px/sec → px/frame)
-        dx = self._vel_x * _UPDATE_INTERVAL
-        dy = self._vel_y * _UPDATE_INTERVAL
+        dx = self._vel_x * self._UPDATE_INTERVAL
+        dy = self._vel_y * self._UPDATE_INTERVAL
 
         ox, oy = self._content_offset
         new_x = (ox + dx) if self._can_scroll_h() else ox
         new_y = (oy + dy) if self._can_scroll_v() else oy
 
         # Apply friction
-        self._vel_x *= _DECEL_RATE
-        self._vel_y *= _DECEL_RATE
+        self._vel_x *= self._DECEL_RATE
+        self._vel_y *= self._DECEL_RATE
 
         self._set_offset(new_x, new_y)
 
@@ -551,7 +551,11 @@ class _ScrollViewInternals(_ViewInternals):
         clamped_y = self._clamp_y(new_y)
         in_bounds = abs(new_x - clamped_x) < 0.5 and abs(new_y - clamped_y) < 0.5
 
-        if abs(self._vel_x) < _MIN_VEL and abs(self._vel_y) < _MIN_VEL and in_bounds:
+        if (
+            abs(self._vel_x) < self._MIN_VEL
+            and abs(self._vel_y) < self._MIN_VEL
+            and in_bounds
+        ):
             self._vel_x = 0.0
             self._vel_y = 0.0
             self._decelerating = False

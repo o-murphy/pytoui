@@ -29,6 +29,7 @@ class Switch(View):
         "_enabled",
         "_image",
         "_last_time",
+        "_tracked_value",
         "_press_start_time",
         "_target_alpha",
         "_target_progress",
@@ -65,6 +66,7 @@ class Switch(View):
         self._press_start_time = 0.0
         self._current_stretch = 0.0
         self._last_time = time.time()
+        self._tracked_value: bool = False
 
         self.frame = Rect(0, 0, 51, 31)
 
@@ -217,6 +219,7 @@ class Switch(View):
             return
 
         self._tracked = True
+        self._tracked_value = self._value
         self._did_change_during_move = False
         self._press_start_time = time.time()
         self._last_time = time.time()
@@ -229,23 +232,32 @@ class Switch(View):
         if not (self._tracked and self.enabled):
             return
 
-        # Handle sliding to change value
         new_value = touch.location[0] > self.width / 2
-        if new_value != self.value:
-            self.value = new_value
+        if new_value != self._tracked_value:
+            self._tracked_value = new_value
+            self._target_progress = 1.0 if new_value else 0.0
             self._did_change_during_move = True
-            self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 
     def touch_ended(self, touch: Touch):
         if not (self._tracked and self.enabled):
             return
 
         self._tracked = False
-        if touch.phase == "ended":
-            # If it was a simple tap (no slide), toggle value
-            if not self._did_change_during_move:
+
+        if touch.phase == "ended" or "cancelled":
+            if self._did_change_during_move:
+                # update tracked_value
+                if self._tracked_value != self._value:
+                    self.value = self._tracked_value
+                    self._ensure_action_and_call(self)
+            else:
+                # tap only - switch
                 self.value = not self.value
-                self._ensure_action_and_call(self)  # type: ignore[attr-defined]
+                self._ensure_action_and_call(self)
+
+        # # NOTE: maybe need this behaviour for canceled
+        # elif touch.phase == "cancelled":
+        #     self._target_progress = 1.0 if self._value else 0.0
 
         # Continue animating stretch retraction if needed
         if self._current_stretch > 0.01 and not self._anim_disabled:

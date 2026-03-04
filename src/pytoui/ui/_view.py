@@ -6,7 +6,6 @@ from threading import Event
 from typing import (
     TYPE_CHECKING,
     Callable,
-    cast,
 )
 from uuid import uuid4
 
@@ -20,13 +19,14 @@ from pytoui.ui._draw import (
     Path,
     Transform,
     _content_mode_transform,
+    _get_draw_ctx,
     _record,
     _screen_origin,
     _set_origin,
+    _sync_ctm_to_rust,
     fill_rect,
     parse_color,
     set_alpha,
-    set_backend,
     set_color,
 )
 from pytoui.ui._internals import _getset_descriptor
@@ -45,7 +45,76 @@ if TYPE_CHECKING:
         _ViewFlex,
     )
 
-__all__ = ("View", "_View", "_ViewInternals")
+__all__ = ("View", "_View", "_ViewInternals", "_RenderContext", "_RenderLoop")
+
+
+class _RenderContext:
+    """Context manager for rendering a view to a framebuffer.
+
+    Saves and restores the drawing context state, similar to ImageContext.
+    """
+
+    def __init__(self, view: _ViewInternals, fb):
+        self.view = view
+        self.fb = fb
+        self._prev_backend = None
+        self._prev_origin = None
+
+    def __enter__(self):
+        ctx = _get_draw_ctx()
+
+        # Save previous state
+        self._prev_backend = ctx.backend
+        self._prev_origin = ctx.origin
+
+        # Set new backend
+        ctx.backend = self.fb
+        ctx.origin = (0.0, 0.0)  # Render at origin
+
+        # Sync state to Rust
+        _sync_ctm_to_rust(ctx)
+
+        return self
+
+    def __exit__(self, *args):
+        ctx = _get_draw_ctx()
+
+        # Restore previous state
+        ctx.backend = self._prev_backend
+        ctx.origin = self._prev_origin
+
+        # Sync restored state
+        _sync_ctm_to_rust(ctx)
+
+
+class _RenderLoop:
+    """Helper for animation and rendering loop."""
+
+    def __init__(self, view: _ViewInternals, animated: bool = True):
+        self.view = view
+        self.animated = animated and not _UI_DISABLE_ANIMATIONS
+        self.start_time = None
+        self.anim_duration = 0.25
+
+    def __call__(self, fb):
+        with _RenderContext(self.view, fb):
+            if self.animated:
+                self._animate_frame()
+            self.view.pytoui_render()
+
+    def _animate_frame(self):
+        if self.start_time is None:
+            self.start_time = time.time()
+            self.view._alpha = 0.0
+
+        elapsed = time.time() - self.start_time
+        if elapsed < self.anim_duration:
+            p = elapsed / self.anim_duration
+            p = p * p * (3.0 - 2.0 * p)  # smoothstep
+            self.view._alpha = p
+            self.view._pytoui_needs_display = True
+        elif self.view._alpha < 1.0:
+            self.view._alpha = 1.0
 
 
 class _ViewInternals:
@@ -637,7 +706,6 @@ class _ViewInternals:
         if self._pytoui_needs_layout:
             if hasattr(self._ref, "layout"):
                 self._ref.layout()
-            self._pytoui_needs_layout = False
 
     def pytoui_update_tree(self, now: float):
         """Update this view and propagate to all subviews (public and internal)."""
@@ -655,10 +723,8 @@ class _ViewInternals:
         for sv in self._pytoui_internal_subviews:
             sv.pytoui_update_tree(now)
 
-    def pytoui_render(self):
+    def pytoui_draw_snapshot(self):
         self.pytoui_layout()
-
-        self._pytoui_needs_display = False
 
         # Hidden views don't render and don't traverse
         if self._hidden:
@@ -670,28 +736,32 @@ class _ViewInternals:
             return
         cr = self._corner_radius
 
+        # render self
+        _set_origin(ox, oy)
+        set_alpha(self._alpha)
+
+        clip_path = (
+            Path.rounded_rect(0, 0, fw, fh, cr) if cr > 0 else Path.rect(0, 0, fw, fh)
+        )
+        clip_path.add_clip()
+
+        self._pytoui_render_background(clip_path, fw, fh, cr)
+        self._pytoui_render_self(fw, fh)
+
+        # --- Traverse children ALWAYS ---
+        self._pytoui_render_internal_subviews(fw, fh)
+        self._pytoui_render_subviews(fw, fh)
+
+        # System overlay: drawn on top of all regular subviews,
+        # within the same clip. Each entry is a zero-arg callable.
+        self._pytoui_render_overlay()
+
+    def pytoui_render(self):
+
         with GState():
-            # render self
-            _set_origin(ox, oy)
-            set_alpha(self._alpha)
-
-            clip_path = (
-                Path.rounded_rect(0, 0, fw, fh, cr)
-                if cr > 0
-                else Path.rect(0, 0, fw, fh)
-            )
-            clip_path.add_clip()
-
-            self._pytoui_render_background(clip_path, fw, fh, cr)
-            self._pytoui_render_self(fw, fh)
-
-            # --- Traverse children ALWAYS ---
-            self._pytoui_render_internal_subviews(fw, fh)
-            self._pytoui_render_subviews(fw, fh)
-
-            # System overlay: drawn on top of all regular subviews,
-            # within the same clip. Each entry is a zero-arg callable.
-            self._pytoui_render_overlay()
+            self.pytoui_draw_snapshot()
+        self._pytoui_needs_display = False
+        self._pytoui_needs_layout = False
 
     def __getitem__(self, name: str) -> _ViewInternals:
         for view in self._subviews:
@@ -824,38 +894,9 @@ class _ViewInternals:
         if hasattr(self._ref, "layout"):
             self._ref.layout()
 
-        if animated and not _UI_DISABLE_ANIMATIONS:
-            self._alpha = 0.0
-            _ANIM_DUR = 0.25
-            _start: list[float | None] = [None]
+        animated = animated and not _UI_DISABLE_ANIMATIONS
 
-            def _render_frame(fb) -> None:
-                t = time.time()
-                if _start[0] is None:
-                    _start[0] = t
-                elapsed = t - cast("float", _start[0])
-                animating = elapsed < _ANIM_DUR
-                if animating:
-                    p = elapsed / _ANIM_DUR
-                    p = p * p * (3.0 - 2.0 * p)  # smoothstep
-                    self._alpha = p
-                elif self._alpha < 1.0:
-                    self._alpha = 1.0
-                set_backend(fb)
-                self.pytoui_render()
-                set_backend(None)
-                if animating:
-                    self._pytoui_needs_display = (
-                        True  # after _render() so it's not cleared
-                    )
-        else:
-
-            def _render_frame(fb) -> None:
-                set_backend(fb)
-                self.pytoui_render()
-                set_backend(None)
-
-        launch_runtime(self, _render_frame)
+        launch_runtime(self, _RenderLoop(self, animated))
 
     def close(self):
         """Close a view that was presented via View.present()."""

@@ -43,6 +43,7 @@ _a public classes that is full/partially or not implemented bellow, after core p
 
 View classes:
 * ~~View~~
+  * View.draw_snapshot
 * ~~Button~~
 * ButtonItem (not yet implemented in View)
 * ~~ImageView - _make_test_image works only on PC~~

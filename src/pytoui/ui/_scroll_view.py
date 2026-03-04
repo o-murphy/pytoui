@@ -115,8 +115,7 @@ class _ScrollViewInternals(_ViewInternals):
         # ── pytoui setup (desktop only) ───────────────────────────────────────
         self.mouse_scroll_enabled = True
         self._pytoui_is_scroll_container = True
-        # NOTE: not public API, idk if we need to make it public
-        self._pytoui_draw_overlay = self._draw_indicators
+        self._pytoui_draw_overlay = self._draw_scroll_indicators
 
     # ── Pythonista public API ──────────────────────────────────────────────────
 
@@ -562,7 +561,7 @@ class _ScrollViewInternals(_ViewInternals):
 
     # ── Scroll indicators overlay ──────────────────────────────────────────────
 
-    def _draw_indicators(self):
+    def _draw_scroll_indicators(self):
         """Draw scroll indicator bars on top of content."""
         fw, fh = self.frame.size
         now = time.monotonic()

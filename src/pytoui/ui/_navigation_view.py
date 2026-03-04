@@ -44,7 +44,7 @@ class _NavigationViewInternals(_ViewInternals):
         self._back_button = Button()
         self._back_button.title = "< Back"
         self._back_button.hidden = True  # Спочатку схована
-        self._back_button.action = self.pop_view
+        self._back_button.action = lambda _: self.pop_view()
 
         self._title_label = Label()
         self._title_label.alignment = ALIGN_CENTER
@@ -103,7 +103,7 @@ class _NavigationViewInternals(_ViewInternals):
         self.set_needs_display()
 
     def push_view(self, view: _ViewInternals, animated: bool = True):
-        """Додає view в стек навігації"""
+        """Add view to nav stack"""
         if view in self._navigation_stack:
             return
 
@@ -125,7 +125,7 @@ class _NavigationViewInternals(_ViewInternals):
         self.set_needs_layout()
 
     def pop_view(self, animated: bool = True):
-        """Видаляє верхній view зі стеку"""
+        """Removes top view from nav stack"""
         if len(self._navigation_stack) <= 1:
             return  # prevent last view from deletion
 

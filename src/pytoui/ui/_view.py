@@ -439,6 +439,27 @@ class _ViewInternals:
         if hasattr(self._ref, "update"):
             self._ref.update()
 
+    def _apply_autoresizing_to_view(self, sv: _ViewInternals, dw: float, dh: float):
+        flex = sv._flex
+        if not flex:
+            return
+        f = sv.frame
+        h_flexible = sum(c in flex for c in "LWR")
+        if h_flexible:
+            share = dw / h_flexible
+            x = f.x + (share if "L" in flex else 0.0)
+            w = f.w + (share if "W" in flex else 0.0)
+        else:
+            x, w = f.x, f.w
+        v_flexible = sum(c in flex for c in "THB")
+        if v_flexible:
+            share = dh / v_flexible
+            y = f.y + (share if "T" in flex else 0.0)
+            h = f.h + (share if "H" in flex else 0.0)
+        else:
+            y, h = f.y, f.h
+        sv.frame = Rect(x, y, w, h)
+
     def pytoui_apply_autoresizing(self, old_w: float, old_h: float):
         """Resize subviews based on their flex flags after this view's size changed."""
         bw, bh = self._bounds.size
@@ -446,26 +467,12 @@ class _ViewInternals:
         dh = bh - old_h
         if dw == 0.0 and dh == 0.0:
             return
+
         for sv in self._subviews:
-            flex = sv._flex
-            if not flex:
-                continue
-            f = sv.frame
-            h_flexible = sum(c in flex for c in "LWR")
-            if h_flexible:
-                share = dw / h_flexible
-                x = f.x + (share if "L" in flex else 0.0)
-                w = f.w + (share if "W" in flex else 0.0)
-            else:
-                x, w = f.x, f.w
-            v_flexible = sum(c in flex for c in "THB")
-            if v_flexible:
-                share = dh / v_flexible
-                y = f.y + (share if "T" in flex else 0.0)
-                h = f.h + (share if "H" in flex else 0.0)
-            else:
-                y, h = f.y, f.h
-            sv.frame = Rect(x, y, w, h)  # bypass setter to avoid recursion
+            self._apply_autoresizing_to_view(sv, dw, dh)
+
+        for sv in self._pytoui_internal_subviews:
+            self._apply_autoresizing_to_view(sv, dw, dh)
 
     def pytoui_hit_test(self, x: float, y: float) -> _ViewInternals | None:
         """Recursively searches for the highest Z-index View
@@ -549,6 +556,8 @@ class _ViewInternals:
         """Recursively clear needs_display without rendering (used for culled views)."""
         self._pytoui_needs_display = False
         for sv in self._subviews:
+            sv._clear_dirty_tree()
+        for sv in self._pytoui_internal_subviews:
             sv._clear_dirty_tree()
 
     def _pytoui_render_self(self, fw: float, fh: float):
@@ -676,7 +685,7 @@ class _ViewInternals:
 
     def add_subview(self, view: _ViewInternals):
         """Add another view as a child of this view."""
-        if view._superview is self._ref:
+        if view._superview is self:
             return
         if view._superview is not None:
             view._superview.remove_subview(view)
@@ -685,12 +694,13 @@ class _ViewInternals:
 
     def remove_subview(self, view: _ViewInternals):
         """Remove a child view."""
-        self._subviews.remove(view)
-        view._superview = None
+        if view in self._subviews:
+            self._subviews.remove(view)
+            view._superview = None
 
     def pytoui_add_internal_subview(self, view: _ViewInternals):
         """Add another view as a child of this view."""
-        if view._superview is self._ref:
+        if view._superview is self:
             return
         if view._superview is not None:
             view._superview.pytoui_remove_internal_subview(view)
@@ -699,26 +709,35 @@ class _ViewInternals:
 
     def pytoui_remove_internal_subview(self, view: _ViewInternals):
         """Remove a child view."""
-        self._pytoui_internal_subviews.remove(view)
-        view._superview = None
+        if view in self._pytoui_internal_subviews:
+            self._pytoui_internal_subviews.remove(view)
+            view._superview = None
+            view.set_needs_display()
 
     def bring_to_front(self):
         """Show the view on top of its sibling views."""
         sv = self._superview
         if sv is None:
             return
-        siblings = self._subviews
-        siblings.remove(self)
-        siblings.append(self)
+
+        if self in sv._subviews:
+            sv._subviews.remove(self)
+            sv._subviews.append(self)
+        elif self in sv._pytoui_internal_subviews:
+            sv._pytoui_internal_subviews.remove(self)
+            sv._pytoui_internal_subviews.append(self)
 
     def send_to_back(self):
         """Put the view behind its sibling views."""
         sv = self._superview
         if sv is None:
             return
-        siblings = self._subviews
-        siblings.remove(self)
-        siblings.insert(0, self)
+        if self in sv._subviews:
+            sv._subviews.remove(self)
+            sv._subviews.insert(0, self)
+        elif self in sv._pytoui_internal_subviews:
+            sv._pytoui_internal_subviews.remove(self)
+            sv._pytoui_internal_subviews.insert(0, self)
 
     def set_needs_display(self):
         self._pytoui_needs_display = True
@@ -728,11 +747,21 @@ class _ViewInternals:
         self.set_needs_display()
 
     def size_to_fit(self):
-        """Resize to enclose all subviews."""
-        if not self._subviews:
+        """Resize to enclose all subviews (including internal ones)."""
+        if not self._subviews and not self._pytoui_internal_subviews:
             return
-        max_w = max(sv.frame.x + sv.frame.w for sv in self._subviews)
-        max_h = max(sv.frame.y + sv.frame.h for sv in self._subviews)
+
+        max_w = 0.0
+        max_h = 0.0
+
+        for sv in self._subviews:
+            max_w = max(max_w, sv.frame.x + sv.frame.w)
+            max_h = max(max_h, sv.frame.y + sv.frame.h)
+
+        for sv in self._pytoui_internal_subviews:
+            max_w = max(max_w, sv.frame.x + sv.frame.w)
+            max_h = max(max_h, sv.frame.y + sv.frame.h)
+
         self.frame = Rect(self._frame.x, self._frame.y, max_w, max_h)
 
     def present(

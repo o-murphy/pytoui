@@ -86,6 +86,7 @@ class _ViewInternals:
         # System-level overlay draw function called after subviews.
         # Each entry is a zero-argument callable rendered in the current GState
         # (clipped to this view's bounds). Used by ScrollView for indicators.
+        "_pytoui_internal_subviews",
         "_pytoui_draw_overlay",
     )
 
@@ -123,6 +124,8 @@ class _ViewInternals:
         self._pytoui_close_event: Event = Event()
         self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
 
+        # CUSTOM RENDER LAYERS
+        self._pytoui_internal_subviews: list[_ViewInternals] = []
         self._pytoui_draw_overlay: Callable[[], None] | None = None
 
     @property
@@ -262,6 +265,11 @@ class _ViewInternals:
     def subviews(self) -> list[_ViewInternals]:
         """(readonly) A tuple of the view's children."""
         return self._subviews
+
+    @property
+    def pytoui_internal_subviews(self) -> list[_ViewInternals]:
+        """(readonly) A tuple of the view's children."""
+        return self._pytoui_internal_subviews
 
     @property
     def superview(self) -> _ViewInternals | None:
@@ -469,10 +477,21 @@ class _ViewInternals:
         fw, fh = self._frame.size
         if not (ox <= x < ox + fw and oy <= y < oy + fh):
             return None
+
+        # 1. Overlay has not hit-test
+
+        # 2. Public subviews
         for child in reversed(self._subviews):
             target = child.pytoui_hit_test(x, y)
             if target is not None and target._touch_enabled:
                 return target
+
+        # 3. Internal subviews
+        for child in reversed(self._pytoui_internal_subviews):
+            target = child.pytoui_hit_test(x, y)
+            if target and target._touch_enabled:
+                return target
+
         return self if self._touch_enabled else None
 
     def pytoui_scroll_hit_test(self, x: float, y: float) -> _ViewInternals | None:
@@ -487,6 +506,10 @@ class _ViewInternals:
         fw, fh = self._frame.size
         if not (ox <= x < ox + fw and oy <= y < oy + fh):
             return None
+
+        # 1. Overlay has not hit-test
+
+        # 2. Public subviews
         for child in reversed(self._subviews):
             target = child.pytoui_scroll_hit_test(x, y)
             if target is not None and getattr(
@@ -501,6 +524,23 @@ class _ViewInternals:
                 ):
                     break
                 return target
+
+        # 3. Internal subviews
+        for child in reversed(self._pytoui_internal_subviews):
+            target = child.pytoui_scroll_hit_test(x, y)
+            if target is not None and getattr(
+                target, "_pytoui_mouse_scroll_enabled", False
+            ):
+                # If the current view is a scroll container but the child is
+                # not (e.g. Slider/SegmentedControl inside a ScrollView),
+                # prefer the container — matches iOS where wheel events go to
+                # the scroll view, not to inline controls inside it.
+                if self._pytoui_is_scroll_container and not getattr(
+                    target, "_pytoui_is_scroll_container", False
+                ):
+                    break
+                return target
+
         return self if getattr(self, "_pytoui_mouse_scroll_enabled", False) else None
 
     # ── rendering ─────────────────────────────────────────────────────────────
@@ -560,6 +600,21 @@ class _ViewInternals:
                 continue
             sv.pytoui_render()
 
+    def _pytoui_render_internal_subviews(self, fw: float, fh: float):
+        """Traverse children"""
+        bx, by = self._bounds.x, self._bounds.y
+        for sv in self._pytoui_internal_subviews:
+            sf = sv._frame
+            if (
+                sf.x + sf.w <= bx
+                or sf.x >= bx + fw
+                or sf.y + sf.h <= by
+                or sf.y >= by + fh
+            ):
+                sv._clear_dirty_tree()
+                continue
+            sv.pytoui_render()
+
     def _pytoui_render_overlay(self):
         """
         System overlay: drawn on top of all regular subviews,
@@ -569,11 +624,14 @@ class _ViewInternals:
         if callable(fn):
             fn()
 
-    def pytoui_render(self):
+    def pytoui_layout(self):
         if self._pytoui_needs_layout:
             if hasattr(self._ref, "layout"):
                 self._ref.layout()
             self._pytoui_needs_layout = False
+
+    def pytoui_render(self):
+        self.pytoui_layout()
 
         self._pytoui_needs_display = False
 
@@ -603,6 +661,7 @@ class _ViewInternals:
             self._pytoui_render_self(fw, fh)
 
             # --- Traverse children ALWAYS ---
+            self._pytoui_render_internal_subviews(fw, fh)
             self._pytoui_render_subviews(fw, fh)
 
             # System overlay: drawn on top of all regular subviews,
@@ -627,6 +686,20 @@ class _ViewInternals:
     def remove_subview(self, view: _ViewInternals):
         """Remove a child view."""
         self._subviews.remove(view)
+        view._superview = None
+
+    def pytoui_add_internal_subview(self, view: _ViewInternals):
+        """Add another view as a child of this view."""
+        if view._superview is self._ref:
+            return
+        if view._superview is not None:
+            view._superview.pytoui_remove_internal_subview(view)
+        self._pytoui_internal_subviews.append(view)
+        view._superview = self
+
+    def pytoui_remove_internal_subview(self, view: _ViewInternals):
+        """Remove a child view."""
+        self._pytoui_internal_subviews.remove(view)
         view._superview = None
 
     def bring_to_front(self):

@@ -23,9 +23,11 @@ def main():
 
     v1 = TestView()
     v1.background_color = "blue"
+    v1.name = "View 1"
 
     v2 = TestView()
     v2.background_color = "green"
+    v2.name = "View 2"
 
     root = ui.NavigationView(v1)
     v1.parent = root

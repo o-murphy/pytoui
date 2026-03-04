@@ -650,9 +650,5 @@ class BaseRuntime:
     # ------------------------------------------------------------------
 
     def _update_hierarchy(self, view: _ViewInternals, now: float):
-        if view.update_interval > 0:
-            if now - view.pytoui_last_update_time >= view.update_interval:
-                view.pytoui_update()
-                view.pytoui_last_update_time = now
-        for sv in view._subviews:
-            self._update_hierarchy(sv, now)
+        """Delegate update propagation to the view itself."""
+        view.pytoui_update_tree(now)

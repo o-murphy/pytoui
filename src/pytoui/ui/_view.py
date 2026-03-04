@@ -639,6 +639,22 @@ class _ViewInternals:
                 self._ref.layout()
             self._pytoui_needs_layout = False
 
+    def pytoui_update_tree(self, now: float):
+        """Update this view and propagate to all subviews (public and internal)."""
+        # Update self if needed
+        if self._update_interval > 0:
+            if now - self._pytoui_last_update_time >= self._update_interval:
+                self.pytoui_update()
+                self._pytoui_last_update_time = now
+
+        # Update public subviews
+        for sv in self._subviews:
+            sv.pytoui_update_tree(now)
+
+        # Update internal subviews
+        for sv in self._pytoui_internal_subviews:
+            sv.pytoui_update_tree(now)
+
     def pytoui_render(self):
         self.pytoui_layout()
 

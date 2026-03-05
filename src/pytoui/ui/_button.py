@@ -8,7 +8,6 @@ from pytoui._platform import (
 )
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._draw import draw_string, measure_string
-from pytoui.ui._image import Image
 from pytoui.ui._internals import _final_
 from pytoui.ui._types import (
     Rect,
@@ -18,7 +17,9 @@ from pytoui.ui._types import (
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
+    from pytoui.ui._draw import Image
     from pytoui.ui._types import _RGBA, _Action, _Font
+
 
 __all__ = ("Button",)
 

@@ -44,7 +44,7 @@ class _NavigationViewInternals(_ViewInternals):
         # Create UI elements
         self._back_button = Button()
         self._back_button.title = f"< {self.DEFAULT_BACK_BTN_TITLE}"
-        self._back_button.hidden = True  # Спочатку схована
+        self._back_button.hidden = True
         self._back_button.action = lambda _: self.pop_view()
 
         self._title_label = Label()
@@ -56,7 +56,7 @@ class _NavigationViewInternals(_ViewInternals):
         nav_h = self.NAVIGATION_BAR_HEIGHT if not self._navigation_bar_hidden else 0
 
         if not self._navigation_bar_hidden:
-            self._back_button.frame = (0, (nav_h - 30) / 2, 120, 30)  # Центруємо кнопку
+            self._back_button.frame = (0, (nav_h - 30) / 2, 120, 30)
             self._title_label.frame = (
                 120,
                 0,

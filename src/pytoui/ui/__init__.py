@@ -126,16 +126,19 @@ from pytoui.ui._constants import (
 )
 from pytoui.ui._draw import (
     GState,
+    Image,
     ImageContext,
     Path,
     Transform,
     animate,
+    begin_image_context,
     cancel_delays,
     concat_ctm,
     convert_point,
     convert_rect,
     delay,
     draw_string,
+    end_image_context,
     fill_rect,
     get_keyboard_frame,
     get_screen_size,
@@ -149,7 +152,6 @@ from pytoui.ui._draw import (
     set_color,
     set_shadow,
 )
-from pytoui.ui._image import Image
 from pytoui.ui._image_view import ImageView
 from pytoui.ui._internals import settrace
 from pytoui.ui._label import Label
@@ -209,7 +211,6 @@ __all__ = (
     # SegmentedControl
     "SegmentedControl",
     # Image
-    "Image",
     "ImageView",
     # ActivityIndicator
     "ActivityIndicator",
@@ -221,6 +222,7 @@ __all__ = (
     "NavigationView",
     # Drawing
     "GState",
+    "Image",
     "ImageContext",
     "parse_color",
     "set_alpha",
@@ -232,6 +234,8 @@ __all__ = (
     "draw_string",
     "measure_string",
     "Path",
+    "begin_image_context",
+    "end_image_context",
     # animate / delay / threading
     "animate",
     "delay",

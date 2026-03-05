@@ -6,7 +6,7 @@ from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._internals import _final_
 
 if TYPE_CHECKING:
-    from pytoui.ui._image import Image
+    from pytoui.ui._draw import Image
     from pytoui.ui._types import _RGBA, _Action
 
 __all__ = ("ButtonItem",)

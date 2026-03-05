@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 from typing import TYPE_CHECKING
+from urllib.request import urlopen
 
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import (
@@ -20,11 +21,11 @@ from pytoui.ui._constants import (
     CONTENT_TOP_RIGHT,
     RENDERING_MODE_TEMPLATE,
 )
+from pytoui.ui._draw import Image
 from pytoui.ui._internals import _final_
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
-    from pytoui.ui._image import Image
     from pytoui.ui._types import _ContentMode
 
 __all__ = ("ImageView",)
@@ -81,10 +82,6 @@ class _ImageView(View):
 
         def _fetch():
             try:
-                from urllib.request import urlopen
-
-                from pytoui.ui._image import Image
-
                 data = urlopen(url).read()
                 self.image = Image.from_data(data)
             except Exception:

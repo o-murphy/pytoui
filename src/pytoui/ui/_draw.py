@@ -28,6 +28,7 @@ NOTE: If needed we should delegate some operations to rust (osdbuf/src/lib.rs)
 
 from __future__ import annotations
 
+import ctypes
 import math
 import re
 import time
@@ -58,6 +59,7 @@ from pytoui.ui._constants import (
     LB_WORD_WRAP,
     LINE_CAP_BUTT,
     LINE_JOIN_MITER,
+    RENDERING_MODE_AUTOMATIC,
 )
 from pytoui.ui._internals import _final_
 from pytoui.ui._types import (
@@ -79,6 +81,7 @@ if TYPE_CHECKING:
         _LineJoinMode,
         _PointLike,
         _RectLike,
+        _RenderingMode,
         _UiStyle,
     )
 
@@ -88,6 +91,7 @@ __all__ = (
     "ImageContext",
     "Path",
     "Transform",
+    "Image",
     "_content_mode_transform",
     "_record",
     "_set_origin",
@@ -116,6 +120,372 @@ __all__ = (
 # -- Drawing context (thread-local) ------------------------------------------
 
 
+class _ImageContext:
+    prev_backend: FrameBuffer | None
+    prev_origin: tuple[float, float] | None
+    buf: ctypes.Array
+    fb: FrameBuffer | None
+    width: float
+    height: float
+    scale: float
+
+
+_image_ctx = cast(_ImageContext, local())
+
+
+@_final_
+class Image:
+    """Lightweight image wrapper holding raw RGBA pixel data."""
+
+    __slots__ = (
+        "_data",  # bytes — raw RGBA pixels, or None
+        "_name",
+        "_rendering_mode",
+        "_scale",
+        "_size",
+    )
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Creates an empty image. Use class methods from_data() / named() instead."""
+        self._name: str | None = None
+        self._scale: float = 1.0
+        self._size: Size = Size(0.0, 0.0)
+        self._data: bytes | None = None
+        self._rendering_mode: _RenderingMode = RENDERING_MODE_AUTOMATIC
+
+    @classmethod
+    def _make(
+        cls,
+        *,
+        width: float = 0,
+        height: float = 0,
+        scale: float = 1.0,
+        data: bytes | None = None,
+        name: str | None = None,
+    ) -> Image:
+        """Internal factory — not part of the public API."""
+        img: Image = cls.__new__(cls)
+        img._name = name
+        img._scale = float(scale)
+        img._size = Size(float(width), float(height))
+        img._data = data
+        img._rendering_mode = RENDERING_MODE_AUTOMATIC
+        return img
+
+    # -- Class constructors ---------------------------------------------------
+
+    @classmethod
+    def from_data(cls, image_data: bytes, scale: float = 1.0) -> Image:
+        """Create an image from binary data (png, jpeg, etc.)."""
+        try:
+            import io
+
+            from PIL import Image as _PILImage
+
+            pil = _PILImage.open(io.BytesIO(image_data)).convert("RGBA")
+            w, h = pil.size
+            return cls._make(
+                width=w / scale,
+                height=h / scale,
+                scale=scale,
+                data=pil.tobytes(),
+            )
+        except ImportError:
+            return cls._make()
+
+    @classmethod
+    def from_image_context(cls) -> Image:
+        """Capture the current ImageContext buffer as an Image.
+
+        This captures the image from the currently active context
+        created by begin_image_context() or ImageContext.
+        """
+        from pytoui.ui._draw import _image_ctx
+
+        # check if has global ctx with _image_ctx
+        if not hasattr(_image_ctx, "fb") or _image_ctx.fb is None:
+            # If no global ctx
+            from pytoui.ui._draw import _get_draw_ctx
+
+            ctx = _get_draw_ctx()
+            ic = getattr(ctx, "_image_context", None)
+            if ic is not None:
+                return ic.get_image()
+            return cls._make()
+
+        # Take data from _image_ctx
+        buf = _image_ctx.buf
+        width = _image_ctx.width
+        height = _image_ctx.height
+        scale = _image_ctx.scale
+        pw = int(width * scale)
+        ph = int(height * scale)
+
+        # Convert premultiplied RGBA to straight RGBA
+        raw = bytearray(buf[: pw * ph * 4])
+        for i in range(0, len(raw), 4):
+            a = raw[i + 3]
+            if a == 0:
+                raw[i] = raw[i + 1] = raw[i + 2] = 0
+            elif a < 255:
+                raw[i] = min(255, raw[i] * 255 // a)
+                raw[i + 1] = min(255, raw[i + 1] * 255 // a)
+                raw[i + 2] = min(255, raw[i + 2] * 255 // a)
+
+        return cls._make(
+            width=width,
+            height=height,
+            scale=scale,
+            data=bytes(raw),
+        )
+
+    @classmethod
+    def named(cls, image_name: str, scale: float = 1.0) -> Image:
+        """Create an Image from a built-in image name or local file path."""
+        try:
+            from PIL import Image as _PILImage
+
+            pil = _PILImage.open(image_name).convert("RGBA")
+            w, h = pil.size
+            return cls._make(
+                width=w / scale,
+                height=h / scale,
+                scale=scale,
+                data=pil.tobytes(),
+                name=image_name,
+            )
+        except Exception:
+            return cls._make(name=image_name)
+
+    # -- Properties -----------------------------------------------------------
+
+    @property
+    def name(self) -> str | None:
+        return self._name
+
+    @property
+    def scale(self) -> float:
+        """(readonly) The scale factor of the image."""
+        return self._scale
+
+    @property
+    def size(self) -> Size:
+        """(readonly) The image's size in points (pixels / scale)."""
+        return self._size
+
+    # -- Drawing --------------------------------------------------------------
+
+    def draw(self, *args):
+        """Draw the image into the current drawing context.
+
+        Signatures:
+            draw()                    — draw at (0, 0) with natural size
+            draw(x, y, width, height) — draw at (x, y) scaled to (width, height)
+            draw(rect)                — draw in rect (Rect / 4-tuple)
+        """
+        if self._data is None:
+            return
+
+        import ctypes
+
+        from pytoui.ui._draw import _get_draw_ctx
+
+        ctx = _get_draw_ctx()
+        fb = ctx.backend
+        if fb is None:
+            return
+
+        pw = int(self._size.w * self._scale)
+        ph = int(self._size.h * self._scale)
+
+        # Parse arguments
+        if len(args) == 0:
+            x, y, dw, dh = 0.0, 0.0, float(pw), float(ph)
+        elif len(args) == 4:
+            x, y, dw, dh = (
+                float(args[0]),
+                float(args[1]),
+                float(args[2]),
+                float(args[3]),
+            )
+        elif len(args) == 1:
+            r = args[0]
+            x, y, dw, dh = float(r[0]), float(r[1]), float(r[2]), float(r[3])
+        else:
+            x, y, dw, dh = 0.0, 0.0, float(pw), float(ph)
+
+        scale = getattr(fb, "scale_factor", 1.0)
+        m = ctx.ctm
+        ox, oy = ctx.origin
+        dst_x = int((m.a * x + m.c * y + m.tx + ox) * scale)
+        dst_y = int((m.b * x + m.d * y + m.ty + oy) * scale)
+        dst_w = int(dw * scale)
+        dst_h = int(dh * scale)
+
+        buf = (ctypes.c_ubyte * len(self._data)).from_buffer_copy(self._data)
+        if dst_w == pw and dst_h == ph:
+            fb.blit(buf, pw, ph, dst_x, dst_y, blend=True)
+        else:
+            fb.blit_scaled(buf, pw, ph, dst_x, dst_y, dst_w, dst_h, blend=True)
+
+    def clip_to_mask(self, x, y, width, height):
+        """Use the image as a mask for following drawing operations."""
+
+    def draw_as_pattern(self, x: float, y: float, width: float, height: float):
+        """Fill a rectangle with the image as a repeating pattern."""
+
+    def resizable_image(self, top: float, left: float, bottom: float, right: float):
+        """Create a 9-patch image with the given edges."""
+
+    def show(self):
+        """Show the image in the console (stub)."""
+        print(f"<Image {self._size.w}x{self._size.h} scale={self._scale}>")
+
+    def to_jpeg(self, quality: int = 75) -> bytes:
+        """Return the image as JPEG bytes."""
+        if self._data is None:
+            return b""
+        try:
+            import io
+
+            from PIL import Image as _PILImage
+
+            pw = int(self._size.w * self._scale)
+            ph = int(self._size.h * self._scale)
+            pil = _PILImage.frombytes("RGBA", (pw, ph), self._data).convert("RGB")
+            buf = io.BytesIO()
+            pil.save(buf, format="JPEG", quality=quality)
+            return buf.getvalue()
+        except ImportError:
+            return b""
+
+    def to_png(self) -> bytes:
+        """Return the image as PNG bytes."""
+        if self._data is None:
+            return b""
+        try:
+            import io
+
+            from PIL import Image as _PILImage
+
+            pw = int(self._size.w * self._scale)
+            ph = int(self._size.h * self._scale)
+            pil = _PILImage.frombytes("RGBA", (pw, ph), self._data)
+            buf = io.BytesIO()
+            pil.save(buf, format="PNG")
+            return buf.getvalue()
+        except ImportError:
+            return b""
+
+    @property
+    def rendering_mode(self) -> _RenderingMode:
+        """The image's rendering mode (RENDERING_MODE_*)."""
+        return self._rendering_mode
+
+    def with_rendering_mode(self, mode: _RenderingMode) -> Image:
+        """Return a copy of this image with the specified rendering mode."""
+        img = Image._make(
+            width=self._size.w,
+            height=self._size.h,
+            scale=self._scale,
+            data=self._data,
+            name=self._name,
+        )
+        img._rendering_mode = mode
+        return img
+
+
+def begin_image_context(width: float, height: float, scale: float = 1.0) -> None:
+    """Begin offscreen drawing context.
+
+    Args:
+        width: Width in points
+        height: Height in points
+        scale: Scale factor (pixels per point)
+
+    After calling this function, all drawing operations are redirected
+    to an offscreen buffer. Call end_image_context() to finish and get the image.
+
+    Example:
+        ui.begin_image_context(100, 100)
+        ui.set_color("red")
+        ui.Path.oval(0, 0, 100, 100).fill()
+        img = ui.end_image_context()
+    """
+    if hasattr(_image_ctx, "fb") and _image_ctx.fb is not None:
+        raise RuntimeError("Nested image contexts are not supported")
+
+    # Save previous ctx
+    ctx = _get_draw_ctx()
+    _image_ctx.prev_backend = ctx.backend
+    _image_ctx.prev_origin = ctx.origin
+
+    # Create new framebuffer
+    pw = int(width * scale)
+    ph = int(height * scale)
+
+    try:
+        import ctypes
+
+        from pytoui._osdbuf import FrameBuffer
+
+        buf = (ctypes.c_ubyte * (pw * ph * 4))()
+        fb = FrameBuffer(buf, pw, ph)
+
+        # Set new backend
+        ctx.backend = fb
+        ctx.origin = (0.0, 0.0)
+
+        # Save buffer for end_image_context
+        _image_ctx.buf = buf
+        _image_ctx.fb = fb
+        _image_ctx.width = width
+        _image_ctx.height = height
+        _image_ctx.scale = scale
+
+        _sync_ctm_to_rust(ctx)
+
+    except (ImportError, RuntimeError) as e:
+        raise RuntimeError(f"Failed to create image context: {e}")
+
+
+def end_image_context() -> Image:
+    """End offscreen drawing context and return the resulting image."""
+    ctx = _get_draw_ctx()
+
+    if not hasattr(_image_ctx, "fb") or _image_ctx.fb is None:
+        raise RuntimeError("No active image context")
+
+    # Use from_image_context() for image creation
+    img = Image.from_image_context()
+
+    # Restore previous backend
+    ctx.backend = _image_ctx.prev_backend
+    ctx.origin = _image_ctx.prev_origin
+    _sync_ctm_to_rust(ctx)
+
+    # Destroy framebuffer
+    try:
+        _image_ctx.fb.destroy()
+    except Exception:
+        pass
+
+    # Cleanup thread-local vars
+    for attr in [
+        "fb",
+        "buf",
+        "width",
+        "height",
+        "scale",
+        "prev_backend",
+        "prev_origin",
+    ]:
+        if hasattr(_image_ctx, attr):
+            delattr(_image_ctx, attr)
+
+    return img
+
+
 class ImageContext:
     """Context manager for offscreen drawing into an Image.
 
@@ -131,72 +501,21 @@ class ImageContext:
         self.width = width
         self.height = height
         self.scale = scale
-        self._fb: FrameBuffer | None = None
-        self._buf = None
-        self._prev_backend = None
-        self._prev_origin = None
 
     def __enter__(self):
-        import ctypes
-
-        ctx = _get_draw_ctx()
-        self._prev_backend = ctx.backend
-
-        pw = int(self.width * self.scale)
-        ph = int(self.height * self.scale)
-
-        try:
-            from pytoui._osdbuf import FrameBuffer
-
-            self._buf = (ctypes.c_ubyte * (pw * ph * 4))()
-            self._fb = FrameBuffer(self._buf, pw, ph)
-            ctx.backend = self._fb
-        except (ImportError, RuntimeError):
-            pass
-
-        self._prev_origin = ctx.origin
-        ctx.origin = (0.0, 0.0)
-        ctx._image_context = self
-        _sync_ctm_to_rust(ctx)
+        begin_image_context(self.width, self.height, self.scale)
         return self
 
     def __exit__(self, type, value, traceback):
-        ctx = _get_draw_ctx()
-        ctx.backend = self._prev_backend
-        ctx.origin = self._prev_origin
-        ctx._image_context = None
-        if self._fb is not None:
-            try:
-                self._fb.destroy()
-            except Exception:
-                pass
-            self._fb = None
+        end_image_context()
 
     def get_image(self):
         """Create an Image from the current drawing."""
-        from pytoui.ui._image import _Image
 
-        if self._buf is None:
-            return _Image._make()
-        pw = int(self.width * self.scale)
-        ph = int(self.height * self.scale)
-        # FrameBuffer stores premultiplied RGBA (tiny-skia requirement).
-        # Image._data must be straight (non-premultiplied) RGBA, as expected by blit().
-        raw = bytearray(self._buf[: pw * ph * 4])
-        for i in range(0, len(raw), 4):
-            a = raw[i + 3]
-            if a == 0:
-                raw[i] = raw[i + 1] = raw[i + 2] = 0
-            elif a < 255:
-                raw[i] = min(255, raw[i] * 255 // a)
-                raw[i + 1] = min(255, raw[i + 1] * 255 // a)
-                raw[i + 2] = min(255, raw[i + 2] * 255 // a)
-        return _Image._make(
-            width=self.width,
-            height=self.height,
-            scale=self.scale,
-            data=bytes(raw),
-        )
+        return Image.from_image_context()
+
+
+# -- Transform ------------------------------------------
 
 
 @_final_
@@ -357,7 +676,7 @@ class _DrawingContext:
     blend_mode: _BlendMode
     backend: FrameBuffer | None
     clip: Rect | None
-    origin: tuple[float, float]
+    origin: tuple[float, float] | None
     shadow: tuple[_RGBA | None, float, float, float] | None
     ctm: Transform
     alpha: float
@@ -1020,7 +1339,10 @@ def draw_string(
     if fb is None:
         return
 
-    ox, oy = ctx.origin
+    if ctx.origin:
+        ox, oy = ctx.origin
+    else:
+        ox, oy = 0, 0
     m = ctx.ctm
     if not isinstance(rect, Rect):
         rect = Rect(*rect)
@@ -1728,16 +2050,19 @@ from pytoui._platform import IS_PYTHONISTA, pytoui_desktop_only
 if IS_PYTHONISTA:
     from ui import (  # type: ignore[import-not-found,no-redef,assignment]
         GState,
+        Image,
         ImageContext,
         Path,
         Transform,
         animate,
+        begin_image_context,
         cancel_delays,
         concat_ctm,
         convert_point,
         convert_rect,
         delay,
         draw_string,
+        end_image_context,
         fill_rect,
         get_screen_size,
         get_ui_style,

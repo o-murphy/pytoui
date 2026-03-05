@@ -275,7 +275,7 @@ class Image:
 
     # -- Drawing --------------------------------------------------------------
 
-    def draw(self, *args):
+    def draw(self, *args) -> None:
         """Draw the image into the current drawing context.
 
         Signatures:
@@ -316,7 +316,11 @@ class Image:
 
         scale = getattr(fb, "scale_factor", 1.0)
         m = ctx.ctm
-        ox, oy = ctx.origin
+
+        if ctx.origin:
+            ox, oy = ctx.origin
+        else:
+            ox, oy = 0, 0
         dst_x = int((m.a * x + m.c * y + m.tx + ox) * scale)
         dst_y = int((m.b * x + m.d * y + m.ty + oy) * scale)
         dst_w = int(dw * scale)
@@ -328,17 +332,89 @@ class Image:
         else:
             fb.blit_scaled(buf, pw, ph, dst_x, dst_y, dst_w, dst_h, blend=True)
 
-    def clip_to_mask(self, x, y, width, height):
-        """Use the image as a mask for following drawing operations."""
+    def clip_to_mask(self, x: float, y: float, width: float, height: float) -> None:
+        """Use the image as a mask for following drawing operations.
+
+        Note: This method is not yet fully implemented in pytoui.
+        For now, it only sets a rectangular clip based on the image bounds.
+        """
+        # FIXME: add method to rust and implement
+
+        path = Path.rect(x, y, width, height)
+        path.add_clip()
+
+        if __debug__:
+            import warnings
+
+            warnings.warn(
+                "Image.clip_to_mask() is not yet fully implemented in pytoui",
+                UserWarning,
+                stacklevel=2,
+            )
 
     def draw_as_pattern(self, x: float, y: float, width: float, height: float):
-        """Fill a rectangle with the image as a repeating pattern."""
+        """Fill a rectangle with the image as a repeating pattern.
+
+        Note: This method is not yet implemented in pytoui.
+        It currently does nothing and will be implemented in a future release.
+
+        Args:
+            x: X-coordinate of the rectangle to fill
+            y: Y-coordinate of the rectangle to fill
+            width: Width of the rectangle to fill
+            height: Height of the rectangle to fill
+        """
+        # FIXME: implement pattern tiling
+        # This should repeat the image to fill the specified rectangle
+        if __debug__:
+            import warnings
+
+            warnings.warn(
+                "Image.draw_as_pattern() is not yet implemented in pytoui",
+                UserWarning,
+                stacklevel=2,
+            )
 
     def resizable_image(self, top: float, left: float, bottom: float, right: float):
-        """Create a 9-patch image with the given edges."""
+        """Create a 9-patch image with the given edges.
+
+        Note: This method is not yet implemented in pytoui.
+        It currently returns a copy of the image without resizing capabilities.
+
+        Args:
+            top: Top inset that should not stretch
+            left: Left inset that should not stretch
+            bottom: Bottom inset that should not stretch
+            right: Right inset that should not stretch
+
+        Returns:
+            A new Image object (same as original for now)
+        """
+        # FIXME: implement 9-patch resizing
+        # For now, just return a copy of the image
+        img = Image._make(
+            width=self._size.w,
+            height=self._size.h,
+            scale=self._scale,
+            data=self._data,
+            name=self._name,
+        )
+        img._rendering_mode = self._rendering_mode
+
+        if __debug__:
+            import warnings
+
+            warnings.warn(
+                "Image.resizable_image() is not yet fully implemented in pytoui",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        return img
 
     def show(self):
         """Show the image in the console (stub)."""
+        # FIXME: maybe show in separate window with ImageView.present
         print(f"<Image {self._size.w}x{self._size.h} scale={self._scale}>")
 
     def to_jpeg(self, quality: int = 75) -> bytes:

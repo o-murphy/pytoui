@@ -11,6 +11,25 @@ HOT:
 * NavigationView on stack pop/push animations like ScrollView paging animation
 * View:
   * scroll_enabled (we have just mouse_scroll_enabled)
+* Image:
+  for Image.clip_to_mask
+  ```rust
+  pub extern "C" fn set_mask_from_image(
+      fb_handle: i32,
+      image_data: *const u8,
+      img_w: i32,
+      img_h: i32,
+      dst_x: i32,
+      dst_y: i32,
+      dst_w: i32,
+      dst_h: i32,
+  ) {
+      // 1. lookup framebuffer by handle
+      // 2. Create mask from image alpha chanel
+      // 3. Set as current mask for clipping
+      // 4. All next drawings will be clipped
+  }
+  ```
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)

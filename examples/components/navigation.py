@@ -17,7 +17,6 @@ def main():
 
     root = ui.NavigationView(v1)
 
-    root.push_view(v1)
     root.push_view(v2)
     root.push_view(v3)
 

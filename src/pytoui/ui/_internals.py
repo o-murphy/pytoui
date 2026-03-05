@@ -88,4 +88,11 @@ class _getset_descriptor(Generic[__ClassT, __PropT]):
 
 def settrace(func: Callable | None) -> None:
     # FIXME: implement
-    pass
+    if __debug__:
+        import warnings
+
+        warnings.warn(
+            "settrace() is not yet implemented in pytoui",
+            UserWarning,
+            stacklevel=2,
+        )

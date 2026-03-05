@@ -81,6 +81,15 @@ def _view_to_dict(view: View) -> dict[str, Any]:
 
     Uses for saving UI state.
     """
+    # FIXME: not yet implemented
+    if __debug__:
+        import warnings
+
+        warnings.warn(
+            "_view_to_dict() is not yet fully implemented in pytoui",
+            UserWarning,
+            stacklevel=2,
+        )
     return {}
     # if not isinstance(view, View):
     #     raise TypeError("Expected a ui.View or subclass")
@@ -214,6 +223,15 @@ def _view_from_dict(
     For action saves method name as a str,
     which can be bind then with _bind_action.
     """
+    # FIXME: not yet implemented
+    if __debug__:
+        import warnings
+
+        warnings.warn(
+            "_view_from_dict() is not yet fully implemented in pytoui",
+            UserWarning,
+            stacklevel=2,
+        )
     return View()
     # attrs = view_dict.get("attributes", {})
     # classname = view_dict.get("class", "View")

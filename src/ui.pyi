@@ -114,6 +114,9 @@ RENDERING_MODE_AUTOMATIC: Literal[0] = 0
 RENDERING_MODE_ORIGINAL: Literal[1] = 1
 RENDERING_MODE_TEMPLATE: Literal[2] = 2
 
+__ObjcInstance: TypeAlias = object
+__ObjcPtr: TypeAlias = object
+
 __Alignment: TypeAlias = Literal[0, 1, 2, 3, 4]
 __BlendMode: TypeAlias = Literal[
     0,
@@ -373,9 +376,9 @@ class Touch:
     prev_location: Point
     timestamp: int
     touch_id: int
-    objc_instance: Any
+    objc_instance: __ObjcInstance
 
-    _objc_ptr: Any
+    _objc_ptr: __ObjcPtr
 
     def __init__(self, *args, **kwargs) -> None: ...
 
@@ -396,9 +399,9 @@ class Path:
     line_cap_style: __LineCapStyle
     line_join_style: __LineJoinMode
     line_width: float
-    objc_instance: Any
+    objc_instance: __ObjcInstance
 
-    _objc_ptr: Any = ...
+    _objc_ptr: __ObjcPtr = ...
 
     def __init__(self) -> None: ...
     def _debug_quicklook_(self) -> str: ...
@@ -444,13 +447,13 @@ class Path:
     def stroke(self) -> None: ...
 
 class Image:
-    name: Any
+    name: str | None
     rendering_mode: __RenderingMode
-    scale: Any
-    size: Any
+    scale: float
+    size: Size
 
-    objc_instance: Any
-    _objc_ptr: Any = ...
+    objc_instance: __ObjcInstance
+    _objc_ptr: __ObjcPtr
 
     def __init__(self, *args, **kwargs) -> None: ...
     def _debug_quicklook_(self) -> str: ...
@@ -551,8 +554,8 @@ class View:
     x: float
     y: float
 
-    objc_instance: Any
-    _objc_ptr: Any
+    objc_instance: __ObjcInstance
+    _objc_ptr: __ObjcPtr
     def __init__(self, *args, **kwargs: Unpack[__ViewKwargs]) -> None: ...
     def __getitem__(self, name: str) -> View: ...
     def __len__(self) -> int: ...
@@ -617,7 +620,7 @@ class ButtonItem:
     image: Image
     tint_color: __ColorLike
     title: str
-    _objc_ptr: Any
+    _objc_ptr: __ObjcPtr
     def __init__(self, *args, **kwargs) -> None: ...
 
 class DatePicker(View):
@@ -941,8 +944,8 @@ def draw_string(
     rect: __RectLike = (0, 0, 0, 0),
     font: __Font = ("<system>", 17.0),
     color: __ColorLike | None = None,
-    alignment: __Alignment = ...,
-    line_break_mode: __LineBrakeMode = ...,
+    alignment: __Alignment = ALIGN_NATURAL,
+    line_break_mode: __LineBrakeMode = LB_TRUNCATE_TAIL,
 ) -> None: ...
 def dump_view(view: View) -> str: ...
 def end_editing(*args, **kwargs) -> Any: ...
@@ -963,8 +966,8 @@ def measure_string(
     s: str,
     max_width: float = 0,
     font: __Font = ("<system>", 12.0),
-    alignment: __Alignment = ...,
-    line_break_mode: __LineBrakeMode = ...,
+    alignment: __Alignment = ALIGN_LEFT,
+    line_break_mode: __LineBrakeMode = LB_WORD_WRAP,
 ) -> tuple[float, float]: ...
 def parse_color(c: __ColorLike) -> __RGBA: ...
 def set_alpha(alpha: float) -> None: ...

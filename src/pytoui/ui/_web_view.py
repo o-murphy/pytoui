@@ -15,8 +15,28 @@ __all__ = ("WebView",)
 class _WebView(View):
     def __init__(self, *args, **kwargs):
         self.background_color = "black"
+
+        self._delegate: Any = None
+        self._scales_page_to_fit: bool = True
+
         self._url: str | None = None
         super().__init__(*args, **kwargs)
+
+    @property
+    def delegate(self) -> Any:
+        return self._delegate
+
+    @delegate.setter
+    def delegate(self, value: Any):
+        self._delegate = value
+
+    @property
+    def scales_page_to_fit(self) -> bool:
+        return self._scales_page_to_fit
+
+    @scales_page_to_fit.setter
+    def scales_page_to_fit(self, value: bool):
+        self._scales_page_to_fit = bool(value)
 
     def load_url(self, url: str) -> None:
         self._url = url

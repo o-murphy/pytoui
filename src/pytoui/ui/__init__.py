@@ -124,6 +124,7 @@ from pytoui.ui._constants import (
     RENDERING_MODE_ORIGINAL,
     RENDERING_MODE_TEMPLATE,
 )
+from pytoui.ui._date_picker import DatePicker
 from pytoui.ui._draw import (
     GState,
     Image,
@@ -175,6 +176,14 @@ from pytoui.ui._serialize import (
 )
 from pytoui.ui._slider import Slider
 from pytoui.ui._switch import Switch
+from pytoui.ui._table_view import (
+    ListDataSource,
+    ListDataSourceList,
+    TableView,
+    TableViewCell,
+)
+from pytoui.ui._text_field import TextField
+from pytoui.ui._text_view import TextView
 from pytoui.ui._types import (
     MouseEvent,
     MouseWheel,
@@ -201,31 +210,28 @@ __all__ = (
     "MouseWheel",
     "Size",
     "autoreleasepool",
-    # View
+    "basestring",
+    # Views
     "View",
     "Transform",
-    # Label
     "Label",
-    # Button
     "Button",
-    # ButtonItem
     "ButtonItem",
-    # Switch
     "Switch",
-    # SegmentedControl
     "SegmentedControl",
-    # Image
     "ImageView",
-    # ActivityIndicator
     "ActivityIndicator",
-    # Slider
     "Slider",
-    # ScrollView
     "ScrollView",
-    # NavigationView
     "NavigationView",
-    # WebView
     "WebView",
+    "DatePicker",
+    "TableView",
+    "TableViewCell",
+    "ListDataSourceList",
+    "ListDataSource",
+    "TextField",
+    "TextView",
     # Drawing
     "GState",
     "Image",

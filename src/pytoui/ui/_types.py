@@ -39,7 +39,10 @@ __all__ = (
     "_TouchPhase",
     "_ViewFlex",
     "autoreleasepool",
+    "basestring",
 )
+
+basestring: TypeAlias = str
 
 _RGB: TypeAlias = tuple[float, float, float]
 _RGBA: TypeAlias = tuple[float, float, float, float]
@@ -728,4 +731,5 @@ if IS_PYTHONISTA:
         Touch,
         Vector2,
         autoreleasepool,
+        basestring,
     )

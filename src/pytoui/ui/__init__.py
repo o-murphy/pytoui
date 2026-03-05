@@ -14,6 +14,12 @@ Usage:
 
 from __future__ import annotations
 
+import inspect
+import json
+import os
+import re
+import sys
+
 from pytoui.ui._activity_indicator import ActivityIndicator
 from pytoui.ui._button import Button
 from pytoui.ui._button_item import ButtonItem
@@ -137,12 +143,14 @@ from pytoui.ui._draw import (
     in_background,
     measure_string,
     parse_color,
+    set_alpha,
     set_blend_mode,
     set_color,
     set_shadow,
 )
 from pytoui.ui._image import Image
 from pytoui.ui._image_view import ImageView
+from pytoui.ui._internals import settrace
 from pytoui.ui._label import Label
 from pytoui.ui._navigation_view import NavigationView
 from pytoui.ui._scroll_view import ScrollView
@@ -155,6 +163,8 @@ from pytoui.ui._serialize import (
     _str2rect,
     _view_from_dict,
     _view_to_dict,
+    load_view,
+    load_view_str,
 )
 from pytoui.ui._slider import Slider
 from pytoui.ui._switch import Switch
@@ -211,6 +221,7 @@ __all__ = (
     "GState",
     "ImageContext",
     "parse_color",
+    "set_alpha",
     "set_color",
     "set_blend_mode",
     "set_shadow",
@@ -339,4 +350,14 @@ __all__ = (
     "_view_to_dict",
     "_view_from_dict",
     "_bind_action",
+    "load_view",
+    "load_view_str",
+    # --- Internals ---
+    "settrace",
+    # --- Compat ---
+    "re",
+    "json",
+    "inspect",
+    "sys",
+    "os",
 )

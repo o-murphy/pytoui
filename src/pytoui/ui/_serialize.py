@@ -1,10 +1,13 @@
+import inspect
+import json
+import os
 import re
 import sys
 from typing import TYPE_CHECKING, Any
 
 from pytoui._platform import IS_PYTHONISTA
-from pytoui.ui._constants import COLOR_REGEX, RECT_REGEX
-from ui import View
+from pytoui.ui._constants import COLOR_REGEX, PY3, RECT_REGEX
+from pytoui.ui._view import View
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _RGBA, _ColorLike, _RectLike
@@ -17,6 +20,8 @@ __all__ = (
     "_view_to_dict",
     "_view_from_dict",
     "_bind_action",
+    "load_view",
+    "load_view_str",
 )
 
 
@@ -421,6 +426,43 @@ def _bind_action(
         except Exception as e:
             if verbose:
                 sys.stderr.write("Warning: Could not bind action: %s\n" % (e,))
+
+
+def load_view_str(
+    json_str: str, bindings=None, stackframe=None, verbose: bool = True
+) -> View:
+    root_list = json.loads(json_str)
+    if stackframe is None and not bindings:
+        stackframe = inspect.currentframe().f_back  # type: ignore[union-attr]
+    if root_list:
+        root_view_dict = root_list[0]
+        if bindings:
+            g = bindings
+            l_ = bindings
+        else:
+            g = stackframe.f_globals
+            l_ = stackframe.f_locals
+        return _view_from_dict(root_view_dict, g, l_, verbose=verbose)
+    return View()
+
+
+def load_view(
+    pyui_path: str | None = None, bindings=None, stackframe=None, verbose: bool = True
+) -> View:
+
+    if stackframe is None and not bindings:
+        stackframe = inspect.currentframe().f_back  # type: ignore[union-attr]
+    if pyui_path is None:
+        f = inspect.currentframe().f_back  # type: ignore[union-attr]
+        script_path = f.f_globals.get("__file__")  # type: ignore[union-attr]
+        pyui_path = os.path.splitext(script_path)[0] + ".pyui"  # type: ignore[arg-type]
+    if len(os.path.splitext(pyui_path)[1]) == 0:
+        # The '.pyui' extension can be omitted,
+        # but if there is an extension (e.g. '.json'), it should be kept.
+        pyui_path += ".pyui"
+    with open(pyui_path, encoding="utf-8") if PY3 else open(pyui_path) as f:
+        json_str = f.read()
+    return load_view_str(json_str, bindings, stackframe, verbose=verbose)
 
 
 if IS_PYTHONISTA:

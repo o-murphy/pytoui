@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 __all__ = (
     "_final_",
     "_getset_descriptor",
+    "settrace",
 )
 
 
@@ -83,3 +84,8 @@ class _getset_descriptor(Generic[__ClassT, __PropT]):
 
     def __delete__(self, obj: __ClassT):
         raise AttributeError(f"Can't delete {self._public_name} attribute")
+
+
+def settrace(func: Callable | None) -> None:
+    # FIXME: implement
+    pass

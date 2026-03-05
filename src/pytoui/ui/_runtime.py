@@ -20,7 +20,6 @@ import ctypes
 import threading
 from typing import TYPE_CHECKING, cast
 
-from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT,
@@ -53,6 +52,8 @@ def _load_default_fonts():
         path = resolve_any_font(name, size)
         if path:
             try:
+                from pytoui._osdbuf import FrameBuffer
+
                 FrameBuffer.load_font_cached(str(path))
             except Exception:
                 pass
@@ -70,6 +71,8 @@ class RawFrameBufferRuntime(BaseRuntime):
 
     def run(self):
         pixel_data = (ctypes.c_ubyte * (self.width * self.height * 4))()
+        from pytoui._osdbuf import FrameBuffer
+
         with FrameBuffer(pixel_data, self.width, self.height) as fb:
             fb.antialias = _UI_ANTIALIAS
             self.render_fn(fb)

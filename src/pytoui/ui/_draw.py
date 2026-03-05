@@ -1454,6 +1454,11 @@ def get_ui_style() -> _UiStyle:
     return _gus()
 
 
+def get_keyboard_frame() -> Rect:
+    # NOTE: FALLBACK
+    return Rect()
+
+
 # ---------------------------------------------------------------------------
 # Per-window animation context (thread-local)
 # ---------------------------------------------------------------------------

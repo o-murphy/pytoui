@@ -137,6 +137,7 @@ from pytoui.ui._draw import (
     delay,
     draw_string,
     fill_rect,
+    get_keyboard_frame,
     get_screen_size,
     get_ui_style,
     get_window_size,
@@ -239,6 +240,7 @@ __all__ = (
     "get_screen_size",
     "get_window_size",
     "get_ui_style",
+    "get_keyboard_frame",
     # convert
     "convert_point",
     "convert_rect",

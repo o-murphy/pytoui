@@ -36,9 +36,14 @@ features are implemented yet; check the examples for the current surface.
 
 ### Quick start on Pythonista
 
-Execute this code in Pythonista console
+Execute this code in Pythonista console to install
 ```python
 import requests as r; exec(r.get('https://raw.githubusercontent.com/o-murphy/pytoui/refs/heads/main/scripts/get_pytoui.py').content)
+```
+
+Execute this code in Pythonista console to remove
+```python
+import requests as r; exec(r.get('https://raw.githubusercontent.com/o-murphy/pytoui/refs/heads/main/scripts/prune_pytoui.py').content)
 ```
 
 ### Prerequisites

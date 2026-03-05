@@ -22,6 +22,7 @@ __all__ = (
     "_view_to_dict",
     "_view_from_dict",
     "_bind_action",
+    "dump_view",
     "load_view",
     "load_view_str",
 )
@@ -428,6 +429,11 @@ def _bind_action(
         except Exception as e:
             if verbose:
                 sys.stderr.write("Warning: Could not bind action: %s\n" % (e,))
+
+
+def dump_view(view: View) -> str:
+    view_dict = _view_to_dict(view)
+    return json.dumps([view_dict], indent=2)
 
 
 def load_view_str(

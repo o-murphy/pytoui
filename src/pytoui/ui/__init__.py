@@ -164,6 +164,7 @@ from pytoui.ui._serialize import (
     _str2rect,
     _view_from_dict,
     _view_to_dict,
+    dump_view,
     load_view,
     load_view_str,
 )
@@ -352,6 +353,7 @@ __all__ = (
     "_view_to_dict",
     "_view_from_dict",
     "_bind_action",
+    "dump_view",
     "load_view",
     "load_view_str",
     # --- Internals ---

@@ -140,10 +140,6 @@ from pytoui.ui._draw import (
     draw_string,
     end_image_context,
     fill_rect,
-    get_keyboard_frame,
-    get_screen_size,
-    get_ui_style,
-    get_window_size,
     in_background,
     measure_string,
     parse_color,
@@ -156,6 +152,13 @@ from pytoui.ui._image_view import ImageView
 from pytoui.ui._internals import settrace
 from pytoui.ui._label import Label
 from pytoui.ui._navigation_view import NavigationView
+from pytoui.ui._runtime import (
+    close_all,
+    get_keyboard_frame,
+    get_screen_size,
+    get_ui_style,
+    get_window_size,
+)
 from pytoui.ui._scroll_view import ScrollView
 from pytoui.ui._segmented_control import SegmentedControl
 from pytoui.ui._serialize import (
@@ -249,6 +252,7 @@ __all__ = (
     "get_window_size",
     "get_ui_style",
     "get_keyboard_frame",
+    "close_all",
     # convert
     "convert_point",
     "convert_rect",

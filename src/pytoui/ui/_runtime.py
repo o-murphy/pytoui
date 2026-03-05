@@ -25,13 +25,23 @@ from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT,
+    IS_PYTHONISTA,
 )
-from pytoui.ui._types import Size
+from pytoui.ui._types import Rect, Size
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _UiStyle
     from pytoui.ui._view import _ViewInternals
 
+
+__all__ = (
+    "launch_runtime",
+    "get_ui_style",
+    "get_window_size",
+    "get_screen_size",
+    "get_keyboard_frame",
+    "close_all",
+)
 
 # --- LOAD DEFAULT FONTS ---
 
@@ -106,6 +116,18 @@ def get_ui_style() -> _UiStyle:
     return style if style in ("dark", "light") else "dark"
 
 
+def get_keyboard_frame() -> Rect:
+    # NOTE: FALLBACK
+    return Rect()
+
+
+def close_all() -> None:
+    from pytoui._base_runtime import _root_to_runtime
+
+    for rt in _root_to_runtime.values():
+        rt.root.close()
+
+
 def _get_runtime():
     match _UI_RT:
         case "fb":
@@ -165,3 +187,13 @@ def launch_runtime(root_view: _ViewInternals, render_fn) -> None:
     _init_done.wait()
     if _init_exc[0] is not None:
         raise _init_exc[0]
+
+
+if IS_PYTHONISTA:
+    from ui import (  # type: ignore[import-not-found,no-redef,assignment]
+        close_all,
+        get_keyboard_frame,
+        get_screen_size,
+        get_ui_style,
+        get_window_size,
+    )

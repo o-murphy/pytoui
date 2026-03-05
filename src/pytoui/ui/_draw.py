@@ -82,7 +82,6 @@ if TYPE_CHECKING:
         _PointLike,
         _RectLike,
         _RenderingMode,
-        _UiStyle,
     )
 
 
@@ -105,9 +104,6 @@ __all__ = (
     "delay",
     "draw_string",
     "fill_rect",
-    "get_screen_size",
-    "get_ui_style",
-    "get_window_size",
     "in_background",
     "measure_string",
     "parse_color",
@@ -1834,29 +1830,6 @@ class Path:
         return self.__repr__()
 
 
-def get_screen_size() -> Size:
-    from pytoui.ui._runtime import get_screen_size as _gss
-
-    return _gss()
-
-
-def get_window_size() -> Size:
-    from pytoui.ui._runtime import get_window_size as _gws
-
-    return _gws()
-
-
-def get_ui_style() -> _UiStyle:
-    from pytoui.ui._runtime import get_ui_style as _gus
-
-    return _gus()
-
-
-def get_keyboard_frame() -> Rect:
-    # NOTE: FALLBACK
-    return Rect()
-
-
 # ---------------------------------------------------------------------------
 # Per-window animation context (thread-local)
 # ---------------------------------------------------------------------------
@@ -2140,9 +2113,6 @@ if IS_PYTHONISTA:
         draw_string,
         end_image_context,
         fill_rect,
-        get_screen_size,
-        get_ui_style,
-        get_window_size,
         in_background,
         measure_string,
         parse_color,

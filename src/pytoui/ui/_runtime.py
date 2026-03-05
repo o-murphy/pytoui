@@ -20,13 +20,13 @@ import ctypes
 import threading
 from typing import TYPE_CHECKING, cast
 
-from pytoui._base_runtime import BaseRuntime
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT,
     IS_PYTHONISTA,
 )
+from pytoui.base_runtime import BaseRuntime
 from pytoui.ui._types import Rect, Size
 
 if TYPE_CHECKING:
@@ -98,7 +98,7 @@ def get_window_size() -> Size:
     and changes when the window is resized.  Falls back to get_screen_size()
     if no window is currently open.
     """
-    from pytoui._base_runtime import _root_to_runtime
+    from pytoui.base_runtime import _root_to_runtime
 
     for rt in _root_to_runtime.values():
         return Size(*rt.current_size)
@@ -122,7 +122,7 @@ def get_keyboard_frame() -> Rect:
 
 
 def close_all() -> None:
-    from pytoui._base_runtime import _root_to_runtime
+    from pytoui.base_runtime import _root_to_runtime
 
     for rt in _root_to_runtime.values():
         rt.root.close()

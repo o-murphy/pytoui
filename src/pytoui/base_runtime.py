@@ -27,8 +27,8 @@ if TYPE_CHECKING:
 __all__ = (
     "_CHECKER_SIZE",
     "BaseRuntime",
-    "_any_dirty",
-    "_get_runtime_for_view",
+    "any_dirty",
+    "get_runtime_for_view",
     "_SCROLL_LINE_PX",
 )
 
@@ -39,23 +39,6 @@ _CHECKER_SIZE = 8
 
 # id(root_view) → runtime  (used by View.become_first_responder)
 _root_to_runtime: dict[int, BaseRuntime] = {}
-
-
-def _get_runtime_for_view(view: _ViewInternals) -> BaseRuntime | None:
-    root = view
-    while root.superview is not None:
-        root = root.superview
-    return _root_to_runtime.get(id(root))
-
-
-def _any_dirty(view: _ViewInternals) -> bool:
-    """Return True if view or any descendant needs redrawing."""
-    if view.pytoui_needs_display:
-        return True
-    for sv in view._subviews:
-        if _any_dirty(sv):
-            return True
-    return False
 
 
 class BaseRuntime:
@@ -652,3 +635,20 @@ class BaseRuntime:
     def _update_hierarchy(self, view: _ViewInternals, now: float):
         """Delegate update propagation to the view itself."""
         view.pytoui_update_tree(now)
+
+
+def get_runtime_for_view(view: _ViewInternals) -> BaseRuntime | None:
+    root = view
+    while root.superview is not None:
+        root = root.superview
+    return _root_to_runtime.get(id(root))
+
+
+def any_dirty(view: _ViewInternals) -> bool:
+    """Return True if view or any descendant needs redrawing."""
+    if view.pytoui_needs_display:
+        return True
+    for sv in view._subviews:
+        if any_dirty(sv):
+            return True
+    return False

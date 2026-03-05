@@ -1,7 +1,7 @@
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._button import Button
 from pytoui.ui._constants import ALIGN_CENTER
-from pytoui.ui._draw import fill_rect, measure_string, set_color
+from pytoui.ui._draw import fill_rect, set_color
 from pytoui.ui._internals import _final_
 from pytoui.ui._label import Label
 from pytoui.ui._view import View
@@ -33,10 +33,9 @@ class _AlertView(View):
         self.background_color = (0.2, 0.2, 0.2, 0.96)
         self.name = title
 
-        if message:
-            w, _ = measure_string(message)
-        else:
-            w = 150.0
+        font = ("<system-bold>", 16)
+
+        w = 150.0
 
         self.frame = (0.0, 0.0, min(w, 400), 150.0)
 
@@ -44,7 +43,7 @@ class _AlertView(View):
         self._title_lbl = Label()
         self._title_lbl.text = title
         self._title_lbl.alignment = ALIGN_CENTER
-        self._title_lbl.font = ("<system-bold>", 16)
+        self._title_lbl.font = font
         self._title_lbl.text_color = "white"
         self.add_subview(self._title_lbl)
 
@@ -130,3 +129,8 @@ if IS_PYTHONISTA:
     from console import (  # type: ignore[import-not-found,no-redef]
         alert,
     )
+
+
+if __name__ == "__main__":
+    ret = alert("Tetle", "Message", "Button 1")
+    print(ret)

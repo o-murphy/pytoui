@@ -17,7 +17,6 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-from pytoui._base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, _any_dirty
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
@@ -25,6 +24,7 @@ from pytoui._platform import (
     _UI_RT_SDL_DELAY,
     _UI_RT_SDL_MAX_DELAY,
 )
+from pytoui.base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, any_dirty
 from pytoui.hid import MOUSE_LEFT_ID, MOUSE_MIDDLE_ID, MOUSE_RIGHT_ID
 from pytoui.ui._draw import _tick, _tick_delays
 from pytoui.ui._types import Rect
@@ -424,7 +424,7 @@ class SDLRuntime(BaseRuntime):
                     rf = self.root.frame
                     self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
 
-                needs_redraw = _any_dirty(self.root)
+                needs_redraw = any_dirty(self.root)
 
                 if needs_redraw:
                     fb.draw_checkerboard(_CHECKER_SIZE)

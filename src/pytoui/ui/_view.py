@@ -961,9 +961,9 @@ class _ViewInternals:
         self._pytoui_close_event.wait()
 
     def become_first_responder(self) -> None:
-        from pytoui._base_runtime import _get_runtime_for_view
+        from pytoui.base_runtime import get_runtime_for_view
 
-        rt = _get_runtime_for_view(self)
+        rt = get_runtime_for_view(self)
         if rt is None:
             # return False
             return

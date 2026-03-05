@@ -26,6 +26,7 @@ from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT,
 )
+from pytoui.ui._types import Size
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _UiStyle
@@ -71,16 +72,16 @@ class RawFrameBufferRuntime(BaseRuntime):
 # ---------------------------------------------------------------------------
 
 
-def get_screen_size() -> tuple[int, int]:
+def get_screen_size() -> Size:
     """Return the size of the main screen as a (width, height) tuple (in points)."""
     runtime = _get_runtime()
     try:
-        return runtime.get_screen_size()
+        return Size(*runtime.get_screen_size())
     except Exception:
-        return (1920, 1080)
+        return Size(1920, 1080)
 
 
-def get_window_size() -> tuple[int, int]:
+def get_window_size() -> Size:
     """Return the current window size as a (width, height) tuple.
 
     Unlike get_screen_size(), this reflects the actual window dimensions
@@ -90,7 +91,7 @@ def get_window_size() -> tuple[int, int]:
     from pytoui._base_runtime import _root_to_runtime
 
     for rt in _root_to_runtime.values():
-        return rt.current_size
+        return Size(*rt.current_size)
     return get_screen_size()
 
 

@@ -1758,13 +1758,13 @@ class Path:
         return self.__repr__()
 
 
-def get_screen_size() -> tuple[int, int]:
+def get_screen_size() -> Size:
     from pytoui.ui._runtime import get_screen_size as _gss
 
     return _gss()
 
 
-def get_window_size() -> tuple[int, int]:
+def get_window_size() -> Size:
     from pytoui.ui._runtime import get_window_size as _gws
 
     return _gws()

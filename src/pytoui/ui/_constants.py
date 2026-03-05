@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Literal
 
+PY3: bool = True
+
 # --- Regular Expressions ---
 COLOR_REGEX: str = (
     "RGBA\\((\\d+\\.?\\d*),(\\d+\\.?\\d*),(\\d+\\.?\\d*),(\\d+\\.?\\d*)\\)"
@@ -121,6 +123,7 @@ RENDERING_MODE_TEMPLATE: Literal[2] = 2
 
 
 __all__ = (
+    "PY3",
     # --- Regular Expressions ---
     "COLOR_REGEX",
     "RECT_REGEX",

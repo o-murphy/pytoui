@@ -111,6 +111,7 @@ from pytoui.ui._constants import (
     LINE_JOIN_BEVEL,
     LINE_JOIN_MITER,
     LINE_JOIN_ROUND,
+    PY3,
     RECT_REGEX,
     # --- Rendering Modes ---
     RENDERING_MODE_AUTOMATIC,
@@ -146,6 +147,15 @@ from pytoui.ui._label import Label
 from pytoui.ui._navigation_view import NavigationView
 from pytoui.ui._scroll_view import ScrollView
 from pytoui.ui._segmented_control import SegmentedControl
+from pytoui.ui._serialize import (
+    _bind_action,
+    _color2str,
+    _rect2str,
+    _str2color,
+    _str2rect,
+    _view_from_dict,
+    _view_to_dict,
+)
 from pytoui.ui._slider import Slider
 from pytoui.ui._switch import Switch
 from pytoui.ui._types import (
@@ -222,6 +232,7 @@ __all__ = (
     "convert_point",
     "convert_rect",
     # Constants
+    "PY3",
     # --- Regular Expressions ---
     "COLOR_REGEX",
     "RECT_REGEX",
@@ -320,4 +331,12 @@ __all__ = (
     "RENDERING_MODE_AUTOMATIC",
     "RENDERING_MODE_ORIGINAL",
     "RENDERING_MODE_TEMPLATE",
+    # --- Serialization ---
+    "_str2rect",
+    "_str2color",
+    "_rect2str",
+    "_color2str",
+    "_view_to_dict",
+    "_view_from_dict",
+    "_bind_action",
 )

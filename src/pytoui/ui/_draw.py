@@ -77,6 +77,7 @@ if TYPE_CHECKING:
         _LineBrakeMode,
         _LineCapStyle,
         _LineJoinMode,
+        _PointLike,
         _RectLike,
         _UiStyle,
     )
@@ -1094,7 +1095,7 @@ def _screen_origin(view) -> tuple[float, float]:
 
 
 def convert_point(
-    point=(0, 0),
+    point: _PointLike = (0, 0),
     from_view=None,
     to_view=None,
 ) -> Point:
@@ -1116,7 +1117,7 @@ def convert_point(
 
 
 def convert_rect(
-    rect=(0, 0, 0, 0),
+    rect: _RectLike = (0, 0, 0, 0),
     from_view=None,
     to_view=None,
 ) -> Rect:

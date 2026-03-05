@@ -18,7 +18,7 @@ def main():
     root.frame = (0, 0, 400, 600)
     root.name = f"Demo: {seg.__class__.name}"
     root.add_subview(seg)
-    root.present("fullscreen")
+    root.present("default")
 
 
 if __name__ == "__main__":

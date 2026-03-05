@@ -37,7 +37,7 @@ def main():
     root.name = f"Demo: {slider.__class__.name}"
     root.add_subview(slider)
     root.add_subview(label)
-    root.present("fullscreen")
+    root.present("default")
 
 
 if __name__ == "__main__":

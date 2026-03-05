@@ -183,6 +183,7 @@ from pytoui.ui._types import (
     autoreleasepool,
 )
 from pytoui.ui._view import View
+from pytoui.ui._web_view import WebView
 
 # backward compat
 
@@ -220,6 +221,8 @@ __all__ = (
     "ScrollView",
     # NavigationView
     "NavigationView",
+    # WebView
+    "WebView",
     # Drawing
     "GState",
     "Image",

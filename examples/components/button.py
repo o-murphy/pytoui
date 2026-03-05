@@ -27,7 +27,7 @@ def main():
     root.frame = (0, 0, 400, 600)
     root.name = f"Demo: {button.__class__.name}"
     root.add_subview(button)
-    root.present("fullscreen")
+    root.present("default")
 
 
 if __name__ == "__main__":

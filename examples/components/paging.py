@@ -113,7 +113,7 @@ def main():
 
         sv.add_subview(page)
 
-    root.present("fullscreen")
+    root.present("default")
 
 
 if __name__ == "__main__":

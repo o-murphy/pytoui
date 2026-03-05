@@ -38,7 +38,7 @@ def main():
     root.title_color = "red"
     root.bar_tint_color = "yellow"
 
-    root.present()
+    root.present("default")
 
 
 if __name__ == "__main__":

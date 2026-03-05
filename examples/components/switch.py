@@ -16,7 +16,7 @@ def main():
     sw.center = view.bounds.center()
 
     view.add_subview(sw)
-    view.present("fullscreen")
+    view.present("default")
 
 
 if __name__ == "__main__":

@@ -1,15 +1,41 @@
 """Pythonista-compatible UI framework for framebuffer rendering.
 
 Usage:
-    import ui
+    import pytoui.ui as ui
 
-    v = ui.View()
-    v.background_color = "white"
+    # Create a view
+    view = ui.View()
+    view.background_color = "white"
 
-    class MyView(ui.View):
-        def draw(self):
-            ui.set_color("red")
-            ui.Path.rect(0, 0, self.width, self.height).fill()
+    # Add a button
+    btn = ui.Button(title="Click me")
+    btn.center = (200, 300)
+    view.add_subview(btn)
+
+    # Show it
+    view.present()
+
+Constants:
+    All Pythonista constants are available:
+    - ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT
+    - CONTENT_SCALE_TO_FILL, CONTENT_SCALE_ASPECT_FIT
+    - BLEND_NORMAL, BLEND_MULTIPLY, ...
+    - KEYBOARD_DEFAULT, KEYBOARD_EMAIL, ...
+    - And many more...
+
+Classes:
+    View - Base class for all views
+    Button - Interactive button
+    Label - Text label
+    ImageView - Image display
+    ScrollView - Scrollable container
+    TableView - Table/list view
+    ... and many more
+
+Functions:
+    Drawing: set_color(), fill_rect(), draw_string(), ...
+    Animation: animate(), delay(), cancel_delays()
+    System: get_screen_size(), close_all(), ...
 """
 
 from __future__ import annotations

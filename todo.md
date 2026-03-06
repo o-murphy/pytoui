@@ -8,10 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* Transforms not applying in draw_string_core_graphics which makes issues with rendering in _wheel_selector.py (on Pythonista works fine)
+* Transforms applying to draw_string_core_graphics but it makes glitches
 * NavigationView on stack pop/push animations like ScrollView paging animation
-* View:
-  * scroll_enabled (we have just mouse_wheel_enabled)
 * Image:
   for Image.clip_to_mask
   ```rust

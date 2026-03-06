@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import locale
 from datetime import datetime
 from typing import Callable, List
 
@@ -40,6 +41,8 @@ class _DayView(View):
             self._button.hidden = True
         self.add_subview(self._button)
 
+        self.frame = (0, 0, DAY_SIZE, DAY_SIZE)
+
     def layout(self):
         self._button.frame = self.bounds.as_tuple()
 
@@ -57,14 +60,11 @@ class _DayView(View):
             self._button.border_color = IOS_BLUE
             if self.is_today:
                 self._button.background_color = IOS_BLUE
-                self._button.title_color = (1.0, 1.0, 1.0, 1.0)
             else:
                 self._button.background_color = "transparent"
-                self._button.title_color = (0.0, 0.0, 0.0, 1.0)
         else:
             self._button.border_width = 0
             self._button.background_color = "transparent"
-            self._button.title_color = (0.0, 0.0, 0.0, 1.0)
 
     @property
     def action(self) -> Callable | None:
@@ -188,8 +188,6 @@ class _MonthPage(View):
         self._scroll_view.add_subview(self._content)
 
     def _get_month_name(self) -> str:
-        import locale
-
         try:
             locale.setlocale(locale.LC_TIME, "")
             return datetime(self.year, self.month, 1).strftime("%B %Y").capitalize()
@@ -211,11 +209,11 @@ class _MonthPage(View):
             return f"{months[self.month - 1]} {self.year}"
 
     def _get_weekday_names(self) -> List[str]:
-        import locale
-
         try:
             locale.setlocale(locale.LC_TIME, "")
-            return [datetime(2024, 1, i).strftime("%a") for i in range(1, 8)]
+            return [
+                datetime(2024, 1, i).strftime("%a").capitalize() for i in range(1, 8)
+            ]
         except Exception:
             return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -365,12 +363,9 @@ if __name__ == "__main__":
     picker.set_day_action(on_day_selected)
 
     root = View()
-    root.background_color = (0.9, 0.9, 0.9, 1.0)
     root.add_subview(picker)
-
-    def layout():
-        screen_w, screen_h = root.bounds.size
-        picker.center = (screen_w / 2, screen_h / 2)
-
-    root.layout = layout
     root.present("fullscreen")
+
+    # v = _DayView(1, is_current_month=False)
+    # v.present()
+    # print(v.frame)

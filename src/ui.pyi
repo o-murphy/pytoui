@@ -329,7 +329,7 @@ __ViewFlex: TypeAlias = Literal[
     "whlrtb",
 ]
 __PresentStyle: TypeAlias = Literal[
-    "default", "full_screen", "sheet", "popover", "panel"
+    "default", "fullscreenfull_screen", "sheet", "popover", "panel"
 ]
 __PresentOrientation: TypeAlias = Literal[
     "portrait",

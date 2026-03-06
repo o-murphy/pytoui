@@ -392,13 +392,23 @@ pub(crate) unsafe fn path_get_bounds(
 }
 
 pub(crate) fn path_add_clip(fb_handle: i32, path_handle: i32) {
-    let cmds: Vec<PathCmd> = {
+    let (cmds, eo_fill) = {
         let map = PATH_MAP.read();
         match map.get(&path_handle) {
-            Some(p) => p.lock().cmds.clone(),
+            Some(p) => {
+                let p = p.lock();
+                (p.cmds.clone(), p.eo_fill_rule)
+            }
             None => return,
         }
     };
+
+    let fill_rule = if eo_fill {
+        FillRule::EvenOdd
+    } else {
+        FillRule::Winding
+    };
+
     with_fb(fb_handle, |fb| {
         let w = fb.w as u32;
         let h = fb.h as u32;
@@ -406,9 +416,9 @@ pub(crate) fn path_add_clip(fb_handle: i32, path_handle: i32) {
             let ctm = fb.ctm;
             let aa = fb.antialias;
             if let Some(existing) = &mut fb.clip_mask {
-                existing.intersect_path(&path, FillRule::Winding, aa, ctm);
+                existing.intersect_path(&path, fill_rule, aa, ctm);
             } else if let Some(mut mask) = Mask::new(w, h) {
-                mask.fill_path(&path, FillRule::Winding, aa, ctm);
+                mask.fill_path(&path, fill_rule, aa, ctm);
                 fb.clip_mask = Some(mask);
             }
         }

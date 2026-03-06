@@ -1411,19 +1411,15 @@ def draw_string(
     if fb is None:
         return
 
-    if ctx.origin:
-        ox, oy = ctx.origin
-    else:
-        ox, oy = 0, 0
-    m = ctx.ctm
     if not isinstance(rect, Rect):
         rect = Rect(*rect)
 
-    # Transform coords (logical → physical via scale_factor)
-    scale = getattr(fb, "scale_factor", 1.0)
-    x = (m.a * rect.x + m.c * rect.y + m.tx + ox) * scale
-    y = (m.b * rect.x + m.d * rect.y + m.ty + oy) * scale
-    w, h = rect.w * scale, rect.h * scale
+    # Pass view-local logical coordinates — Rust applies self.ctm (which includes
+    # device scale + user CTM + origin offset) to every glyph pixel.
+    x = rect.x
+    y = rect.y
+    w = rect.w
+    h = rect.h
 
     font_name, font_size = font
     fid = _get_font_id(font_name, font_size)
@@ -1441,7 +1437,7 @@ def draw_string(
         y,
         w,
         h,
-        size=font_size * scale,
+        size=font_size,
         c=c,
         font_id=fid,
         alignment=alignment,

@@ -384,13 +384,30 @@ impl FrameBuffer {
     ) {
         let (r, g, b, a) = color;
         let (rect_x, rect_y, rect_w, rect_h) = rect;
+        let ctm = self.ctm;
 
-        let line_metrics = match font.horizontal_line_metrics(size) {
+        // CTM x-scale magnitude (used as render multiplier for quality).
+        // For scale(sx, sy): ctm.sx = user_sx * device_scale, ctm.ky = 0
+        // → ctm_rx = user_sx * device_scale.
+        let ctm_rx = (ctm.sx * ctm.sx + ctm.ky * ctm.ky).sqrt();
+        // Clamp to avoid division by zero
+        let ctm_rx = if ctm_rx < 1e-6 { 1e-6 } else { ctm_rx };
+
+        // Rasterize at physical resolution for quality; metrics are in render pixels.
+        let render_size = size * ctm_rx;
+
+        // Layout uses logical coords (rect_w, rect_h in view points).
+        // Word-wrap ratio is same for any proportional size, so pass render_size with
+        // render-space width for correct char fitting.
+        let render_w = rect_w * ctm_rx;
+
+        let line_metrics = match font.horizontal_line_metrics(render_size) {
             Some(m) => m,
             None => return,
         };
-        let line_height = line_metrics.ascent - line_metrics.descent + line_metrics.line_gap;
-        let ascent = line_metrics.ascent;
+        // Convert line metrics back to logical units.
+        let line_height = (line_metrics.ascent - line_metrics.descent + line_metrics.line_gap) / ctm_rx;
+        let ascent = line_metrics.ascent / ctm_rx;
 
         let paragraphs: Vec<&str> = text.split('\n').collect();
         let mut all_lines = Vec::new();
@@ -401,7 +418,7 @@ impl FrameBuffer {
                 continue;
             }
 
-            let lines = layout_text(font, paragraph, rect_w, size, line_break_mode);
+            let lines = layout_text(font, paragraph, render_w, render_size, line_break_mode);
             all_lines.extend(lines);
         }
 
@@ -409,9 +426,11 @@ impl FrameBuffer {
             return;
         }
 
-        let _total_height = line_height * all_lines.len() as f32;
-
-        let max_lines = (rect_h / line_height).floor() as usize;
+        let max_lines = if line_height > 0.0 {
+            (rect_h / line_height).floor() as usize
+        } else {
+            0
+        };
         let visible_lines: Vec<String> = if all_lines.len() > max_lines && max_lines > 0 {
             match line_break_mode {
                 LB_TRUNCATE_HEAD => {
@@ -419,19 +438,19 @@ impl FrameBuffer {
                     result.push(truncate_head(
                         font,
                         &all_lines[all_lines.len() - 1],
-                        rect_w,
-                        size,
+                        render_w,
+                        render_size,
                     ));
                     result
                 }
                 LB_TRUNCATE_MIDDLE => {
-                    vec![truncate_tail(font, &all_lines[max_lines - 1], rect_w, size)]
+                    vec![truncate_tail(font, &all_lines[max_lines - 1], render_w, render_size)]
                 }
                 LB_TRUNCATE_TAIL | _ => {
                     let mut result = all_lines[..max_lines].to_vec();
                     if all_lines.len() > max_lines {
                         result[max_lines - 1] =
-                            truncate_tail(font, &result[max_lines - 1], rect_w, size);
+                            truncate_tail(font, &result[max_lines - 1], render_w, render_size);
                     }
                     result
                 }
@@ -440,17 +459,28 @@ impl FrameBuffer {
             all_lines
         };
 
+        // start_y in logical units
         let start_y = rect_y + ascent;
+
+        // Precompute per-render-pixel step in physical space (constant for all glyphs).
+        // For each render column (+1 col), physical position shifts by (dcol_x, dcol_y).
+        // For each render row   (+1 row), physical position shifts by (drow_x, drow_y).
+        // For axis-aligned scale (kx=ky=0): dcol_x=1, dcol_y=0, drow_x=0, drow_y≈1.
+        let dcol_x = ctm.sx / ctm_rx;
+        let dcol_y = ctm.ky / ctm_rx;
+        let drow_x = ctm.kx / ctm_rx;
+        let drow_y = ctm.sy / ctm_rx;
 
         for (i, line) in visible_lines.iter().enumerate() {
             if line.is_empty() {
                 continue;
             }
 
-            let mut line_width = 0.0;
+            // line_width in logical units (render metrics / ctm_rx)
+            let mut line_width = 0.0f32;
             for c in line.chars() {
                 if is_renderable(font, c) {
-                    line_width += font.metrics(c, size).advance_width;
+                    line_width += font.metrics(c, render_size).advance_width / ctm_rx;
                 }
             }
 
@@ -462,28 +492,36 @@ impl FrameBuffer {
                 _ => rect_x,
             };
 
-            let mut curr_x = start_x;
+            let mut curr_x = start_x;  // logical x
             for c in line.chars() {
                 if !is_renderable(font, c) {
                     continue;
                 }
 
-                let (metrics, bitmap) = font.rasterize(c, size);
+                let (metrics, bitmap) = font.rasterize(c, render_size);
 
-                let draw_x = curr_x + metrics.xmin as f32;
+                // Glyph top-left in logical units, then map to physical origin.
+                let draw_x = curr_x + metrics.xmin as f32 / ctm_rx;
                 let draw_y = start_y + (i as f32 * line_height)
-                    - metrics.height as f32
-                    - metrics.ymin as f32;
+                    - metrics.height as f32 / ctm_rx
+                    - metrics.ymin as f32 / ctm_rx;
+
+                // Physical origin of this glyph's (0,0) render pixel.
+                let phys_ox = ctm.sx * draw_x + ctm.kx * draw_y + ctm.tx;
+                let phys_oy = ctm.ky * draw_x + ctm.sy * draw_y + ctm.ty;
 
                 for row in 0..metrics.height {
+                    // Base physical coords for this row (col=0)
+                    let row_fx = phys_ox + row as f32 * drow_x;
+                    let row_fy = phys_oy + row as f32 * drow_y;
                     for col in 0..metrics.width {
                         let coverage = bitmap[row * metrics.width + col];
                         if coverage == 0 {
                             continue;
                         }
 
-                        let pixel_x = draw_x as i32 + col as i32;
-                        let pixel_y = draw_y as i32 + row as i32;
+                        let pixel_x = (row_fx + col as f32 * dcol_x).round() as i32;
+                        let pixel_y = (row_fy + col as f32 * dcol_y).round() as i32;
 
                         if pixel_x >= 0 && pixel_x < self.w && pixel_y >= 0 && pixel_y < self.h {
                             if self.antialias {
@@ -496,7 +534,7 @@ impl FrameBuffer {
                     }
                 }
 
-                curr_x += metrics.advance_width;
+                curr_x += metrics.advance_width / ctm_rx;  // advance in logical units
             }
         }
     }

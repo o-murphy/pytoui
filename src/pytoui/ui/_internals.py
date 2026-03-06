@@ -29,7 +29,7 @@ def _final_(cls: __T) -> __T:
     """Decorator to mark class as a non-accessible base class."""
 
     def __init_subclass__(subcls: type, /, **kwargs: Any) -> None:
-        raise TypeError(f"{subcls.__name__} is not an acceptable base type")
+        raise TypeError(f"{cls.__name__} is not an acceptable base type")
 
     cast(Any, cls).__init_subclass__ = classmethod(__init_subclass__)
     return cls

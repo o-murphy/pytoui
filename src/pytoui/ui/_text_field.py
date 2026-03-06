@@ -21,7 +21,7 @@ __all__ = ("TextField",)
 class _TextField(View):
     action: _Action | None
     autocapitalization_type: _CapitalizationType
-    autocorrection_type: bool
+    autocorrection_type: Any
     bordered: bool
     clear_button_mode: int  # 0=never, 1=while editing, 2=unless editing, 3=always
     delegate: Any
@@ -30,7 +30,7 @@ class _TextField(View):
     keyboard_type: _KeyboardType
     placeholder: str
     secure: bool
-    spellchecking_type: bool
+    spellchecking_type: Any
     text: str
     text_color: _ColorLike
 

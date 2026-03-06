@@ -113,7 +113,7 @@ class _ScrollViewInternals(_ViewInternals):
 
         self.update_interval = 1 / 60
         # ── pytoui setup (desktop only) ───────────────────────────────────────
-        self.mouse_scroll_enabled = True
+        self.mouse_wheel_enabled = True
         self._pytoui_is_scroll_container = True
         self._pytoui_draw_overlay = self._draw_scroll_indicators
 
@@ -221,15 +221,15 @@ class _ScrollViewInternals(_ViewInternals):
     @scroll_enabled.setter
     def scroll_enabled(self, value: bool):
         self._scroll_enabled = bool(value)
-        self.mouse_scroll_enabled = bool(value)
+        self.mouse_wheel_enabled = bool(value)
 
     @property
-    def mouse_scroll_enabled(self) -> bool:
-        return self._scroll_enabled and self._pytoui_mouse_scroll_enabled
+    def mouse_wheel_enabled(self) -> bool:
+        return self._scroll_enabled and self._pytoui_mouse_wheel_enabled
 
-    @mouse_scroll_enabled.setter
-    def mouse_scroll_enabled(self, value: bool):
-        self._pytoui_mouse_scroll_enabled = bool(value) and self._scroll_enabled
+    @mouse_wheel_enabled.setter
+    def mouse_wheel_enabled(self, value: bool):
+        self._pytoui_mouse_wheel_enabled = bool(value) and self._scroll_enabled
 
     @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:
@@ -618,7 +618,6 @@ class _ScrollViewInternals(_ViewInternals):
             Path.rounded_rect(bar_x, bar_y, bar_w, BAR, BAR / 2).fill()
 
 
-@_final_
 class _ScrollView(_View):
     _internals_: _getset_descriptor["_ScrollView", "_ScrollViewInternals"] = (
         _getset_descriptor(
@@ -779,13 +778,13 @@ class _ScrollView(_View):
         self._internals_.scroll_enabled = value
 
     @property
-    def mouse_scroll_enabled(self) -> bool:
-        """mouse_scroll_enabled is tied to scroll_enabled on ScrollView."""
-        return self._internals_.mouse_scroll_enabled
+    def mouse_wheel_enabled(self) -> bool:
+        """mouse_wheel_enabled is tied to scroll_enabled on ScrollView."""
+        return self._internals_.mouse_wheel_enabled
 
-    @mouse_scroll_enabled.setter
-    def mouse_scroll_enabled(self, value: bool):
-        self._internals_.mouse_scroll_enabled = value
+    @mouse_wheel_enabled.setter
+    def mouse_wheel_enabled(self, value: bool):
+        self._internals_.mouse_wheel_enabled = value
 
     @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:
@@ -838,7 +837,10 @@ class _ScrollView(_View):
 
 
 if not IS_PYTHONISTA:
-    ScrollView = _ScrollView
+
+    @_final_
+    class ScrollView(_ScrollView):
+        pass
 
 else:
     import ui

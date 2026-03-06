@@ -22,7 +22,7 @@ class ScrollView(ui.View):
         self.name = "Mouse Wheel Demo"
         self.background_color = (0.07, 0.07, 0.10, 1.0)
 
-        self.mouse_scroll_enabled = True
+        self.mouse_wheel_enabled = True
 
         self._offset_x = 0.0
         self._offset_y = 0.0
@@ -56,9 +56,9 @@ class ScrollView(ui.View):
 
     # ── Mouse handlers ─────────────────────────────────────────────────────────
 
-    def mouse_wheel(self, touch: ui.MouseWheel):
-        self._offset_x += touch.scroll_dx
-        self._offset_y += touch.scroll_dy
+    def mouse_wheel(self, event: ui.MouseWheel):
+        self._offset_x += event.scroll_dx
+        self._offset_y += event.scroll_dy
 
         held = (
             "+"
@@ -68,15 +68,15 @@ class ScrollView(ui.View):
                     hid.MOUSE_RIGHT_ID: "R",
                     hid.MOUSE_MIDDLE_ID: "M",
                 }[b]
-                for b in sorted(touch.buttons)
+                for b in sorted(event.buttons)
                 if b in {hid.MOUSE_LEFT_ID, hid.MOUSE_RIGHT_ID, hid.MOUSE_MIDDLE_ID}
             )
-            if touch.buttons
+            if event.buttons
             else ""
         )
         entry = (
-            f"dx={touch.scroll_dx:+7.1f}  dy={touch.scroll_dy:+7.1f}"
-            f"  @({touch.location.x:.0f},{touch.location.y:.0f}){held}"
+            f"dx={event.scroll_dx:+7.1f}  dy={event.scroll_dy:+7.1f}"
+            f"  @({event.location.x:.0f},{event.location.y:.0f}){held}"
         )
         self._log.append(entry)
         if len(self._log) > _MAX_LOG:

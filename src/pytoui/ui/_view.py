@@ -163,10 +163,11 @@ class _ViewInternals:
         "_pytoui_needs_display",
         "_pytoui_needs_layout",
         "_pytoui_last_update_time",
-        "_pytoui_mouse_scroll_enabled",
+        "_pytoui_mouse_wheel_enabled",
         "_pytoui_is_scroll_container",
         "_pytoui_close_event",
         "_pytoui_content_draw_size",
+        "_pytoui_has_initial_frame",
         # System-level overlay draw function called after subviews.
         # Each entry is a zero-argument callable rendered in the current GState
         # (clipped to this view's bounds). Used by ScrollView for indicators.
@@ -199,7 +200,7 @@ class _ViewInternals:
         self._left_button_items: tuple[ButtonItem, ...] | None = None
         self._right_button_items: tuple[ButtonItem, ...] | None = None
 
-        self._pytoui_mouse_scroll_enabled: bool = False
+        self._pytoui_mouse_wheel_enabled: bool = False
         self._pytoui_is_scroll_container: bool = False
 
         # CUSTOM
@@ -211,6 +212,7 @@ class _ViewInternals:
         # INTERNAL ONLY
         self._pytoui_close_event: Event = Event()
         self._pytoui_content_draw_size: Size = Size(0.0, 0.0)
+        self._pytoui_has_initial_frame: bool = False
 
         # CUSTOM RENDER LAYERS
         self._pytoui_internal_subviews: list[_ViewInternals] = []
@@ -416,13 +418,13 @@ class _ViewInternals:
         self._multitouch_enabled = bool(value)
 
     @property
-    def mouse_scroll_enabled(self) -> bool:
+    def mouse_wheel_enabled(self) -> bool:
         """If False, the view ignores mouse wheel / scroll events."""
-        return self._pytoui_mouse_scroll_enabled
+        return self._pytoui_mouse_wheel_enabled
 
-    @mouse_scroll_enabled.setter
-    def mouse_scroll_enabled(self, value: bool):
-        self._pytoui_mouse_scroll_enabled = bool(value)
+    @mouse_wheel_enabled.setter
+    def mouse_wheel_enabled(self, value: bool):
+        self._pytoui_mouse_wheel_enabled = bool(value)
 
     @property
     def frame(self) -> Rect:
@@ -442,6 +444,7 @@ class _ViewInternals:
             self._bounds = Rect(self._bounds.x, self._bounds.y, new_w, new_h)
             self._pytoui_content_draw_size = Size(0.0, 0.0)
             self.pytoui_apply_autoresizing(old_w, old_h)
+        self._pytoui_has_initial_frame = True
         self.set_needs_layout()
 
     @property
@@ -458,6 +461,7 @@ class _ViewInternals:
         if new_w != old_w or new_h != old_h:
             self._frame = Rect(self._frame.x, self._frame.y, new_w, new_h)
             self.pytoui_apply_autoresizing(old_w, old_h)
+        self._pytoui_has_initial_frame = True
         self.set_needs_layout()
 
     @property
@@ -617,7 +621,7 @@ class _ViewInternals:
         return self if self._touch_enabled else None
 
     def pytoui_scroll_hit_test(self, x: float, y: float) -> _ViewInternals | None:
-        """Like pytoui_hit_test but filters by mouse_scroll_enabled.
+        """Like pytoui_hit_test but filters by mouse_wheel_enabled.
 
         A view with scroll_enabled=False is transparent to scroll events
         (the event passes through to the parent), independently of touch_enabled.
@@ -635,7 +639,7 @@ class _ViewInternals:
         for child in reversed(self._subviews):
             target = child.pytoui_scroll_hit_test(x, y)
             if target is not None and getattr(
-                target, "_pytoui_mouse_scroll_enabled", False
+                target, "_pytoui_mouse_wheel_enabled", False
             ):
                 # If the current view is a scroll container but the child is
                 # not (e.g. Slider/SegmentedControl inside a ScrollView),
@@ -651,7 +655,7 @@ class _ViewInternals:
         for child in reversed(self._pytoui_internal_subviews):
             target = child.pytoui_scroll_hit_test(x, y)
             if target is not None and getattr(
-                target, "_pytoui_mouse_scroll_enabled", False
+                target, "_pytoui_mouse_wheel_enabled", False
             ):
                 # If the current view is a scroll container but the child is
                 # not (e.g. Slider/SegmentedControl inside a ScrollView),
@@ -663,7 +667,7 @@ class _ViewInternals:
                     break
                 return target
 
-        return self if getattr(self, "_pytoui_mouse_scroll_enabled", False) else None
+        return self if getattr(self, "_pytoui_mouse_wheel_enabled", False) else None
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
@@ -937,6 +941,11 @@ class _ViewInternals:
         self._pytoui_needs_display = True
 
         # Forse first resize
+
+        # if frame was not redefined use size_to_fit()
+        if not self._pytoui_has_initial_frame:
+            self.size_to_fit()
+
         if hasattr(self._ref, "layout"):
             self._ref.layout()
 
@@ -1293,13 +1302,13 @@ class _View:
         self._internals_.multitouch_enabled = value
 
     @property
-    def mouse_scroll_enabled(self) -> bool:
+    def mouse_wheel_enabled(self) -> bool:
         """Alias for scroll_enabled."""
-        return self._internals_.mouse_scroll_enabled
+        return self._internals_.mouse_wheel_enabled
 
-    @mouse_scroll_enabled.setter
-    def mouse_scroll_enabled(self, value: bool):
-        self._internals_.mouse_scroll_enabled = value
+    @mouse_wheel_enabled.setter
+    def mouse_wheel_enabled(self, value: bool):
+        self._internals_.mouse_wheel_enabled = value
 
     @property
     def transform(self) -> Transform | None:

@@ -623,12 +623,18 @@ class ButtonItem:
     _objc_ptr: __ObjcPtr
     def __init__(self, *args, **kwargs) -> None: ...
 
+class __DatePickerKwargs(__ViewKwargs):
+    action: NotRequired[__Action | None]
+    countdown_duration: NotRequired[float]
+    date: NotRequired[Any]
+    mode: NotRequired[__DatePickerMode]
+
 class DatePicker(View):
     action: __Action | None
-    countdown_duration: Any
+    countdown_duration: float
     date: Any
     mode: __DatePickerMode
-    def __init__(self, *args, **kwargs) -> None: ...
+    def __init__(self, *args, **kwargs: Unpack[__DatePickerKwargs]) -> None: ...
 
 class __ImageViewKwargs(__ViewKwargs, total=False):
     image: NotRequired[Image]
@@ -779,40 +785,24 @@ class Switch(View):
     value: bool
     def __init__(self, *args, **kwargs: Unpack[__SwitchKwargs]) -> None: ...
 
-class TableView(ScrollView, View):
-    allows_multiple_selection: Any
-    allows_multiple_selection_during_editing: Any
-    allows_selection: Any
-    allows_selection_during_editing: Any
-    always_bounce_horizontal: Any
-    always_bounce_vertical: Any
-    bounces: Any
-    content_inset: Any
-    content_offset: Any
-    content_size: Any
-    data_source: Any
-    decelerating: Any
+class TableView(ScrollView):
+    allows_multiple_selection: bool
+    allows_multiple_selection_during_editing: bool
+    allows_selection: bool
+    allows_selection_during_editing: bool
+    data_source: ListDataSource | None
     delegate: Any
-    def delete_rows(self, *args, **kwargs) -> Any: ...
-    directional_lock_enabled: Any
-    dragging: Any
-    editing: Any
-    indicator_style: Any
+    editing: bool
+    row_height: float
+    selected_row: int
+    selected_rows: list[int]
+    separator_color: __ColorLike
     def __init__(self, *args, **kwargs) -> None: ...
+    def delete_rows(self, *args, **kwargs) -> Any: ...
     def insert_rows(self, *args, **kwargs) -> Any: ...
-    paging_enabled: Any
     def reload(self, *args, **kwargs) -> Any: ...
     def reload_data(self, *args, **kwargs) -> Any: ...
-    row_height: Any
-    scroll_enabled: Any
-    scroll_indicator_insets: Any
-    selected_row: Any
-    selected_rows: Any
-    separator_color: Any
     def set_editing(self, *args, **kwargs) -> Any: ...
-    shows_horizontal_scroll_indicator: Any
-    shows_vertical_scroll_indicator: Any
-    tracking: Any
 
 class TableViewCell(View):
     accessory_type: Any
@@ -823,17 +813,16 @@ class TableViewCell(View):
     selectable: Any
     selected_background_view: Any
     text_label: Any
+    def __init__(self, *args, **kwargs): ...
 
 class TextField(View):
     action: __Action | None
     autocapitalization_type: __CapitalizationType
     autocorrection_type: Any
-    def begin_editing(self, *args, **kwargs) -> Any: ...
     bordered: Any
-    clear_button_mode: Any
+    clear_button_mode: int
     delegate: Any
     enabled: bool
-    def end_editing(self, *args, **kwargs) -> Any: ...
     font: __Font
     keyboard_type: __KeyboardType
     placeholder: Any
@@ -841,40 +830,28 @@ class TextField(View):
     spellchecking_type: Any
     text: str
     text_color: __ColorLike
-
-class TextView(ScrollView, View):
-    alignment: __Alignment
-    always_bounce_horizontal: Any
-    always_bounce_vertical: Any
-    auto_content_inset: Any
-    autocapitalization_type: Any
-    autocorrection_type: Any
+    def __init__(self, *args, **kwargs): ...
     def begin_editing(self, *args, **kwargs) -> Any: ...
-    bounces: Any
-    content_inset: Any
-    content_offset: Any
-    content_size: Any
-    decelerating: Any
-    delegate: Any
-    directional_lock_enabled: Any
-    dragging: Any
-    editable: Any
     def end_editing(self, *args, **kwargs) -> Any: ...
+
+class TextView(ScrollView):
+    alignment: __Alignment
+    auto_content_inset: Any
+    autocapitalization_type: __CapitalizationType
+    autocorrection_type: Any
+    delegate: Any
+    editable: Any
     font: __Font
-    indicator_style: Any
-    keyboard_type: Any
-    paging_enabled: Any
-    def replace_range(self, *args, **kwargs) -> Any: ...
-    scroll_enabled: Any
-    scroll_indicator_insets: Any
+    keyboard_type: __KeyboardType
     selectable: Any
     selected_range: Any
-    shows_horizontal_scroll_indicator: Any
-    shows_vertical_scroll_indicator: Any
     spellchecking_type: Any
     text: Any
     text_color: Any
-    tracking: Any
+    def __init__(self, *args, **kwargs): ...
+    def begin_editing(self, *args, **kwargs) -> Any: ...
+    def end_editing(self, *args, **kwargs) -> Any: ...
+    def replace_range(self, *args, **kwargs) -> Any: ...
 
 class Transform:
     def __init__(self, a=1.0, b=0.0, c=0.0, d=1.0, tx=0.0, ty=0.0) -> None: ...
@@ -887,8 +864,14 @@ class Transform:
     @classmethod
     def translation(cls, tx: float, ty: float) -> Transform: ...
 
+class __WebViewKwargs(__ViewKwargs):
+    delegate: NotRequired[Any]
+    scales_page_to_fit: NotRequired[bool]
+
 class WebView(View):
     delegate: Any
+    scales_page_to_fit: bool
+    def __init__(self, *args, **kwargs: Unpack[__WebViewKwargs]): ...
     def eval_js(self, *args, **kwargs) -> Any: ...
     def evaluate_javascript(self, *args, **kwargs) -> Any: ...
     def go_back(self, *args, **kwargs) -> Any: ...
@@ -896,7 +879,6 @@ class WebView(View):
     def load_html(self, *args, **kwargs) -> Any: ...
     def load_url(self, *args, **kwargs) -> Any: ...
     def reload(self, *args, **kwargs) -> Any: ...
-    scales_page_to_fit: Any
     def stop(self, *args, **kwargs) -> Any: ...
 
 def _bind_action(

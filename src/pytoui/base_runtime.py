@@ -104,10 +104,10 @@ class BaseRuntime:
 
     def _find_scroll_interceptor(self, view: _ViewInternals) -> _ViewInternals | None:
         """Walk up from view and return the nearest ancestor with
-        mouse_scroll_enabled=True (i.e. a ScrollView with scroll_enabled)."""
+        mouse_wheel_enabled=True (i.e. a ScrollView with scroll_enabled)."""
         sv = view.superview
         while sv is not None:
-            if sv._pytoui_mouse_scroll_enabled:
+            if sv._pytoui_mouse_wheel_enabled:
                 return sv
             sv = sv.superview
         return None
@@ -171,7 +171,7 @@ class BaseRuntime:
 
         interceptor = self._scroll_tracked.get(touch_id)
         if interceptor:
-            if not interceptor._pytoui_mouse_scroll_enabled:
+            if not interceptor._pytoui_mouse_wheel_enabled:
                 # Primary disabled scrolling
                 # (e.g. via scroll_enabled=False in touch_began).
                 # Release the interceptor so primary gets all subsequent moves.
@@ -416,7 +416,7 @@ class BaseRuntime:
 
         interceptor = self._scroll_tracked.get(button_id)
         if interceptor:
-            if not interceptor._pytoui_mouse_scroll_enabled:
+            if not interceptor._pytoui_mouse_wheel_enabled:
                 # Primary disabled scrolling; release interceptor so primary gets drags.
                 self._scroll_tracked.pop(button_id)
             else:

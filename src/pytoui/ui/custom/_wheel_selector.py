@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import math
 import time
+from typing import TYPE_CHECKING
 
 from pytoui.ui._constants import ALIGN_CENTER
 from pytoui.ui._draw import (
@@ -12,8 +15,11 @@ from pytoui.ui._draw import (
     measure_string,
     set_color,
 )
-from pytoui.ui._types import Touch
 from pytoui.ui._view import View
+
+if TYPE_CHECKING:
+    from pytoui.ui._types import MouseWheel, Touch
+
 
 ITEM_HEIGHT = 50
 LENS_HEIGHT = 58
@@ -35,23 +41,25 @@ class WheelState:
 
 
 class LiquidTimePicker(View):
-    def __init__(self, h_init=12, m_init=30):
-        super().__init__()
+    def __init__(self, h_init=12, m_init=30, *args, **kwargs):
         self.corner_radius = 16
         self.background_color = "white"
-        self.h_state = WheelState(range(0, 24), h_init)
-        self.m_state = WheelState(range(0, 60), m_init)
+        self._h_state = WheelState(range(0, 24), h_init)
+        self._m_state = WheelState(range(0, 60), m_init)
 
-        self.active_state = None
-        self.last_y = 0
-        self.last_t = 0
+        self._active_state = None
+        self._last_y = 0
+        self._last_t = 0
 
+        self.mouse_wheel_enabled = True
         self.update_interval = 1 / 60  # 60 fps
+
+        super().__init__(*args, **kwargs)
 
     def update(self):
         """Automatically calls each frame"""
         changed = False
-        for state in [self.h_state, self.m_state]:
+        for state in [self._h_state, self._m_state]:
             if not state.is_dragging:
                 if abs(state.velocity) > 0.1:
                     state.current_idx += state.velocity * 0.016
@@ -70,36 +78,47 @@ class LiquidTimePicker(View):
         if changed:
             self.set_needs_display()
 
-    def touch_began(self, touch: Touch):
-        if touch.location.x < self.width / 2:
-            self.active_state = self.h_state
-        else:
-            self.active_state = self.m_state
-
-        if self.active_state:
-            self.active_state.is_dragging = True
-            self.active_state.velocity = 0
-            self.last_y = touch.location.y
-            self.last_t = time.time()
-
-    def touch_moved(self, touch: Touch):
-        if not self.active_state:
+    def mouse_wheel(self, event: MouseWheel):
+        if not self.mouse_wheel_enabled:
             return
 
-        dy = touch.location.y - self.last_y
-        dt = max(time.time() - self.last_t, 0.001)
+        self.touch_began(event)
+        self._active_state.current_idx += -1 if event.scroll_dy > 0 else 1
+        self._active_state.velocity = 0
+        self.touch_ended(event)
+        self.set_needs_display()
 
-        self.active_state.current_idx -= dy / ITEM_HEIGHT
-        self.active_state.velocity = -dy / ITEM_HEIGHT / dt * 0.3  # Reduced sensitivity
+    def touch_began(self, touch: Touch):
+        if touch.location.x < self.width / 2:
+            self._active_state = self._h_state
+        else:
+            self._active_state = self._m_state
+        if self._active_state:
+            self._active_state.is_dragging = True
+            self._active_state.velocity = 0
+            self._last_y = touch.location.y
+            self._last_t = time.time()
 
-        self.last_y = touch.location.y
-        self.last_t = time.time()
+    def touch_moved(self, touch: Touch):
+        if not self._active_state:
+            return
+
+        dy = touch.location.y - self._last_y
+        dt = max(time.time() - self._last_t, 0.001)
+
+        self._active_state.current_idx -= dy / ITEM_HEIGHT
+        self._active_state.velocity = (
+            -dy / ITEM_HEIGHT / dt * 0.3
+        )  # Reduced sensitivity
+
+        self._last_y = touch.location.y
+        self._last_t = time.time()
         self.set_needs_display()
 
     def touch_ended(self, touch: Touch):
-        if self.active_state:
-            self.active_state.is_dragging = False
-            self.active_state = None
+        if self._active_state:
+            self._active_state.is_dragging = False
+            self._active_state = None
 
     def _draw_text(self, txt, x, y, sx, sy, opacity, bold):
         font = ("<system-bold>" if bold else "<system>", FONT_SIZE)
@@ -115,7 +134,7 @@ class LiquidTimePicker(View):
                 alignment=ALIGN_CENTER,
             )
 
-    def _draw_wheel(self, state, center_x, mid_y, lens_path):
+    def _draw_wheel(self, state: WheelState, center_x, mid_y, lens_path: Path):
         w, h = self.width, self.height
         if w == 0 or h == 0:
             return
@@ -176,8 +195,8 @@ class LiquidTimePicker(View):
             )
 
         # 2. Wheel
-        self._draw_wheel(self.h_state, w * 0.3, mid_y, lens_path)
-        self._draw_wheel(self.m_state, w * 0.7, mid_y, lens_path)
+        self._draw_wheel(self._h_state, w * 0.3, mid_y, lens_path)
+        self._draw_wheel(self._m_state, w * 0.7, mid_y, lens_path)
 
         # 3. Glass layer (Overlay)
         with GState():

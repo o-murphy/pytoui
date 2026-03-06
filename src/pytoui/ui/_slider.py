@@ -9,11 +9,11 @@ from pytoui._platform import (
 )
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._internals import _final_
-from pytoui.ui._types import Rect, Touch
+from pytoui.ui._types import Rect
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import _Action
+    from pytoui.ui._types import MouseWheel, Touch, _Action
 
 __all__ = ("Slider",)
 
@@ -60,7 +60,7 @@ class Slider(View):
         # Standard iOS slider size
         self.frame = Rect(0, 0, 200, 31)
         if not IS_PYTHONISTA:
-            self.mouse_scroll_enabled = True
+            self.mouse_wheel_enabled = True
 
         super().__init__(*args, **kwargs)
 
@@ -254,13 +254,13 @@ class Slider(View):
                 self._ensure_action_and_call(self)  # type: ignore[attr-defined]
             self.set_needs_display()
 
-    def mouse_wheel(self, touch):
+    def mouse_wheel(self, event: MouseWheel):
         if not self.enabled:
             return
         available = self.width - 50.0  # 2 * margin (25px each side)
         if available <= 0:
             return
-        self.value = self._value + touch.scroll_dy / available
+        self.value = self._value + event.scroll_dy / available
         if self.continuous:
             self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 

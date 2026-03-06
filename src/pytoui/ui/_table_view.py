@@ -6,6 +6,7 @@ from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._draw import Image
 from pytoui.ui._image_view import ImageView
 from pytoui.ui._label import Label
+from pytoui.ui._scroll_view import _ScrollView
 from pytoui.ui._types import basestring
 from pytoui.ui._view import View
 
@@ -15,18 +16,20 @@ if TYPE_CHECKING:
 __all__ = ("TableView", "TableViewCell", "ListDataSourceList", "ListDataSource")
 
 
-class TableView(View):
+class TableView(_ScrollView):
     # FIXME: not implemented
 
     allows_multiple_selection: bool
+    allows_multiple_selection_during_editing: bool
     allows_selection: bool
+    allows_selection_during_editing: bool
     data_source: ListDataSource | None
     delegate: Any
     editing: bool
     row_height: float
-    separator_color: _ColorLike
     selected_row: int
     selected_rows: list[int]
+    separator_color: _ColorLike
 
     def __init__(self, *args, **kwargs): ...
 

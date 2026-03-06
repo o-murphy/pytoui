@@ -90,8 +90,8 @@ class Panel(ui.View):
     def mouse_moved(self, t):
         self._root.on_hover(t, self)
 
-    def mouse_wheel(self, t):
-        self._root.on_scroll(t, self)
+    def mouse_wheel(self, event):
+        self._root.on_scroll(event, self)
 
 
 class DemoView(ui.View):
@@ -106,7 +106,7 @@ class DemoView(ui.View):
         self._hover: tuple[float, float] | None = None  # cursor pos (hover)
         self._scroll: tuple[float, float, float, float] | None = None  # x,y,dx,dy
 
-        self.mouse_scroll_enabled = True
+        self.mouse_wheel_enabled = True
 
         # Header
         self._header = ui.Label()
@@ -208,8 +208,8 @@ class DemoView(ui.View):
     def mouse_moved(self, t):
         self.on_hover(t, self)
 
-    def mouse_wheel(self, t):
-        self.on_scroll(t, self)
+    def mouse_wheel(self, event):
+        self.on_scroll(event, self)
 
     # ── header ────────────────────────────────────────────────────────────────
 

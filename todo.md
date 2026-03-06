@@ -11,7 +11,7 @@ HOT:
 * Transforms not applying in draw_string_core_graphics which makes issues with rendering in _wheel_selector.py (on Pythonista works fine)
 * NavigationView on stack pop/push animations like ScrollView paging animation
 * View:
-  * scroll_enabled (we have just mouse_scroll_enabled)
+  * scroll_enabled (we have just mouse_wheel_enabled)
 * Image:
   for Image.clip_to_mask
   ```rust

@@ -11,11 +11,11 @@ from pytoui._platform import (
 from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
 from pytoui.ui._draw import Path, draw_string, measure_string, set_color
 from pytoui.ui._internals import _final_
-from pytoui.ui._types import Rect, Touch
+from pytoui.ui._types import Rect
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import _Action
+    from pytoui.ui._types import MouseWheel, Touch, _Action
 
 
 __all__ = ("SegmentedControl",)
@@ -65,7 +65,7 @@ class SegmentedControl(View):
 
         self.frame = Rect(0.00, 0.00, 120.0, 32.0)
         if not IS_PYTHONISTA:
-            self.mouse_scroll_enabled = True
+            self.mouse_wheel_enabled = True
 
         super().__init__(*args, **kwargs)
 
@@ -289,17 +289,17 @@ class SegmentedControl(View):
 
         self.set_needs_display()
 
-    def mouse_wheel(self, touch):
+    def mouse_wheel(self, event: MouseWheel):
         if not self.enabled:
             return
         count = len(self._segments)
         if count == 0:
             return
         # Dominant axis: dy up (+) = prev segment, dx right (+) = next segment
-        if abs(touch.scroll_dy) >= abs(touch.scroll_dx):
-            delta = -1 if touch.scroll_dy > 0 else (1 if touch.scroll_dy < 0 else 0)
+        if abs(event.scroll_dy) >= abs(event.scroll_dx):
+            delta = -1 if event.scroll_dy > 0 else (1 if event.scroll_dy < 0 else 0)
         else:
-            delta = 1 if touch.scroll_dx > 0 else (-1 if touch.scroll_dx < 0 else 0)
+            delta = 1 if event.scroll_dx > 0 else (-1 if event.scroll_dx < 0 else 0)
         if delta == 0:
             return
         new_index = max(0, min(self._selected_index + delta, count - 1))

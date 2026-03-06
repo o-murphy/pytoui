@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pytoui._platform import IS_PYTHONISTA
-from pytoui.ui._view import View
+from pytoui.ui._scroll_view import _ScrollView
 
 if TYPE_CHECKING:
     from pytoui.ui._types import (
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 __all__ = ("TextView",)
 
 
-class _TextView(View):
+class _TextView(_ScrollView):
     alignment: _Alignment
     autocapitalization_type: _CapitalizationType
     autocorrection_type: bool
@@ -28,7 +28,7 @@ class _TextView(View):
     keyboard_type: _KeyboardType
     selectable: bool
     selected_range: tuple[int, int]
-    spellchecking_type: bool
+    spellchecking_type: Any
     text: str
     text_color: _ColorLike
 

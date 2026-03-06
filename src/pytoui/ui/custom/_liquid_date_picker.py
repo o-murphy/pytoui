@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import locale
 from datetime import datetime
-from typing import Callable, List
+from typing import TYPE_CHECKING, Callable, List
 
 from pytoui.ui._button import Button
 from pytoui.ui._constants import ALIGN_CENTER
@@ -12,29 +12,26 @@ from pytoui.ui._label import Label
 from pytoui.ui._scroll_view import ScrollView
 from pytoui.ui._view import View
 
+if TYPE_CHECKING:
+    pass
+
 __all__ = ("LiquidDatePicker",)
 
 
 IOS_BLUE = (0.0, 122 / 255, 1.0, 1.0)
-DAY_SIZE = 40
-HEADER_HEIGHT = 40
-WEEKDAY_HEIGHT = 20
+DAY_SIZE = 42
+HEADER_HEIGHT = 42
+WEEKDAY_HEIGHT = 24
 
 
 class _DayView(View):
-    def __init__(self, day: int, is_current_month: bool = True, **kwargs):
+    def __init__(self, day: int, **kwargs):
         super().__init__(**kwargs)
         self.day = day
-        self.is_current_month = is_current_month
         self.is_today = False
+        self.is_current_month = False
         self.is_selected = False
-
-        today = datetime.now()
-        if day > 0 and is_current_month:
-            self.is_today = day == today.day
-
         self._button = Button()
-        self._button.background_color = "transparent"
         self._button.title = str(day) if day > 0 else ""
         self._button.corner_radius = DAY_SIZE / 2
         if day <= 0:
@@ -47,23 +44,22 @@ class _DayView(View):
         self._button.frame = self.bounds.as_tuple()
 
     def draw(self):
-        if self.day <= 0 or not self.is_current_month:
-            return
-
-        if self.is_today:
-            self._button.font = ("<system-bold>", 14)
-        else:
-            self._button.font = ("<system>", 14)
-
         if self.is_selected:
-            self._button.border_width = 2
-            self._button.border_color = IOS_BLUE
+            self._button.font = ("<system-bold>", 14)
             if self.is_today:
                 self._button.background_color = IOS_BLUE
+                self._button.tint_color = "white"
             else:
-                self._button.background_color = "transparent"
+                r, g, b, a = IOS_BLUE
+                alpha = (r, g, b, a * 0.4)
+                self._button.background_color = alpha
+                self._button.tint_color = IOS_BLUE
         else:
-            self._button.border_width = 0
+            if self.is_today:
+                self._button.tint_color = IOS_BLUE
+            else:
+                self._button.tint_color = "black"
+            self._button.font = ("<system>", 14)
             self._button.background_color = "transparent"
 
     @property
@@ -86,15 +82,9 @@ class _WeekRow(View):
         today = datetime.now()
 
         for day in days:
-            is_current_month = day > 0
-            day_view = _DayView(day, is_current_month)
-
-            if (
-                is_current_month
-                and day == today.day
-                and month == today.month
-                and year == today.year
-            ):
+            day_view = _DayView(day)
+            day_view.is_current_month = month == today.month
+            if day == today.day and day_view.is_current_month and year == today.year:
                 day_view.is_today = True
 
             self._day_views.append(day_view)
@@ -122,11 +112,13 @@ class _WeekRow(View):
             day_view.is_selected = False
 
 
-class _MonthContentView(View):
+class _MonthPage(View):
     def __init__(self, month: int, year: int, **kwargs):
         super().__init__(**kwargs)
-        self.month = month
-        self.year = year
+
+        self.month: int = month
+        self.year: int = datetime.now().year
+        self.background_color = (0.95, 0.95, 0.95, 1.0)
 
         self._weeks: List[_WeekRow] = []
         month_calendar = calendar.monthcalendar(self.year, self.month)
@@ -137,8 +129,7 @@ class _MonthContentView(View):
             self.add_subview(week)
 
     def layout(self):
-        w = self.bounds.width
-
+        w = DAY_SIZE * 7
         for i, week in enumerate(self._weeks):
             week.frame = (0, i * DAY_SIZE, w, DAY_SIZE)
 
@@ -153,19 +144,24 @@ class _MonthContentView(View):
             week.clear_selection()
 
 
-class _MonthPage(View):
-    def __init__(self, month: int, year: int | None = None, **kwargs):
-        super().__init__(**kwargs)
+@_final_
+class _DatePickerHeader(View):
+    def __init__(self, *args, **kwargs):
+        self._month_year_btn = Button()
+        self._month_year_btn.tint_color = "black"
+        self._month_year_btn.font = ("<system>", 16)
+        self._month_year_btn.title = "<MONTH YEAR >"  # self._get_month_name()
+        self.add_subview(self._month_year_btn)
 
-        self.month = month
-        self.year = year or datetime.now().year
-        self.background_color = (0.95, 0.95, 0.95, 1.0)
+        self._prev_btn = Button(title="<")
+        self._prev_btn.font = ("<system-bold>", 24)
+        self._prev_btn.flex = "L"
+        self.add_subview(self._prev_btn)
 
-        self._month_label = Label()
-        self._month_label.alignment = ALIGN_CENTER
-        self._month_label.font = ("<system-bold>", 18)
-        self._month_label.text = self._get_month_name()
-        self.add_subview(self._month_label)
+        self._next_btn = Button(title=">")
+        self._next_btn.flex = "L"
+        self._next_btn.font = ("<system-bold>", 24)
+        self.add_subview(self._next_btn)
 
         self._weekday_labels: List[Label] = []
         weekdays = self._get_weekday_names()
@@ -178,35 +174,15 @@ class _MonthPage(View):
             self._weekday_labels.append(lbl)
             self.add_subview(lbl)
 
-        self._scroll_view = ScrollView()
-        self._scroll_view.shows_vertical_scroll_indicator = True
-        self._scroll_view.bounces = True
-        self._scroll_view.background_color = "clear"
-        self.add_subview(self._scroll_view)
+    def layout(self):
+        self._month_year_btn.frame = (0, 0, 200, HEADER_HEIGHT)
+        w = self.width
+        self._prev_btn.frame = (w - 2 * DAY_SIZE, 0, DAY_SIZE, HEADER_HEIGHT)
+        self._next_btn.frame = (w - DAY_SIZE, 0, DAY_SIZE, HEADER_HEIGHT)
 
-        self._content = _MonthContentView(self.month, self.year)
-        self._scroll_view.add_subview(self._content)
-
-    def _get_month_name(self) -> str:
-        try:
-            locale.setlocale(locale.LC_TIME, "")
-            return datetime(self.year, self.month, 1).strftime("%B %Y").capitalize()
-        except Exception:
-            months = [
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-            ]
-            return f"{months[self.month - 1]} {self.year}"
+        for i, lbl in enumerate(self._weekday_labels):
+            lbl.frame = (i * DAY_SIZE, HEADER_HEIGHT, DAY_SIZE, WEEKDAY_HEIGHT)
+            lbl.alignment = ALIGN_CENTER
 
     def _get_weekday_names(self) -> List[str]:
         try:
@@ -217,56 +193,74 @@ class _MonthPage(View):
         except Exception:
             return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-    def layout(self):
-        w = DAY_SIZE * 7
 
-        self._month_label.frame = (0, 0, w, HEADER_HEIGHT)
+def _get_month_name(year, month) -> str:
+    try:
+        locale.setlocale(locale.LC_TIME, "")
+        return datetime(year, month, 1).strftime("%B %Y").capitalize()
+    except Exception:
+        months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+        return f"{months[month - 1]} {year}"
 
-        for i, lbl in enumerate(self._weekday_labels):
-            lbl.frame = (i * DAY_SIZE, HEADER_HEIGHT, DAY_SIZE, WEEKDAY_HEIGHT)
 
-        header_height = HEADER_HEIGHT + WEEKDAY_HEIGHT
-        weeks_count = len(calendar.monthcalendar(self.year, self.month))
-        content_height = weeks_count * DAY_SIZE
+class _ScrollViewDelegate:
+    def __init__(self, picker: LiquidDatePicker):
+        self.picker = picker
+        self.current_month = picker.current_month
 
-        self._scroll_view.frame = (0, header_height, w, content_height)
-        self._content.frame = (0, 0, w, content_height)
-        self._scroll_view.content_size = (w, content_height)
-
-    def select_day(self, day: int) -> bool:
-        return self._content.select_day(day)
-
-    def clear_selection(self):
-        self._content.clear_selection()
+    def scrollview_did_scroll(self, sv: ScrollView | None = None):
+        current_month = self.picker.current_month
+        if self.current_month != current_month:
+            self.current_month = current_month
+            self.picker._header._month_year_btn.title = _get_month_name(
+                *self.current_month
+            )
 
 
 @_final_
 class LiquidDatePicker(View):
-    def __init__(
-        self, start_year: int | None = None, end_year: int | None = None, **kwargs
-    ):
+    def __init__(self, date: datetime | None = None, **kwargs):
         super().__init__(**kwargs)
 
         self.background_color = "white"
         self.corner_radius = 16
 
-        current_year = datetime.now().year
-        self.start_year = start_year or current_year - 1
-        self.end_year = end_year or current_year + 2
+        self._date = date if date else datetime.now()
 
-        self._main_scroll = ScrollView()
-        self._main_scroll.paging_enabled = True
-        self._main_scroll.shows_horizontal_scroll_indicator = False
-        self._main_scroll.bounces = True
-        self.add_subview(self._main_scroll)
+        current_year = self._date.year
+        self.start_year = current_year - 1
+        self.end_year = current_year + 1
+
+        self._header = _DatePickerHeader()
+        self.add_subview(self._header)
 
         self._months: List[_MonthPage] = []
+
+        self._scroll_container = ScrollView()
+        self._scroll_container.bounces = True
+        self._scroll_container.paging_enabled = True
+        self._scroll_container.shows_horizontal_scroll_indicator = False
+        self._scroll_container.delegate = _ScrollViewDelegate(self)
+        self.add_subview(self._scroll_container)
 
         for year in range(self.start_year, self.end_year + 1):
             for month_i in range(1, 13):
                 month_page = _MonthPage(month_i, year)
                 self._months.append(month_page)
-                self._main_scroll.add_subview(month_page)
+                self._scroll_container.add_subview(month_page)
 
         self._current_month_idx = 0
         today = datetime.now()
@@ -277,37 +271,41 @@ class LiquidDatePicker(View):
                 break
 
     def layout(self):
+        w = DAY_SIZE * 7
+        header_h = HEADER_HEIGHT + WEEKDAY_HEIGHT
+
         current_month = self._months[self._current_month_idx]
         weeks_count = len(
             calendar.monthcalendar(current_month.year, current_month.month)
         )
-        content_height = weeks_count * DAY_SIZE
-        total_height = HEADER_HEIGHT + WEEKDAY_HEIGHT + content_height
 
-        self.frame = (self.frame.x, self.frame.y, DAY_SIZE * 7, total_height)
+        content_h = weeks_count * DAY_SIZE
+        total_h = header_h + content_h
 
-        w, h = self.bounds.size
-
-        self._main_scroll.frame = (0, 0, w, h)
-
-        self._main_scroll.content_size = (w * len(self._months), h)
+        self._header.frame = (0, 0, w, header_h)
+        self._scroll_container.frame = (0, header_h, w, content_h)
+        self._scroll_container.content_size = (w * len(self._months), content_h)
+        self._scroll_container.content_offset = (self._current_month_idx * w, 0)
 
         for i, month in enumerate(self._months):
-            month.frame = (i * w, 0, w, h)
+            month.frame = (i * w, 0, w, content_h)
 
-        self._main_scroll.content_offset = (self._current_month_idx * w, 0)
+        self.frame = (self.frame.x, self.frame.y, w, total_h)
 
     @property
     def current_month(self) -> tuple[int, int]:
-        page = round(self._main_scroll.content_offset.x / self.bounds.width)
-        page = max(0, min(page, len(self._months) - 1))
-        month = self._months[page]
-        return (month.year, month.month)
+        try:
+            page = round(self._scroll_container.content_offset.x / self.bounds.width)
+            page = max(0, min(page, len(self._months) - 1))
+            month = self._months[page]
+            return (month.year, month.month)
+        except IndexError:
+            return (0, 0)
 
     @property
     def selected_date(self) -> tuple[int, int, int] | None:
         for month in self._months:
-            for week in month._content._weeks:
+            for week in month._weeks:
                 for day in week._day_views:
                     if day.is_selected and day.day > 0:
                         return (month.year, month.month, day.day)
@@ -318,9 +316,9 @@ class LiquidDatePicker(View):
             if m.year == year and m.month == month:
                 target_x = i * self.bounds.width
                 if animated:
-                    self._main_scroll._internals_._start_page_anim(target_x, 0)
+                    self._scroll_container._internals_._start_page_anim(target_x, 0)
                 else:
-                    self._main_scroll.content_offset = (target_x, 0)
+                    self._scroll_container.content_offset = (target_x, 0)
                 break
 
     def select_date(self, year: int, month: int, day: int) -> bool:
@@ -338,7 +336,7 @@ class LiquidDatePicker(View):
     def set_day_action(self, action: Callable):
         def wrapped_action(sender):
             for month in self._months:
-                for week in month._content._weeks:
+                for week in month._weeks:
                     for day_view in week._day_views:
                         if day_view._button is sender:
                             for m in self._months:
@@ -348,7 +346,7 @@ class LiquidDatePicker(View):
                             return
 
         for month in self._months:
-            for week in month._content._weeks:
+            for week in month._weeks:
                 for day_view in week._day_views:
                     day_view.action = wrapped_action
 
@@ -359,13 +357,9 @@ if __name__ == "__main__":
     def on_day_selected(day_view):
         print(f"Selected day: {day_view.day}")
 
-    picker = LiquidDatePicker(start_year=2024, end_year=2026)
+    picker = LiquidDatePicker()
     picker.set_day_action(on_day_selected)
 
     root = View()
     root.add_subview(picker)
     root.present("fullscreen")
-
-    # v = _DayView(1, is_current_month=False)
-    # v.present()
-    # print(v.frame)

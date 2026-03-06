@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
 )
-from pytoui.ui._constants import ALIGN_CENTER, LB_TRUNCATE_TAIL
+from pytoui.ui._constants import ALIGN_CENTER, LB_CLIP
 from pytoui.ui._draw import draw_string, measure_string
 from pytoui.ui._internals import _final_
 from pytoui.ui._types import (
@@ -36,7 +36,6 @@ class Button(View):
         "_image",
         "_last_time",
         "_target_alpha",
-        "_text_color",
         "_title",
         "_tracked",
         "_anim_disabled",
@@ -54,7 +53,6 @@ class Button(View):
         self._image: Image | None = None
         self._title: str | None = None
         self._font: _Font = ("<system>", 17.0)
-        self._text_color: _RGBA | None = None  # None means auto-detect
 
         # Opacity animation state
         self._anim_alpha = 1.0
@@ -68,25 +66,17 @@ class Button(View):
         self._content_insets: Size = Size(8.0, 8.0)
 
         self.frame = Rect(0.0, 0.0, 80.0, 44.0)
+        self.tint_color = self._IOS_BLUE
 
         super().__init__(*args, **kwargs)
 
-    def _get_contrast_text_color(self) -> _RGBA:
-        """Determines the best text color based on background brightness."""
-        bg = self.background_color
+    @property
+    def font(self) -> _Font:
+        return self._font
 
-        # If no background color or it's fully transparent, use system blue
-        if bg is None or bg[3] <= 0.01:
-            return self._IOS_BLUE
-
-        # Calculate perceived luminance (standard W3C formula)
-        # 0.299*R + 0.587*G + 0.114*B
-        r, g, b = bg[0], bg[1], bg[2]
-        luminance = (0.299 * r) + (0.587 * g) + (0.114 * b)
-
-        # If background is dark, text should be white.
-        # If light, use system blue
-        return self._WHITE if luminance < 0.6 else self._IOS_BLUE
+    @font.setter
+    def font(self, font: _Font):
+        self._font = font
 
     @property
     def action(self) -> _Action | None:
@@ -154,7 +144,7 @@ class Button(View):
             base_color = (0.7, 0.7, 0.7, 1.0)  # disabled gray
         else:
             # If user manually set text color, use it. Otherwise, adapt.
-            base_color = self._text_color or self._get_contrast_text_color()
+            base_color = self.tint_color
 
         # Apply animated opacity
         r, g, b, a = base_color
@@ -169,7 +159,7 @@ class Button(View):
             max_width=w - 2 * inset_x,
             font=self._font,
             alignment=ALIGN_CENTER,
-            line_break_mode=LB_TRUNCATE_TAIL,
+            line_break_mode=LB_CLIP,
         )
 
         title_rect = Rect(
@@ -186,7 +176,7 @@ class Button(View):
             font=self._font,
             color=current_color,
             alignment=ALIGN_CENTER,
-            line_break_mode=LB_TRUNCATE_TAIL,
+            line_break_mode=LB_CLIP,
         )
 
     def touch_began(self, touch: Touch):

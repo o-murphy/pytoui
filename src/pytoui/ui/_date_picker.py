@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from pytoui._platform import IS_PYTHONISTA
@@ -16,7 +17,7 @@ class _DatePicker(View):
     def __init__(self, *args, **kwargs):
         self._action: _Action | None = None
         self._countdown_duration: float = 0
-        self._date: Any = None
+        self._date: datetime | None = None
         self._mode: _DatePickerMode = DATE_PICKER_MODE_DATE_AND_TIME
 
         super().__init__(*args, **kwargs)

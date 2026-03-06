@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Callable, Sequence
+from datetime import datetime
 import re
 from typing import (
     Any,
@@ -626,13 +627,13 @@ class ButtonItem:
 class __DatePickerKwargs(__ViewKwargs):
     action: NotRequired[__Action | None]
     countdown_duration: NotRequired[float]
-    date: NotRequired[Any]
+    date: NotRequired[datetime | None]
     mode: NotRequired[__DatePickerMode]
 
 class DatePicker(View):
     action: __Action | None
     countdown_duration: float
-    date: Any
+    date: datetime | None
     mode: __DatePickerMode
     def __init__(self, *args, **kwargs: Unpack[__DatePickerKwargs]) -> None: ...
 

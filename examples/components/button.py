@@ -22,6 +22,7 @@ def main():
     button.flex = "WH"
     button.background_color = "dark_blue"
     button.corner_radius = 16
+    button.tint_color = "white"
 
     root = ui.View()
     root.frame = (0, 0, 400, 600)

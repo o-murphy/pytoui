@@ -1608,6 +1608,7 @@ class Path:
 
     @eo_fill_rule.setter
     def eo_fill_rule(self, value: bool):
+        # FIXME: eo_fill_rule applied in Pythonista with some other logic
         backend = _get_draw_ctx().backend
         if not backend:
             raise RuntimeError("Invalid backend")

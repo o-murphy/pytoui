@@ -2,6 +2,7 @@ use crate::font::{get_default_font, with_font};
 use crate::framebuffer::{with_fb, FrameBuffer};
 use crate::helpers::{hex_to_rgba, parse_c_str};
 use std::os::raw::c_char;
+use tiny_skia::{Point};
 
 // --- Text alignment constants (match Pythonista) ---
 pub(crate) const ALIGN_LEFT: u32 = 0;
@@ -372,6 +373,7 @@ impl FrameBuffer {
     }
 
     /// CoreGraphics-compatible text drawing
+    /// CoreGraphics-compatible text drawing
     pub(crate) fn draw_string_core_graphics(
         &mut self,
         font: &fontdue::Font,
@@ -409,8 +411,6 @@ impl FrameBuffer {
             return;
         }
 
-        let _total_height = line_height * all_lines.len() as f32;
-
         let max_lines = (rect_h / line_height).floor() as usize;
         let visible_lines: Vec<String> = if all_lines.len() > max_lines && max_lines > 0 {
             match line_break_mode {
@@ -440,7 +440,16 @@ impl FrameBuffer {
             all_lines
         };
 
-        let start_y = rect_y + ascent;
+        // Застосовуємо CTM до початкової позиції
+        let mut point = Point::from_xy(rect_x, rect_y);
+        self.ctm.map_point(&mut point);
+        let base_x = point.x;
+        let base_y = point.y;
+
+        let start_y = base_y + ascent;
+
+        // Отримуємо компоненти трансформації для масштабування
+        let scale_x = (self.ctm.sx * self.ctm.sx + self.ctm.ky * self.ctm.ky).sqrt();
 
         for (i, line) in visible_lines.iter().enumerate() {
             if line.is_empty() {
@@ -454,12 +463,14 @@ impl FrameBuffer {
                 }
             }
 
+            let transformed_line_width = line_width * scale_x;
+
             let start_x = match alignment {
-                ALIGN_RIGHT => rect_x + rect_w - line_width,
-                ALIGN_CENTER => rect_x + (rect_w - line_width) / 2.0,
-                ALIGN_JUSTIFIED if i < visible_lines.len() - 1 => rect_x,
-                ALIGN_JUSTIFIED | ALIGN_NATURAL | ALIGN_LEFT => rect_x,
-                _ => rect_x,
+                ALIGN_RIGHT => base_x + rect_w * scale_x - transformed_line_width,
+                ALIGN_CENTER => base_x + (rect_w * scale_x - transformed_line_width) / 2.0,
+                ALIGN_JUSTIFIED if i < visible_lines.len() - 1 => base_x,
+                ALIGN_JUSTIFIED | ALIGN_NATURAL | ALIGN_LEFT => base_x,
+                _ => base_x,
             };
 
             let mut curr_x = start_x;
@@ -470,8 +481,9 @@ impl FrameBuffer {
 
                 let (metrics, bitmap) = font.rasterize(c, size);
 
-                let draw_x = curr_x + metrics.xmin as f32;
-                let draw_y = start_y + (i as f32 * line_height)
+                // Позиція символу до застосування CTM
+                let char_x = curr_x;
+                let char_y = start_y + (i as f32 * line_height)
                     - metrics.height as f32
                     - metrics.ymin as f32;
 
@@ -482,21 +494,37 @@ impl FrameBuffer {
                             continue;
                         }
 
-                        let pixel_x = draw_x as i32 + col as i32;
-                        let pixel_y = draw_y as i32 + row as i32;
+                        // Координати пікселя відносно символу
+                        let pixel_offset_x = col as f32 + metrics.xmin as f32;
+                        let pixel_offset_y = row as f32;
 
-                        if pixel_x >= 0 && pixel_x < self.w && pixel_y >= 0 && pixel_y < self.h {
+                        // Абсолютні координати пікселя до трансформації
+                        let pixel_x = char_x + pixel_offset_x;
+                        let pixel_y = char_y + pixel_offset_y;
+
+                        // Застосовуємо CTM
+                        let mut pixel_point = Point::from_xy(pixel_x, pixel_y);
+                        self.ctm.map_point(&mut pixel_point);
+                        let px = pixel_point.x.round() as i32;
+                        let py = pixel_point.y.round() as i32;
+
+                        if px >= 0 && px < self.w && py >= 0 && py < self.h {
                             if self.antialias {
                                 let pixel_a = ((a as u16 * coverage as u16) / 255) as u8;
-                                self.set_pixel_over(pixel_x, pixel_y, r, g, b, pixel_a);
+                                self.set_pixel_over(px, py, r, g, b, pixel_a);
                             } else if coverage >= 128 {
-                                self.set_pixel_over(pixel_x, pixel_y, r, g, b, a);
+                                self.set_pixel_over(px, py, r, g, b, a);
                             }
                         }
                     }
                 }
 
-                curr_x += metrics.advance_width;
+                // Додаємо ширину символу з урахуванням трансформації
+                let advance = metrics.advance_width;
+                // Проектуємо вектор (advance, 0) через CTM
+                let mut advance_point = Point::from_xy(advance, 0.0);
+                self.ctm.map_point(&mut advance_point);
+                curr_x += advance_point.x;
             }
         }
     }

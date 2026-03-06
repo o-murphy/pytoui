@@ -238,7 +238,9 @@ _ViewFlex = Literal[
     "whlrtb",
 ]
 _TouchPhase = Literal["began", "ended", "moved", "stationary", "cancelled"]
-_PresentStyle = Literal["default", "full_screen", "sheet", "popover", "panel"]
+_PresentStyle = Literal[
+    "default", "fullscreen", "full_screen", "sheet", "popover", "panel"
+]
 _PresentOrientation = Literal[
     "portrait",
     "portrait-upside-down",

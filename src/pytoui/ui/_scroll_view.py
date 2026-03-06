@@ -482,8 +482,7 @@ class _ScrollViewInternals(_ViewInternals):
             self.update_interval = self._UPDATE_INTERVAL
 
     def _snap_to_page(self):
-        fw = self.width
-        fh = self.height
+        fw, fh = self.frame.size
         ox, oy = self._content_offset
 
         def nearest_page(offset: float, page_size: float, vel: float) -> float:
@@ -506,7 +505,8 @@ class _ScrollViewInternals(_ViewInternals):
 
     # ── Kinetic deceleration via update() ─────────────────────────────────────
 
-    def update(self):
+    def pytoui_update(self):
+        super().pytoui_update()
         now = time.monotonic()
 
         # Page animation has priority over deceleration

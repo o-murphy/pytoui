@@ -17,6 +17,7 @@ from pytoui.ui._constants import (
     CONTENT_SCALE_TO_FILL,
 )
 from pytoui.ui._draw import (
+    _SYSTEM_TINT,
     GState,
     Path,
     Transform,
@@ -130,8 +131,6 @@ class _RenderLoop:
 
 
 class _ViewInternals:
-    SYSTEM_TINT: _RGBA = (0.0, 0.478, 1.0, 1.0)
-
     __slots__ = (
         # view ref
         "_ref",
@@ -178,8 +177,8 @@ class _ViewInternals:
     def __init__(self, view: _View):
         self._ref: _View = view
         self._alpha: float = 1.0
-        self._background_color: _RGBA | None = (0.0, 0.0, 0.0, 0.0)
-        self._border_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
+        self._background_color: _RGBA = (0.0, 0.0, 0.0, 0.0)
+        self._border_color: _RGBA = (0.0, 0.0, 0.0, 1.0)
         self._border_width: float = 0.0
         self._bounds: Rect = Rect(0.0, 0.0, 100.0, 100.0)
         self._content_mode: _ContentMode = CONTENT_SCALE_TO_FILL
@@ -191,7 +190,7 @@ class _ViewInternals:
         self._subviews: list[_ViewInternals] = []
         self._superview: _ViewInternals | None = None
         self._navigation_view: _NavigationViewInternals | None = None
-        self._tint_color: _RGBA | None = None
+        self._tint_color: _RGBA = _SYSTEM_TINT
         self._transform: Transform | None = None
         self._update_interval: float = 0.0
         self._on_screen: bool = False
@@ -259,7 +258,7 @@ class _ViewInternals:
         self.set_needs_display()
 
     @property
-    def background_color(self) -> _RGBA | None:
+    def background_color(self) -> _RGBA:
         """The view's background color, defaults to None (transparent)."""
         return self._background_color
 
@@ -274,7 +273,7 @@ class _ViewInternals:
     bg_color = background_color
 
     @property
-    def border_color(self) -> _RGBA | None:
+    def border_color(self) -> _RGBA:
         """The view's border color (only has effect if border_width > 0)."""
         return self._border_color
 
@@ -465,15 +464,14 @@ class _ViewInternals:
         self.set_needs_layout()
 
     @property
-    def tint_color(self) -> _RGBA | None:
+    def tint_color(self) -> _RGBA:
         """The view's tint color, inherited from superview if None."""
         v: _ViewInternals | None = self
         while v is not None:
             if v._tint_color is not None:
                 return v._tint_color
-            if self._superview is not None:
-                v = self._superview
-        return self.SYSTEM_TINT
+            v = v._superview
+        return _SYSTEM_TINT
 
     @tint_color.setter
     def tint_color(self, value: _ColorLike):
@@ -1086,7 +1084,7 @@ class _View:
         self._internals_.alpha = value
 
     @property
-    def background_color(self) -> _RGBA | None:
+    def background_color(self) -> _RGBA:
         """The view's background color, defaults to None (transparent)."""
         return self._internals_.background_color
 
@@ -1098,7 +1096,7 @@ class _View:
     bg_color = background_color
 
     @property
-    def border_color(self) -> _RGBA | None:
+    def border_color(self) -> _RGBA:
         """The view's border color (only has effect if border_width > 0)."""
         return self._internals_.border_color
 
@@ -1259,7 +1257,7 @@ class _View:
         return None
 
     @property
-    def tint_color(self) -> _RGBA | None:
+    def tint_color(self) -> _RGBA:
         """The view's tint color, inherited from superview if None."""
         return self._internals_.tint_color
 

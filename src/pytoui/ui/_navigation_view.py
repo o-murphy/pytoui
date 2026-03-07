@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._button import Button
 from pytoui.ui._constants import ALIGN_CENTER, CONTENT_REDRAW
-from pytoui.ui._draw import parse_color
+from pytoui.ui._draw import _SYSTEM_TINT, parse_color
 from pytoui.ui._internals import _final_, _getset_descriptor
 from pytoui.ui._label import Label
 from pytoui.ui._view import _View, _ViewInternals
@@ -35,8 +35,8 @@ class _NavigationViewInternals(_ViewInternals):
         self.content_mode = CONTENT_REDRAW
 
         self._navigation_bar_hidden: bool = False
-        self._bar_tint_color: _RGBA | None = None
-        self._title_color: _RGBA | None = None
+        self._bar_tint_color: _RGBA = _SYSTEM_TINT
+        self._title_color: _RGBA = _SYSTEM_TINT
 
         self._navigation_stack: list[_ViewInternals] = []
         self._current_content_view: _ViewInternals | None = None
@@ -85,7 +85,7 @@ class _NavigationViewInternals(_ViewInternals):
         self.set_needs_layout()
 
     @property
-    def bar_tint_color(self) -> _RGBA | None:
+    def bar_tint_color(self) -> _RGBA:
         return self._bar_tint_color
 
     @bar_tint_color.setter
@@ -97,7 +97,7 @@ class _NavigationViewInternals(_ViewInternals):
         self.set_needs_display()
 
     @property
-    def title_color(self) -> _RGBA | None:
+    def title_color(self) -> _RGBA:
         return self._title_color
 
     @title_color.setter
@@ -194,7 +194,7 @@ class _NavigationView(_View):
         self._internals_.navigation_bar_hidden = value
 
     @property
-    def bar_tint_color(self) -> _RGBA | None:
+    def bar_tint_color(self) -> _RGBA:
         return self._internals_.bar_tint_color
 
     @bar_tint_color.setter
@@ -202,7 +202,7 @@ class _NavigationView(_View):
         self._internals_.bar_tint_color = value
 
     @property
-    def title_color(self) -> _RGBA | None:
+    def title_color(self) -> _RGBA:
         return self._internals_.title_color
 
     @title_color.setter

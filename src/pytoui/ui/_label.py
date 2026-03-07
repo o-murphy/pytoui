@@ -45,7 +45,7 @@ class Label(View):
         # Basic text properties
         self._text: str | None = None
         self._font: _Font = ("<system>", 17.0)
-        self._text_color: _RGBA | None = (0.0, 0.0, 0.0, 1.0)
+        self._text_color: _RGBA = (0.0, 0.0, 0.0, 1.0)
         self._alignment: _Alignment = ALIGN_NATURAL
         self._line_break_mode: _LineBrakeMode = LB_TRUNCATE_TAIL
         self._number_of_lines: int = 1
@@ -81,7 +81,7 @@ class Label(View):
         self.set_needs_display()
 
     @property
-    def text_color(self) -> _RGBA | None:
+    def text_color(self) -> _RGBA:
         """The label's text color."""
         return self._text_color
 

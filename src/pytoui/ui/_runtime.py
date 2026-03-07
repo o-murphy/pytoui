@@ -26,10 +26,9 @@ from pytoui._platform import (
     IS_PYTHONISTA,
 )
 from pytoui.base_runtime import BaseRuntime
-from pytoui.ui._types import Rect, Size
+from pytoui.ui._types import Rect, Size, _UiStyle
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import _UiStyle
     from pytoui.ui._view import _ViewInternals
 
 

@@ -66,7 +66,6 @@ class Button(View):
         self._content_insets: Size = Size(8.0, 8.0)
 
         self.frame = Rect(0.0, 0.0, 80.0, 44.0)
-        self.tint_color = self._IOS_BLUE
 
         super().__init__(*args, **kwargs)
 

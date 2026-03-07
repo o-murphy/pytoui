@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pytoui._platform import IS_PYTHONISTA
+from pytoui.ui._draw import _SYSTEM_TINT, parse_color
 from pytoui.ui._internals import _final_
 
 if TYPE_CHECKING:
     from pytoui.ui._draw import Image
-    from pytoui.ui._types import _RGBA, _Action
+    from pytoui.ui._types import _RGBA, _Action, _ColorLike
 
 __all__ = ("ButtonItem",)
 
@@ -29,13 +30,13 @@ class _ButtonItem:
         image: Image | None = None,
         action: _Action | None = None,
         enabled: bool = True,
-        tint_color: _RGBA | None = None,
+        tint_color: _ColorLike = _SYSTEM_TINT,
     ):
         self._title: str | None = title
         self._image: Image | None = image
         self._action: _Action | None = action
         self._enabled: bool = enabled
-        self._tint_color: _RGBA | None = tint_color
+        self._tint_color: _RGBA = parse_color(tint_color)
 
     # -- Properties -----------------------------------------------------------
 
@@ -80,13 +81,13 @@ class _ButtonItem:
         self._enabled = bool(value)
 
     @property
-    def tint_color(self) -> _RGBA | None:
+    def tint_color(self) -> _RGBA:
         """The tint color for the button's title or image."""
         return self._tint_color
 
     @tint_color.setter
-    def tint_color(self, value: _RGBA | None):
-        self._tint_color = value
+    def tint_color(self, value: _ColorLike):
+        self._tint_color = parse_color(value)
 
     def __str__(self) -> str:
         label = repr(self._title) if self._title else repr(self._image)

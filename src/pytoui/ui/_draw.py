@@ -96,6 +96,8 @@ __all__ = (
     "_set_origin",
     "_tick",
     "_tick_delays",
+    "_SYSTEM_TINT",
+    "_COLORS",
     "animate",
     "cancel_delays",
     "concat_ctm",
@@ -749,7 +751,7 @@ class _DrawingContext:
     backend: FrameBuffer | None
     clip: Rect | None
     origin: tuple[float, float] | None
-    shadow: tuple[_RGBA | None, float, float, float] | None
+    shadow: tuple[_RGBA, float, float, float] | None
     ctm: Transform
     alpha: float
     _stack: list[dict]
@@ -1218,16 +1220,18 @@ _COLORS.update(_CSS_COLORS_STANDARD)
 _COLORS.update(_CSS_COLORS_UIKIT)
 _COLORS.update(_UIKIT_SYSTEM_COLORS)
 
+_SYSTEM_TINT: _RGBA = (0.0, 122 / 255, 1.0, 1.0)  # IOS SYSTEM BLUE
+
 
 @lru_cache(maxsize=256)
-def parse_color(c: _ColorLike) -> _RGBA | None:
+def parse_color(c: _ColorLike) -> _RGBA:
     r: float | int
     g: float | int
     b: float | int
     a: float | int
 
     if c is None:
-        return None
+        return (0.0, 0.0, 0.0, 0.0)
 
     if isinstance(c, tuple):
         if len(c) == 4:
@@ -1268,7 +1272,7 @@ def parse_color(c: _ColorLike) -> _RGBA | None:
             r, g, b, a = [int(hex_val[i : i + 2], 16) / 255 for i in (0, 2, 4, 6)]
             return (r, g, b, a)
 
-    return None
+    return (0.0, 0.0, 0.0, 0.0)
 
 
 def set_color(c: _ColorLike):

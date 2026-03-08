@@ -55,18 +55,13 @@ from pytoui.ui._constants import (
     CONTENT_TOP,
     CONTENT_TOP_LEFT,
     CONTENT_TOP_RIGHT,
-    LB_TRUNCATE_TAIL,
     LB_WORD_WRAP,
     LINE_CAP_BUTT,
     LINE_JOIN_MITER,
     RENDERING_MODE_AUTOMATIC,
 )
 from pytoui.ui._internals import _final_
-from pytoui.ui._types import (
-    Point,
-    Rect,
-    Size,
-)
+from pytoui.ui._types import Point, Rect, Size, _LineCapStyle, _LineJoinMode
 
 if TYPE_CHECKING:
     from pytoui._osdbuf import FrameBuffer
@@ -77,8 +72,6 @@ if TYPE_CHECKING:
         _ColorLike,
         _ContentMode,
         _LineBrakeMode,
-        _LineCapStyle,
-        _LineJoinMode,
         _PointLike,
         _RectLike,
         _RenderingMode,
@@ -1408,7 +1401,7 @@ def draw_string(
     font: tuple[str, float] = ("<system>", 17.0),
     color: _ColorLike | None = (0.0, 0.0, 0.0, 1.0),
     alignment: _Alignment = ALIGN_NATURAL,
-    line_break_mode: _LineBrakeMode = LB_TRUNCATE_TAIL,
+    line_break_mode: _LineBrakeMode = LB_WORD_WRAP,
 ):
     ctx = _get_draw_ctx()
     fb = ctx.backend

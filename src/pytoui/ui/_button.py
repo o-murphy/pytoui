@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
 )
-from pytoui.ui._constants import ALIGN_CENTER, LB_CLIP
+from pytoui.ui._constants import ALIGN_CENTER, LB_CLIP, LB_WORD_WRAP
 from pytoui.ui._draw import draw_string, measure_string
 from pytoui.ui._internals import _final_
 from pytoui.ui._types import (
@@ -158,7 +158,7 @@ class Button(View):
             max_width=w - 2 * inset_x,
             font=self._font,
             alignment=ALIGN_CENTER,
-            line_break_mode=LB_CLIP,
+            line_break_mode=LB_WORD_WRAP,
         )
 
         title_rect = Rect(

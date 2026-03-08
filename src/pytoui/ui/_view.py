@@ -937,15 +937,13 @@ class _ViewInternals:
         self._on_screen = True
         self._pytoui_close_event.clear()
         self._pytoui_needs_display = True
-
         # Forse first resize
+        if hasattr(self._ref, "layout"):
+            self._ref.layout()
 
         # if frame was not redefined use size_to_fit()
         if not self._pytoui_has_initial_frame:
             self.size_to_fit()
-
-        if hasattr(self._ref, "layout"):
-            self._ref.layout()
 
         animated = animated and not _UI_DISABLE_ANIMATIONS
 

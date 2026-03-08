@@ -1456,14 +1456,12 @@ def measure_string(
     alignment: _Alignment = ALIGN_LEFT,
     line_break_mode: _LineBrakeMode = LB_WORD_WRAP,
 ) -> tuple[float, float]:
-    backend = _get_draw_ctx().backend
-    if not backend:
-        return (0.0, 0.0)
+    from pytoui._osdbuf import FrameBuffer
 
     font_name, font_size = font
     fid = _get_font_id(font_name, font_size)
 
-    return type(backend).measure_string_core_graphics(
+    return FrameBuffer.measure_string_core_graphics(
         s,
         max_width,
         size=font_size,

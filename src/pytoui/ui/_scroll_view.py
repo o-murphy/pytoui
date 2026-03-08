@@ -377,11 +377,7 @@ class _ScrollViewInternals(_ViewInternals):
         if not self._scroll_enabled:
             return
         # Cancel any running deceleration or page animation
-        self._vel_x = 0.0
-        self._vel_y = 0.0
-        self._decelerating = False
-        self._page_anim_target = None
-        self.update_interval = 0.0
+        self._stop()
 
         self._tracking = True
         self._dragging = False
@@ -502,6 +498,14 @@ class _ScrollViewInternals(_ViewInternals):
         self._vel_x = 0.0
         self._vel_y = 0.0
         self._start_page_anim(new_x, new_y)
+
+    def _stop(self) -> None:
+        """Cancel any ongoing animation, deceleration or drag."""
+        self._page_anim_target = None
+        self._vel_x = 0.0
+        self._vel_y = 0.0
+        self._decelerating = False
+        self.update_interval = 0.0
 
     # ── Kinetic deceleration via update() ─────────────────────────────────────
 

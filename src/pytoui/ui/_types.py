@@ -617,11 +617,11 @@ class Touch:
     coordinate system of the View that the touch belongs to."""
 
     __slots__ = (
-        "location",
-        "phase",
-        "prev_location",
-        "timestamp",  # ms since 1970
-        "touch_id",
+        "_location",
+        "_phase",
+        "_prev_location",
+        "_timestamp",  # ms since 1970
+        "_touch_id",
     )
 
     def __init__(
@@ -632,11 +632,31 @@ class Touch:
         timestamp: int,
         touch_id: int,
     ):
-        self.location = Point(*location)
-        self.phase = phase
-        self.prev_location = Point(*prev_location)
-        self.timestamp = timestamp
-        self.touch_id = touch_id
+        self._location = Point(*location)
+        self._phase = phase
+        self._prev_location = Point(*prev_location)
+        self._timestamp = timestamp
+        self._touch_id = touch_id
+
+    @property
+    def location(self) -> Point:
+        return self._location
+
+    @property
+    def phase(self) -> _TouchPhase:
+        return self._phase
+
+    @property
+    def prev_location(self) -> Point:
+        return self._prev_location
+
+    @property
+    def timestamp(self) -> int:
+        return self._timestamp
+
+    @property
+    def touch_id(self) -> int:
+        return self._touch_id
 
     # ObjC-compat
     @property

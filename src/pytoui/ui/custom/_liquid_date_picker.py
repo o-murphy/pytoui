@@ -272,6 +272,15 @@ class _DateState:
 
 @_final_
 class _WheelState:
+    __slots__ = (
+        "values",
+        "total",
+        "middle_offset",
+        "current_idx",
+        "velocity",
+        "is_dragging",
+    )
+
     def __init__(self, values, initial):
         self.values = list(values)
         self.total = len(self.values)
@@ -296,6 +305,13 @@ class _BaseWheelView(View):
       _state_for_x(x)   → _WheelState
       _commit_to_state() → None
     """
+
+    __slots__ = (
+        "_active_state",
+        "_last_y",
+        "_last_t",
+        "_was_moving",
+    )
 
     def __init__(self, **kwargs):
         self._active_state: _WheelState | None = None
@@ -479,8 +495,8 @@ class _CalendarView(View):
 
     def __init__(self, date_state: _DateState, /, **kwargs):
         self._date_state = date_state
-        self._origin_idx: int = self._date_state.month_index
-        self._offset: float = 0.0
+        self.origin_idx: int = self._date_state.month_index
+        self.offset: float = 0.0
         self._today = datetime.now()
 
         self._touch_active = False
@@ -508,10 +524,10 @@ class _CalendarView(View):
 
     def on_display_changed(self) -> None:
         new_idx = self._date_state.display_month_index
-        if self._origin_idx + round(self._offset) == new_idx:
+        if self.origin_idx + round(self.offset) == new_idx:
             return
-        self._origin_idx = new_idx
-        self._offset = 0.0
+        self.origin_idx = new_idx
+        self.offset = 0.0
         self._snap_target = None
         self.set_needs_display()
 
@@ -523,12 +539,12 @@ class _CalendarView(View):
     def draw(self):
         pw = self.width
         for delta in range(
-            math.floor(self._offset - 0.5), math.ceil(self._offset + 0.5) + 1
+            math.floor(self.offset - 0.5), math.ceil(self.offset + 0.5) + 1
         ):
-            x0 = (delta - self._offset) * pw
+            x0 = (delta - self.offset) * pw
             if x0 > pw or x0 + pw < 0:
                 continue
-            self._draw_month(x0, self._origin_idx + delta)
+            self._draw_month(x0, self.origin_idx + delta)
 
     def _draw_month(self, x0: float, idx: int):
         year, month = self._date_state.year_month_from_month_index(idx)
@@ -586,7 +602,7 @@ class _CalendarView(View):
         self._is_dragging = False
         self._touch_start_x = touch.location[0]
         self._touch_start_y = touch.location[1]
-        self._touch_start_offset = self._offset
+        self._touch_start_offset = self.offset
         self._last_x = touch.location[0]
         self._last_t = time.monotonic()
         self._vel = 0.0
@@ -613,11 +629,11 @@ class _CalendarView(View):
                 self.set_needs_display()
 
         if self._is_dragging:
-            self._offset = self._touch_start_offset + (self._touch_start_x - x) / pw
+            self.offset = self._touch_start_offset + (self._touch_start_x - x) / pw
             if dt > 0.001:
                 self._vel = (self._last_x - x) / pw / dt
             if self.on_offset_changed:
-                self.on_offset_changed(self._offset)
+                self.on_offset_changed(self.offset)
             self.set_needs_display()
 
         self._last_x = x
@@ -631,24 +647,24 @@ class _CalendarView(View):
         self.set_needs_display()
 
         if touch.phase == "cancelled" or not self._is_dragging:
-            self._snap_to(round(self._offset))
+            self.snap_to(round(self.offset))
             if not self._is_dragging and touch.phase != "cancelled":
                 self._handle_tap(touch.location[0], touch.location[1])
             return
 
-        self._snap_to(float(round(self._offset + self._vel * 0.18)))
+        self.snap_to(float(round(self.offset + self._vel * 0.18)))
 
     def mouse_wheel(self, event: MouseWheel):
         if event.scroll_dy > 0:
-            self._snap_to(round(self._offset) + 1)
+            self.snap_to(round(self.offset) + 1)
         elif event.scroll_dy < 0:
-            self._snap_to(round(self._offset) - 1)
+            self.snap_to(round(self.offset) - 1)
 
     # ── snap ─────────────────────────────────────────────────────────────────
 
-    def _snap_to(self, target: float):
+    def snap_to(self, target: float):
         self._snap_target = target
-        self._snap_start = self._offset
+        self._snap_start = self.offset
         self._snap_t0 = time.monotonic()
         self._vel = 0.0
         self.update_interval = 1.0 / 60.0
@@ -660,21 +676,21 @@ class _CalendarView(View):
 
         elapsed = time.monotonic() - self._snap_t0
         t = min(1.0, elapsed / self._SNAP_DUR)
-        self._offset = self._snap_start + (self._snap_target - self._snap_start) * (
+        self.offset = self._snap_start + (self._snap_target - self._snap_start) * (
             1.0 - (1.0 - t) ** 3
         )
 
         if self.on_offset_changed:
-            self.on_offset_changed(self._offset)
+            self.on_offset_changed(self.offset)
         self.set_needs_display()
 
         if t >= 1.0:
-            self._offset = self._snap_target
+            self.offset = self._snap_target
             self._snap_target = None
             self.update_interval = 0.0
             if self.on_settled:
                 year, month = self._date_state.year_month_from_month_index(
-                    self._origin_idx + int(round(self._offset))
+                    self.origin_idx + int(round(self.offset))
                 )
                 self.on_settled(year, month)
 
@@ -682,11 +698,11 @@ class _CalendarView(View):
 
     def _day_at(self, x: float, y: float) -> tuple[int, int, int] | None:
         pw = self.width
-        delta = round(self._offset + (x - pw / 2) / pw)
+        delta = round(self.offset + (x - pw / 2) / pw)
         year, month = self._date_state.year_month_from_month_index(
-            self._origin_idx + delta
+            self.origin_idx + delta
         )
-        page_x0 = (delta - self._offset) * pw
+        page_x0 = (delta - self.offset) * pw
         col_i = int((x - page_x0) / _DAY_ITEM_SIZE)
         row_i = int(y / _DAY_ITEM_SIZE)
         if not (0 <= col_i <= 6):
@@ -715,6 +731,12 @@ class _CalendarView(View):
 
 @_final_
 class _WheelPickerView(_BaseWheelView):
+    __slots__ = (
+        "_date_state",
+        "_year_state",
+        "_month_state",
+    )
+
     def __init__(self, date_state: _DateState, /, **kwargs):
         self._date_state = date_state
         self._year_state = _WheelState(range(1970, 2101), date_state.display_year)
@@ -764,6 +786,12 @@ class _WheelPickerView(_BaseWheelView):
 
 @_final_
 class _LiquidTimePicker(_BaseWheelView):
+    __slots__ = (
+        "_date_state",
+        "_hour_state",
+        "_minute_state",
+    )
+
     def __init__(self, date_state: _DateState, /, **kwargs):
         self._date_state = date_state
         self._hour_state = _WheelState(range(0, 24), date_state.display_hour)
@@ -824,6 +852,15 @@ class _LiquidTimePicker(_BaseWheelView):
 
 @_final_
 class _DatePickerHeader(View):
+    __slots__ = (
+        "_expanded",
+        "_on_expand",
+        "_title",
+        "_title_btn",
+        "_prev",
+        "_next",
+    )
+
     def __init__(self, on_prev: Callable, on_next: Callable, on_expand, **kwargs):
         pw = _DAY_ITEM_SIZE * 7
 
@@ -875,10 +912,12 @@ class _DatePickerHeader(View):
         self.set_needs_display()
 
     def draw(self):
+        margin = 16
+        chevron = 4
         tw, th = measure_string(self._title, font=_FONT_BOLD)
         draw_string(
             self._title,
-            rect=(16, (_CALENDAR_HEADER_HEIGHT - th) / 2, tw, th),
+            rect=(margin, (_CALENDAR_HEADER_HEIGHT - th) / 2, tw, th),
             font=_FONT_BOLD,
             color=self.tint_color if self._expanded else _TEXT_PRIMARY_COLOR,
         )
@@ -887,11 +926,11 @@ class _DatePickerHeader(View):
         p = Path()
         p.line_width = 2
         p.line_cap_style = LINE_CAP_ROUND
-        x, y = 16 + tw + 4, _CALENDAR_HEADER_HEIGHT / 2
+        x, y = margin + tw + chevron, _CALENDAR_HEADER_HEIGHT / 2
         if self._expanded:
             p.move_to(x, y)
-            p.line_to(x + 4, y + 4)
-            p.line_to(x + 8, y)
+            p.line_to(x + chevron, y + chevron)
+            p.line_to(x + 2 * chevron, y)
         else:
             p.move_to(x, y - 4)
             p.line_to(x + 4, y)
@@ -930,6 +969,13 @@ class _LiquidDatePicker(View):
     date : datetime — read / write; all components sync automatically
     """
 
+    __slots__ = (
+        "_date_state",
+        "_header",
+        "_calendar",
+        "_wheel_picker",
+    )
+
     def __init__(self, date_state: _DateState, **kwargs):
         self.background_color = _BG_COLOR
         self.corner_radius = 16
@@ -940,28 +986,28 @@ class _LiquidDatePicker(View):
         header_h = _CALENDAR_HEADER_HEIGHT + _WEEKDAY_HEADER_HEIGHT
 
         self._header = _DatePickerHeader(
-            on_prev=lambda: self._cal._snap_to(round(self._cal._offset) - 1),
-            on_next=lambda: self._cal._snap_to(round(self._cal._offset) + 1),
+            on_prev=lambda: self._calendar.snap_to(round(self._calendar.offset) - 1),
+            on_next=lambda: self._calendar.snap_to(round(self._calendar.offset) + 1),
             on_expand=self._on_expand,
         )
         self._header.frame = (0, 0, pw, header_h)
         self.add_subview(self._header)
 
-        self._cal = _CalendarView(self._date_state)
-        self._cal.frame = (0, header_h, pw, self._cal_height())
-        self._cal.on_offset_changed = self._on_offset_changed
-        self._cal.on_settled = self._on_settled
-        self.add_subview(self._cal)
+        self._calendar = _CalendarView(self._date_state)
+        self._calendar.frame = (0, header_h, pw, self._cal_height())
+        self._calendar.on_offset_changed = self._on_offset_changed
+        self._calendar.on_settled = self._on_settled
+        self.add_subview(self._calendar)
 
-        self._year_picker = _WheelPickerView(self._date_state)
-        self._year_picker.hidden = True
-        self._year_picker.frame = (
+        self._wheel_picker = _WheelPickerView(self._date_state)
+        self._wheel_picker.hidden = True
+        self._wheel_picker.frame = (
             0,
             _CALENDAR_HEADER_HEIGHT,
             pw,
             self._cal_height() + _WEEKDAY_HEADER_HEIGHT,
         )
-        self.add_subview(self._year_picker)
+        self.add_subview(self._wheel_picker)
 
         self._date_state.register(self)
         self._header.title = self._date_state.month_name
@@ -974,8 +1020,8 @@ class _LiquidDatePicker(View):
         self._header.title = self._date_state.month_name
 
     def _on_expand(self, sender: _DatePickerHeader):
-        self._cal.hidden = sender._expanded
-        self._year_picker.hidden = not sender._expanded
+        self._calendar.hidden = sender._expanded
+        self._wheel_picker.hidden = not sender._expanded
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -997,18 +1043,18 @@ class _LiquidDatePicker(View):
         pw = _DAY_ITEM_SIZE * 7
         header_h = _CALENDAR_HEADER_HEIGHT + _WEEKDAY_HEADER_HEIGHT
         cal_h = self._cal_height()
-        self._cal.height = cal_h
+        self._calendar.height = cal_h
         self.frame = (self.frame[0], self.frame[1], pw, header_h + cal_h)
 
     def _on_offset_changed(self, offset: float):
-        idx = self._cal._origin_idx + round(offset)
-        self._date_state.set_display_from_index(idx, sender=self._cal)
+        idx = self._calendar.origin_idx + round(offset)
+        self._date_state.set_display_from_index(idx, sender=self._calendar)
 
     def _on_settled(self, year: int, month: int):
         settled_idx = self._date_state.display_month_index
-        delta = settled_idx - self._cal._origin_idx
-        self._cal._origin_idx = settled_idx
-        self._cal._offset -= delta
+        delta = settled_idx - self._calendar.origin_idx
+        self._calendar.origin_idx = settled_idx
+        self._calendar.offset -= delta
 
 
 # ---------------------------------------------------------------------------
@@ -1030,6 +1076,13 @@ class _PopupOverlay(View):
     Redirected touches are re-created with coords translated into the
     target view's local space.
     """
+
+    __slots__ = (
+        "_on_dismiss",
+        "_popup",
+        "_date_picker",
+        "_target",
+    )
 
     def __init__(
         self, on_dismiss: Callable[[], None], popup: View, date_picker: View, **kwargs
@@ -1189,6 +1242,18 @@ class DatePicker(View):
         self._apply_mode()
 
         super().__init__(*args, **kwargs)
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, value: bool):
+        enabled = bool(value)
+        self._enabled = enabled
+        self._date_btn.enabled = enabled
+        self._time_btn.enabled = enabled
+        self._close_popup()
 
     # ── mode ─────────────────────────────────────────────────────────────────
 

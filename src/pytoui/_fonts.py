@@ -2,6 +2,17 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
+FONT_WEIGHTS = {
+    "thin": "Thin",
+    "light": "Light",
+    "regular": "Regular",
+    "medium": "Medium",
+    "semibold": "SemiBold",
+    "bold": "Bold",
+    "extrabold": "ExtraBold",
+    "black": "Black",
+}
+
 
 # ---------------- Font discovery ----------------
 @lru_cache(maxsize=1)
@@ -34,21 +45,31 @@ _SYSTEM_RE = re.compile(r"^<system(?:-(bold|italic))?>$", re.IGNORECASE)
 
 
 def normalize_name(name: str) -> str:
-    name = name.strip()
-    m = _SYSTEM_RE.match(name)
-    if m:
-        style = m.group(1)
-        if not style:
-            return "Regular"
-        return style.capitalize()
+    name_clean = name.strip()
 
-    name = _PREFIX_RE.sub("", name)
-    name = name.replace("-", "")
-    if name.lower() == "heavy":
-        return "ExtraBold"
-    if "Semibold" in name:
-        name = name.replace("Semibold", "SemiBold")
-    return name
+    detected_weight = "Regular"
+
+    lowered_name = name_clean.lower()
+    for key, value in FONT_WEIGHTS.items():
+        if key in lowered_name:
+            detected_weight = value
+
+    if "heavy" in lowered_name:
+        detected_weight = "ExtraBold"
+
+    m = _SYSTEM_RE.match(name_clean)
+    if m:
+        groups = [g for g in m.groups() if g]
+        if groups:
+            return groups[-1].capitalize()
+        return "Regular"
+
+    name_no_prefix = _PREFIX_RE.sub("", name_clean).replace("-", "")
+
+    if "Semibold" in name_no_prefix:
+        return "SemiBold"
+
+    return detected_weight
 
 
 # ---------------- Resolver ----------------
@@ -89,7 +110,6 @@ def resolve_any_font(font: str, size: int = 16) -> Path | None:
             break
     if family is None:
         family = "Inter"
-
     return resolve_font(family, font, size)
 
 

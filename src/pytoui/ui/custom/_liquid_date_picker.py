@@ -19,7 +19,7 @@ from pytoui.ui._draw import (
     measure_string,
     set_color,
 )
-from pytoui.ui._internals import get_ui_style
+from pytoui.ui._internals import _final_, get_ui_style
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
@@ -91,6 +91,7 @@ def _weekday_names() -> List[str]:
 # ---------------------------------------------------------------------------
 
 
+@_final_
 class _DateState:
     """
     Holds two independent pieces of state:
@@ -108,7 +109,7 @@ class _DateState:
       on_selection_changed() — called when selected_date changes
     """
 
-    def __init__(self, date: datetime | None):
+    def __init__(self, date: datetime | None = None):
         d = date or datetime.now()
         self._selected: datetime = d
         self._display_year: int = d.year
@@ -226,6 +227,7 @@ class _DateState:
 # ---------------------------------------------------------------------------
 
 
+@_final_
 class _CalendarView(View):
     _SNAP_DUR = 0.30
     _DRAG_THRESHOLD = 8
@@ -478,6 +480,7 @@ class _CalendarView(View):
 # ---------------------------------------------------------------------------
 
 
+@_final_
 class _WheelState:
     def __init__(self, values, initial):
         self.values = list(values)
@@ -489,6 +492,7 @@ class _WheelState:
         self.is_dragging = False
 
 
+@_final_
 class _WheelPickerView(View):
     def __init__(self, date_state: _DateState, /, **kwargs):
         self._date_state = date_state
@@ -698,6 +702,7 @@ class _WheelPickerView(View):
 # ---------------------------------------------------------------------------
 
 
+@_final_
 class _DatePickerHeader(View):
     def __init__(self, on_prev: Callable, on_next: Callable, on_expand, **kwargs):
         super().__init__(**kwargs)
@@ -800,6 +805,7 @@ class _DatePickerHeader(View):
 # ---------------------------------------------------------------------------
 
 
+@_final_
 class LiquidDatePicker(View):
     """
     Infinite horizontal month-paging date picker.
@@ -810,12 +816,12 @@ class LiquidDatePicker(View):
     action : Callable[[LiquidDatePicker]]
     """
 
-    def __init__(self, date: datetime | None = None, **kwargs):
+    def __init__(self, date_state: _DateState, **kwargs):
         super().__init__(**kwargs)
         self.background_color = _BG_COLOR
         self.corner_radius = 16
 
-        self._date_state = _DateState(date)
+        self._date_state = date_state
 
         pw = _DAY_ITEM_SIZE * 7
         header_h = _CALENDAR_HEADER_HEIGHT + _WEEKDAY_HEADER_HEIGHT
@@ -912,14 +918,124 @@ class LiquidDatePicker(View):
         self._cal._offset -= delta
 
 
+@_final_
+class LiquidTimePicker(View):
+    def __init__(self, *args, **kwargs):
+        self.frame = (0, 0, 200, 200)
+        self.corner_radius = 16
+        self.background_color = _BG_COLOR
+
+
+@_final_
+class DateTimePicker(View):
+    _GAP = 8
+    _DATE_W = 150
+    _TIME_W = 65
+    _H = 44
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._date_state = _DateState()
+
+        total_w = self._DATE_W + self._GAP + self._TIME_W
+        self.frame = (0, 0, total_w, self._H)
+
+        self._date_btn = Button(title=self._date_state.date.strftime("%D %d %Y"))
+        self._date_btn.tint_color = _TEXT_PRIMARY_COLOR
+        self._date_btn.background_color = _BG_COLOR
+        self._date_btn.corner_radius = 16
+        self._date_btn.flex = "L"
+        self._date_btn.frame = (0, 0, self._DATE_W, self._H)
+
+        self._time_btn = Button(title=self._date_state.date.strftime("%H:%M"))
+        self._time_btn.tint_color = _TEXT_PRIMARY_COLOR
+        self._time_btn.background_color = _BG_COLOR
+        self._time_btn.corner_radius = 16
+        self._time_btn.flex = "L"
+        self._time_btn.frame = (self._DATE_W + self._GAP, 0, self._TIME_W, self._H)
+
+        self.add_subview(self._date_btn)
+        self.add_subview(self._time_btn)
+
+        self._date_btn.action = self._date_action
+        self._time_btn.action = self._time_action
+        self._popup = None
+
+    def _close_popups(self):
+        if self._popup:
+            sv = self._popup.superview
+            if sv:
+                sv.remove_subview(self._popup)
+            self._popup = None
+        self._date_btn.tint_color = _TEXT_PRIMARY_COLOR
+        self._time_btn.tint_color = _TEXT_PRIMARY_COLOR
+
+    def _push_popup(self):
+        root = self
+        while root:
+            sv = root.superview
+            if not sv:
+                break
+            root = sv
+
+        root.add_subview(self._popup)
+        self._popup.center = root.center
+
+    def _date_action(self, sender: Button):
+
+        def _open():
+            self._popup = LiquidDatePicker(self._date_state)
+            self._push_popup()
+            self._date_btn.tint_color = _TINT_COLOR
+
+        if self._popup is not None:
+            should_open = isinstance(self._popup, LiquidDatePicker)
+            self._close_popups()
+            if not should_open:
+                _open()
+        else:
+            _open()
+
+    def _time_action(self, sender: Button):
+
+        def _open():
+            self._popup = LiquidTimePicker(self._date_state)
+            self._push_popup()
+            self._time_btn.tint_color = _TINT_COLOR
+
+        if self._popup is not None:
+            should_open = isinstance(self._popup, LiquidTimePicker)
+            self._close_popups()
+            if not should_open:
+                _open()
+        else:
+            _open()
+
+    @property
+    def date(self) -> datetime:
+        return self._date_state.date
+
+    @date.setter
+    def date(self, value: datetime | None):
+        self._date_state.date = value
+
+
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    picker = LiquidDatePicker()
-    picker.action = lambda s: print(s.date)
+    # picker = LiquidDatePicker()
+    # picker.action = lambda s: print(s.date)
+
+    # root = View()
+    # root.background_color = "grey"
+    # root.add_subview(picker)
+    # picker.frame = (0, 0, picker.width, picker.height)
+    # root.present("fullscreen")
+
+    dp = DateTimePicker()
 
     root = View()
-    root.background_color = "grey"
-    root.add_subview(picker)
-    picker.frame = (0, 0, picker.width, picker.height)
+    root.frame = (0, 0, 400, 600)
+    root.add_subview(dp)
     root.present("fullscreen")

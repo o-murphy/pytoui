@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import os
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Generic,
@@ -12,10 +12,6 @@ from typing import (
 )
 
 from pytoui._platform import IS_PYTHONISTA
-
-if TYPE_CHECKING:
-    from pytoui.ui._types import _UiStyle
-
 
 __all__ = (
     "_final_",
@@ -101,12 +97,12 @@ def settrace(func: Callable | None) -> None:
         )
 
 
-def get_ui_style() -> _UiStyle:
+def get_ui_style():
     """Return the current UI style: 'dark' or 'light'.
 
     Controlled by the UI_STYLE environment variable (default: 'dark').
     """
-    import os
+    from pytoui.ui._types import _UiStyle
 
     style = os.environ.get("UI_STYLE", "light").lower()
     return cast(_UiStyle, style if style in ("dark", "light") else "dark")

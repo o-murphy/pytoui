@@ -755,8 +755,8 @@ class _ViewInternals:
         if callable(fn):
             fn()
 
-    def pytoui_layout(self):
-        if self._pytoui_needs_layout:
+    def pytoui_layout(self, force=False):
+        if self._pytoui_needs_layout or force:
             if hasattr(self._ref, "layout"):
                 self._ref.layout()
 
@@ -943,8 +943,7 @@ class _ViewInternals:
         self._pytoui_close_event.clear()
         self._pytoui_needs_display = True
         # Forse first resize
-        if hasattr(self._ref, "layout"):
-            self._ref.layout()
+        self.pytoui_layout(force=True)
 
         # if frame was not redefined use size_to_fit()
         if not self._pytoui_has_initial_frame:

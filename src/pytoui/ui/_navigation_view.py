@@ -52,7 +52,7 @@ class _NavigationViewInternals(_ViewInternals):
         self.pytoui_add_internal_subview(self._back_button._internals_)
         self.pytoui_add_internal_subview(self._title_label._internals_)
 
-    def pytoui_layout(self):
+    def pytoui_layout(self, force: bool = False):
         nav_h = self.NAVIGATION_BAR_HEIGHT if not self._navigation_bar_hidden else 0
 
         if not self._navigation_bar_hidden:
@@ -68,7 +68,7 @@ class _NavigationViewInternals(_ViewInternals):
             x, y, w, h = self._bounds
             self._current_content_view.frame = (x, y + nav_h, w, h - nav_h)
 
-        super().pytoui_layout()
+        super().pytoui_layout(force)
 
     @property
     def navigation_stack(self) -> list[_ViewInternals]:

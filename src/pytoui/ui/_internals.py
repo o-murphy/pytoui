@@ -16,6 +16,7 @@ from pytoui._platform import IS_PYTHONISTA
 __all__ = (
     "_final_",
     "_getset_descriptor",
+    "_get_system_tint",
     "get_ui_style",
     "settrace",
 )
@@ -106,6 +107,13 @@ def get_ui_style():
 
     style = os.environ.get("UI_STYLE", "light").lower()
     return cast(_UiStyle, style if style in ("dark", "light") else "dark")
+
+
+def _get_system_tint():
+
+    return (
+        (0.04, 0.52, 1.0, 1.0) if get_ui_style() == "light" else (0.0, 0.478, 1.0, 1.0)
+    )
 
 
 if IS_PYTHONISTA:

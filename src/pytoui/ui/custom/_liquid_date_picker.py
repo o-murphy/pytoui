@@ -45,9 +45,6 @@ DatePickerMode = Literal[0, 1, 2]
 if get_ui_style() == "light":
     _BG_COLOR = (1.0, 1.0, 1.0, 1.0)
     _BG_COLOR_REVERSED = (0.0, 0.0, 0.0, 1.0)
-    _TINT_COLOR = (0.0, 0.478, 1.0, 1.0)
-    _TINT_LIGHT_COLOR = (0.0, 0.478, 1.0, 0.25)
-    _TINT_HOVER_COLOR = (0.0, 0.478, 1.0, 0.08)
     _TEXT_PRIMARY_COLOR = (0.0, 0.0, 0.0, 1.0)
     _TEXT_TODAY_SELECTED_COLOR = (1.0, 1.0, 1.0, 1.0)
     _WEEKDAY_TEXT_COLOR = _BG_COLOR_REVERSED
@@ -55,9 +52,6 @@ if get_ui_style() == "light":
 else:
     _BG_COLOR = (0.3, 0.3, 0.3, 1.0)
     _BG_COLOR_REVERSED = (0.7, 0.7, 0.7, 1.0)
-    _TINT_COLOR = (0.04, 0.52, 1.0, 1.0)
-    _TINT_LIGHT_COLOR = (0.04, 0.52, 1.0, 0.25)
-    _TINT_HOVER_COLOR = (0.04, 0.52, 1.0, 0.08)
     _TEXT_PRIMARY_COLOR = (1.0, 1.0, 1.0, 1.0)
     _TEXT_TODAY_SELECTED_COLOR = (1.0, 1.0, 1.0, 1.0)
     _WEEKDAY_TEXT_COLOR = _BG_COLOR_REVERSED
@@ -308,9 +302,9 @@ class _BaseWheelView(View):
         self._last_y = 0.0
         self._last_t = 0.0
         self._was_moving = False
-        super().__init__(**kwargs)
         self.mouse_wheel_enabled = True
         self.update_interval = 1 / 60
+        super().__init__(**kwargs)
 
     # ── Subclass interface ────────────────────────────────────────────────────
 
@@ -507,8 +501,8 @@ class _CalendarView(View):
         self.on_settled: Callable[[int, int], None] | None = None
         self.mouse_wheel_enabled = True
 
-        super().__init__(**kwargs)
         self._date_state.register(self)
+        super().__init__(**kwargs)
 
     # ── Delegate receivers ────────────────────────────────────────────────────
 
@@ -550,7 +544,7 @@ class _CalendarView(View):
 
                 cx = x0 + col_i * _DAY_ITEM_SIZE + _DAY_ITEM_SIZE / 2
                 cy = row_i * _DAY_ITEM_SIZE + _DAY_ITEM_SIZE / 2
-                r = _DAY_ITEM_SIZE / 2 - 3
+                cr = _DAY_ITEM_SIZE / 2 - 3
 
                 is_today = (
                     day == today.day and month == today.month and year == today.year
@@ -558,19 +552,20 @@ class _CalendarView(View):
                 is_selected = day == sel_d and month == sel_m and year == sel_y
                 is_hovered = hov is not None and hov == (year, month, day)
 
+                r, g, b, a = self.tint_color
                 if is_selected:
-                    set_color(_TINT_COLOR if is_today else _TINT_LIGHT_COLOR)
-                    Path.oval(cx - r, cy - r, r * 2, r * 2).fill()
+                    set_color((r, g, b, a if is_today else 0.25))
+                    Path.oval(cx - cr, cy - cr, cr * 2, cr * 2).fill()
                 elif is_hovered:
-                    set_color(_TINT_HOVER_COLOR)
-                    Path.oval(cx - r, cy - r, r * 2, r * 2).fill()
+                    set_color((r, g, b, 0.08))
+                    Path.oval(cx - cr, cy - cr, cr * 2, cr * 2).fill()
 
                 if is_selected and is_today:
                     color, font = _TEXT_TODAY_SELECTED_COLOR, _FONT_BOLD
                 elif is_selected:
-                    color, font = _TINT_COLOR, _FONT_BOLD
+                    color, font = self.tint_color, _FONT_BOLD
                 elif is_today:
-                    color, font = _TINT_COLOR, _FONT_REGULAR
+                    color, font = self.tint_color, _FONT_REGULAR
                 else:
                     color, font = _TEXT_PRIMARY_COLOR, _FONT_REGULAR
 
@@ -724,11 +719,10 @@ class _WheelPickerView(_BaseWheelView):
         self._date_state = date_state
         self._year_state = _WheelState(range(1970, 2101), date_state.display_year)
         self._month_state = _WheelState(range(1, 13), date_state.display_month)
-
-        super().__init__(**kwargs)
         self.corner_radius = 16
         self.background_color = _BG_COLOR
         self._date_state.register(self)
+        super().__init__(**kwargs)
 
     def _all_states(self) -> list[_WheelState]:
         return [self._year_state, self._month_state]
@@ -774,12 +768,11 @@ class _LiquidTimePicker(_BaseWheelView):
         self._date_state = date_state
         self._hour_state = _WheelState(range(0, 24), date_state.display_hour)
         self._minute_state = _WheelState(range(0, 60), date_state.display_minute)
-
-        super().__init__(**kwargs)
         self.corner_radius = 16
         self.background_color = _BG_COLOR
         self.frame = (0, 0, 200, 200)
         self._date_state.register(self)
+        super().__init__(**kwargs)
 
     def _all_states(self) -> list[_WheelState]:
         return [self._hour_state, self._minute_state]
@@ -832,7 +825,6 @@ class _LiquidTimePicker(_BaseWheelView):
 @_final_
 class _DatePickerHeader(View):
     def __init__(self, on_prev: Callable, on_next: Callable, on_expand, **kwargs):
-        super().__init__(**kwargs)
         pw = _DAY_ITEM_SIZE * 7
 
         self._expanded = False
@@ -844,9 +836,7 @@ class _DatePickerHeader(View):
         self._title_btn.action = self._expand
         self.add_subview(self._title_btn)
 
-        self._prev = Button()
-        self._prev.title = "‹"
-        self._prev.font = _BUTTON_FONT
+        self._prev = Button(title="‹", font=_BUTTON_FONT)
         self._prev.frame = (
             pw - 2 * _DAY_ITEM_SIZE,
             0,
@@ -856,9 +846,7 @@ class _DatePickerHeader(View):
         self._prev.action = lambda _: on_prev()
         self.add_subview(self._prev)
 
-        self._next = Button()
-        self._next.title = "›"
-        self._next.font = _BUTTON_FONT
+        self._next = Button(title="›", font=_BUTTON_FONT)
         self._next.frame = (
             pw - _DAY_ITEM_SIZE,
             0,
@@ -867,6 +855,7 @@ class _DatePickerHeader(View):
         )
         self._next.action = lambda _: on_next()
         self.add_subview(self._next)
+        super().__init__(**kwargs)
 
     @property
     def title(self) -> str:
@@ -891,10 +880,10 @@ class _DatePickerHeader(View):
             self._title,
             rect=(16, (_CALENDAR_HEADER_HEIGHT - th) / 2, tw, th),
             font=_FONT_BOLD,
-            color=_TINT_COLOR if self._expanded else _TEXT_PRIMARY_COLOR,
+            color=self.tint_color if self._expanded else _TEXT_PRIMARY_COLOR,
         )
 
-        set_color(_TINT_COLOR)
+        set_color(self.tint_color)
         p = Path()
         p.line_width = 2
         p.line_cap_style = LINE_CAP_ROUND
@@ -942,7 +931,6 @@ class _LiquidDatePicker(View):
     """
 
     def __init__(self, date_state: _DateState, **kwargs):
-        super().__init__(**kwargs)
         self.background_color = _BG_COLOR
         self.corner_radius = 16
 
@@ -978,6 +966,7 @@ class _LiquidDatePicker(View):
         self._date_state.register(self)
         self._header.title = self._date_state.month_name
         self._relayout()
+        super().__init__(**kwargs)
 
     # ── Delegate receivers ────────────────────────────────────────────────────
 
@@ -1043,18 +1032,15 @@ class _PopupOverlay(View):
     """
 
     def __init__(
-        self,
-        on_dismiss: Callable[[], None],
-        popup: View,
-        date_picker: View,
+        self, on_dismiss: Callable[[], None], popup: View, date_picker: View, **kwargs
     ):
-        super().__init__()
         self._on_dismiss = on_dismiss
         self._popup = popup
         self._date_picker = date_picker
         self._target: View | None = None
         r, g, b, _ = _BG_COLOR
         self.background_color = (r, g, b, 0.5)
+        super().__init__(**kwargs)
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
@@ -1086,14 +1072,21 @@ class _PopupOverlay(View):
         )
 
     def _find_target(self, v: View, x: float, y: float) -> View | None:
-        """
-        Hit-test inside v using absolute coords, return deepest touch-enabled view.
-        """
-        if hasattr(v, "_internals_"):
-            result = v._internals_.pytoui_hit_test(x, y)
-            if result is not None:
-                return cast(View, result.ref)
-        return None
+        return self._hit_test_recursive(v, x, y)
+
+    @classmethod
+    def _hit_test_recursive(cls, v: View, x: float, y: float) -> View | None:
+        if getattr(v, "hidden", False) or not getattr(v, "touch_enabled", True):
+            return None
+        vx, vy = cls._screen_xy(v)
+        if not (vx <= x < vx + v.width and vy <= y < vy + v.height):
+            return None
+
+        for child in reversed(list(v.subviews)):
+            target = cls._hit_test_recursive(cast(View, child), x, y)
+            if target is not None:
+                return target
+        return v
 
     def _dispatch(self, method: str, touch: Touch) -> None:
         if self._target is None:
@@ -1107,7 +1100,6 @@ class _PopupOverlay(View):
     def touch_began(self, touch: Touch):
         x, y = touch.location[0], touch.location[1]
         if self._hit(self._date_picker, x, y):
-            # знаходимо конкретну кнопку всередині DatePicker
             self._target = (
                 self._find_target(self._date_picker, x, y) or self._date_picker
             )
@@ -1145,6 +1137,16 @@ class DatePicker(View):
     DATE_PICKER_MODE_DATE_AND_TIME — both buttons (default)
     """
 
+    __slots__ = (
+        "_mode",
+        "_enabled",
+        "_date_state",
+        "_popup",
+        "_overlay",
+        "_date_btn",
+        "_time_btn",
+    )
+
     _GAP = 8
     _DATE_W = 150
     _TIME_W = 65
@@ -1153,33 +1155,40 @@ class DatePicker(View):
     def __init__(
         self,
         *args,
-        mode: DatePickerMode = DATE_PICKER_MODE_DATE_AND_TIME,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        self._mode: DatePickerMode = (DATE_PICKER_MODE_DATE_AND_TIME,)
+        self._enabled: bool = True
 
         self._date_state = _DateState()
         self._popup: View | None = None
         self._overlay: _PopupOverlay | None = None
-        self._mode: DatePickerMode = mode
 
-        self._date_btn = Button(title=_fmt_date(self._date_state.date))
-        self._date_btn.tint_color = _TEXT_PRIMARY_COLOR
-        self._date_btn.background_color = _BG_COLOR
-        self._date_btn.corner_radius = 16
-        self._date_btn.action = self._date_action
+        btn_kw = {
+            "tint_color": _TEXT_PRIMARY_COLOR,
+            "background_color": _BG_COLOR,
+            "corner_radius": 16,
+        }
 
-        self._time_btn = Button(title=_fmt_time(self._date_state.date))
-        self._time_btn.tint_color = _TEXT_PRIMARY_COLOR
-        self._time_btn.background_color = _BG_COLOR
-        self._time_btn.corner_radius = 16
-        self._time_btn.action = self._time_action
+        self._date_btn = Button(
+            title=_fmt_date(self._date_state.date),
+            action=self._date_action,
+            **btn_kw,
+        )
+
+        self._time_btn = Button(
+            title=_fmt_time(self._date_state.date),
+            action=self._time_action,
+            **btn_kw,
+        )
 
         self.add_subview(self._date_btn)
         self.add_subview(self._time_btn)
 
         self._date_state.register(self)
         self._apply_mode()
+
+        super().__init__(*args, **kwargs)
 
     # ── mode ─────────────────────────────────────────────────────────────────
 
@@ -1232,12 +1241,12 @@ class DatePicker(View):
     # ── popup helpers ─────────────────────────────────────────────────────────
 
     def _close_popup(self):
+        self._date_btn.tint_color = _TEXT_PRIMARY_COLOR
+        self._time_btn.tint_color = _TEXT_PRIMARY_COLOR
         if self._overlay and self._overlay.superview:
             self._overlay.superview.remove_subview(self._overlay)
         self._overlay = None
         self._popup = None
-        self._date_btn.tint_color = _TEXT_PRIMARY_COLOR
-        self._time_btn.tint_color = _TEXT_PRIMARY_COLOR
 
     def _push_popup(self):
         root = self
@@ -1248,12 +1257,11 @@ class DatePicker(View):
             on_dismiss=self._close_popup,
             popup=self._popup,
             date_picker=self,
+            tint_color=self.tint_color,
         )
         self._overlay.frame = (0, 0, root.width, root.height)
         self._overlay.flex = "WH"
-        # popup — subview overlay (рендерується), але тачі до нього
-        # не доходять через hit-test бо overlay перехоплює все і
-        # сам редиректить через новий Touch з перекладеними координатами
+
         self._overlay.add_subview(self._popup)
         root.add_subview(self._overlay)
 
@@ -1263,7 +1271,7 @@ class DatePicker(View):
         if should_open:
             self._popup = _LiquidDatePicker(self._date_state)
             self._push_popup()
-            self._date_btn.tint_color = _TINT_COLOR
+            self._date_btn.tint_color = self.tint_color
 
     def _time_action(self, sender: Button):
         should_open = not isinstance(self._popup, _LiquidTimePicker)
@@ -1271,7 +1279,7 @@ class DatePicker(View):
         if should_open:
             self._popup = _LiquidTimePicker(self._date_state)
             self._push_popup()
-            self._time_btn.tint_color = _TINT_COLOR
+            self._time_btn.tint_color = self.tint_color
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -1291,6 +1299,7 @@ class DatePicker(View):
 
 if __name__ == "__main__":
     dp = DatePicker(mode=DATE_PICKER_MODE_DATE_AND_TIME)
+    dp.tint_color = "red"
 
     root = View()
     root.frame = (0, 0, 400, 600)

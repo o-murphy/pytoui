@@ -17,7 +17,6 @@ from pytoui.ui._constants import (
     CONTENT_SCALE_TO_FILL,
 )
 from pytoui.ui._draw import (
-    _SYSTEM_TINT,
     GState,
     Path,
     Transform,
@@ -32,7 +31,7 @@ from pytoui.ui._draw import (
     set_alpha,
     set_color,
 )
-from pytoui.ui._internals import _getset_descriptor
+from pytoui.ui._internals import _get_system_tint, _getset_descriptor
 from pytoui.ui._types import Rect, Size
 
 if TYPE_CHECKING:
@@ -190,7 +189,7 @@ class _ViewInternals:
         self._subviews: list[_ViewInternals] = []
         self._superview: _ViewInternals | None = None
         self._navigation_view: _NavigationViewInternals | None = None
-        self._tint_color: _RGBA = _SYSTEM_TINT
+        self._tint_color: _RGBA | None = None
         self._transform: Transform | None = None
         self._update_interval: float = 0.0
         self._on_screen: bool = False
@@ -471,11 +470,14 @@ class _ViewInternals:
             if v._tint_color is not None:
                 return v._tint_color
             v = v._superview
-        return _SYSTEM_TINT
+        return _get_system_tint()
 
     @tint_color.setter
     def tint_color(self, value: _ColorLike):
-        self._tint_color = parse_color(value)
+        if value is None:
+            self._tint_color = None
+        else:
+            self._tint_color = parse_color(value)
         self.set_needs_display()
 
     @property

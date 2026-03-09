@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pytoui._platform import IS_PYTHONISTA
-from pytoui.ui._draw import _SYSTEM_TINT, parse_color
-from pytoui.ui._internals import _final_
+from pytoui.ui._draw import parse_color
+from pytoui.ui._internals import _final_, _get_system_tint
 
 if TYPE_CHECKING:
     from pytoui.ui._draw import Image
@@ -30,13 +30,15 @@ class _ButtonItem:
         image: Image | None = None,
         action: _Action | None = None,
         enabled: bool = True,
-        tint_color: _ColorLike = _SYSTEM_TINT,
+        tint_color: _ColorLike = None,
     ):
         self._title: str | None = title
         self._image: Image | None = image
         self._action: _Action | None = action
         self._enabled: bool = enabled
-        self._tint_color: _RGBA = parse_color(tint_color)
+        self._tint_color: _RGBA = (
+            parse_color(tint_color) if tint_color else _get_system_tint()
+        )
 
     # -- Properties -----------------------------------------------------------
 

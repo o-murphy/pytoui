@@ -27,11 +27,9 @@ class VerticalSlider(View):
         "_tracked",
         "_value",
         "_anim_disabled",
-        "_progress_color",
         "_track_color",
     )
 
-    _IOS_BLUE = (0.0, 0.48, 1.0, 1.0)
     _IOS_TRACK = (0.85, 0.85, 0.85, 1.0)
     _LOGICAL_WIDTH = 31.0
 
@@ -49,7 +47,6 @@ class VerticalSlider(View):
 
         # Overrides
         self._anim_disabled = _UI_DISABLE_ANIMATIONS
-        self._progress_color = self._IOS_BLUE
         self._track_color = self._IOS_TRACK
 
         # Standard iOS slider size
@@ -157,7 +154,7 @@ class VerticalSlider(View):
         ).fill()
 
         # 2️⃣ Active track
-        set_color(self._progress_color)
+        set_color(self.tint_color)
         active_track_y = pos_y
         active_track_h = (self.height - margin) - pos_y
         Path.rounded_rect(

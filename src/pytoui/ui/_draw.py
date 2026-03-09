@@ -88,7 +88,6 @@ __all__ = (
     "_set_origin",
     "_tick",
     "_tick_delays",
-    "_SYSTEM_TINT",
     "_COLORS",
     "animate",
     "cancel_delays",
@@ -1240,8 +1239,6 @@ _UIKIT_SYSTEM_COLORS_DARK: _COLORS_DICT = {
     "secondarysystembackground": (0.11, 0.11, 0.12, 1.0),
     "tertiarysystembackground": (0.17, 0.17, 0.18, 1.0),
 }
-
-_SYSTEM_TINT: _RGBA = (0.0, 122 / 255, 1.0, 1.0)  # IOS SYSTEM BLUE
 
 
 @lru_cache(maxsize=256)

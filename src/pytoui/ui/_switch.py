@@ -37,8 +37,7 @@ class Switch(View):
         "_tracked",
         "_value",
         "_anim_disabled",
-        "_on_color",
-        "_off_color",
+        "_track_color",
         "_pill_color",
     )
 
@@ -59,8 +58,7 @@ class Switch(View):
         self._did_change_during_move = False
         # overridable
         self._anim_disabled = _UI_DISABLE_ANIMATIONS
-        self._on_color = self._IOS_GREEN
-        self._off_color = self._IOS_GRAY
+        self._track_color = self._IOS_GRAY
         self._pill_color = self._IOS_WHITE
 
         self._press_start_time = 0.0
@@ -168,13 +166,13 @@ class Switch(View):
             on_g,
             on_b,
             _,
-        ) = parse_color(self._on_color)
+        ) = parse_color(self.tint_color)
         (
             off_r,
             off_g,
             off_b,
             _,
-        ) = parse_color(self._off_color)
+        ) = parse_color(self._track_color)
 
         bg_r = (off_r + (on_r - off_g) * p) * press_dim
         bg_g = (off_g + (on_g - off_g) * p) * press_dim

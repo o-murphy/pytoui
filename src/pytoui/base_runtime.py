@@ -651,4 +651,7 @@ def any_dirty(view: _ViewInternals) -> bool:
     for sv in view._subviews:
         if any_dirty(sv):
             return True
+    for sv in view._pytoui_internal_subviews:
+        if any_dirty(sv):
+            return True
     return False

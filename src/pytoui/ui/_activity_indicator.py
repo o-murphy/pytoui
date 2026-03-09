@@ -20,6 +20,8 @@ from pytoui.ui._view import View
 if TYPE_CHECKING:
     from pytoui.ui._types import _ActivityIndicatorStyle
 
+__all__ = ("ActivityIndicator",)
+
 
 @_final_
 class _ActivityIndicator(View):
@@ -93,11 +95,6 @@ class _ActivityIndicator(View):
         if self._is_animating:
             self._anim_step = (self._anim_step + 1) % 12
             self.set_needs_display()
-
-            curr = self.superview
-            while curr:
-                curr.set_needs_display()
-                curr = curr.superview
 
     def draw(self):
         if self._hides_when_stopped and not self._is_animating:

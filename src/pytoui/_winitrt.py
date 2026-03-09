@@ -16,7 +16,7 @@ from pytoui._platform import (
     _UI_DISABLE_WINIT_CSD,
     _UI_RT_FPS,
 )
-from pytoui.base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime
+from pytoui.base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, any_dirty
 from pytoui.hid import (
     KEY_INPUT_ESC,
     MOUSE_LEFT_ID,
@@ -186,6 +186,9 @@ class WinitRuntime(BaseRuntime):
 
         if not self.root.pytoui_presented:
             return 1
+
+        if not any_dirty(self.root):
+            return 0
 
         fb.draw_checkerboard(_CHECKER_SIZE)
         self.render_fn(fb)

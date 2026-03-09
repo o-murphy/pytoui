@@ -8,27 +8,8 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* Transforms applying to draw_string_core_graphics but it makes glitches
 * NavigationView on stack pop/push animations like ScrollView paging animation
-* Image:
-  for Image.clip_to_mask
-  ```rust
-  pub extern "C" fn set_mask_from_image(
-      fb_handle: i32,
-      image_data: *const u8,
-      img_w: i32,
-      img_h: i32,
-      dst_x: i32,
-      dst_y: i32,
-      dst_w: i32,
-      dst_h: i32,
-  ) {
-      // 1. lookup framebuffer by handle
-      // 2. Create mask from image alpha chanel
-      // 3. Set as current mask for clipping
-      // 4. All next drawings will be clipped
-  }
-  ```
+* Image: implement methods with the rust backend
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)
@@ -53,6 +34,7 @@ Runtime
 * WinitRuntime macOS support: EventLoop must run on main thread — needs separate #[cfg(target_os="macos")] code path in lib.rs (no background thread, first winit_run runs loop inline)
 * Add possibility to add custom runtimes, not build it to the library (for overriding etc)
 * maybe add View _global_dirty_counter to skip some rerenders?
+* CALayer-style per-view backing store: each view renders into its own pixel buffer and is composited into the parent only when dirty — enables true per-view dirty skip. Heavy architectural change: requires a separate FrameBuffer or rgba array per view + compositor pass.
 
 ---------------------------------------------------------
 
@@ -76,7 +58,7 @@ View classes:
 * TextField
 * TextView
 * WebView
-* DatePicker
+* DatePicker (in progress)
 * ~~ActivityIndicator~~
 
 Other Classes:
@@ -121,7 +103,7 @@ Enums:
 * ~~LineBrakeMode~~
 * ~~TextAlignment~~
 * TextAutoCapitalization
-* DatePickerMode
+* ~~DatePickerMode~~
 * ~~ActivityIndicatorStyle~~
 * ~~RenderingMode~~
 

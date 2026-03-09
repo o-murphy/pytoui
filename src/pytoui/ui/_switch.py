@@ -66,6 +66,12 @@ class Switch(View):
         self._last_time = time.time()
         self._tracked_value: bool = False
 
+        self.tint_color = (
+            0.204,
+            0.780,
+            0.349,
+            1.0,
+        )  # or system green (0.2, 0.78, 0.35, 1.0)
         self.frame = Rect(0, 0, 51, 31)
 
         super().__init__(*args, **kwargs)

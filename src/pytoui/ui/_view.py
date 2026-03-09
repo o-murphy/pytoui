@@ -447,6 +447,8 @@ class _ViewInternals:
             self.pytoui_apply_autoresizing(old_w, old_h)
         self._pytoui_has_initial_frame = True
         self.set_needs_layout()
+        if self._superview is not None:
+            self._superview.set_needs_layout()
 
     @property
     def bounds(self) -> Rect:

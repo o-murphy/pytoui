@@ -21,7 +21,6 @@ from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_RT_FPS,
-    _UI_RT_SDL_DELAY,
     _UI_RT_SDL_MAX_DELAY,
 )
 from pytoui.base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, any_dirty
@@ -254,17 +253,20 @@ class SDLRuntime(BaseRuntime):
         self.renderer = sdl2.SDL_CreateRenderer(
             self.window,
             -1,
-            sdl2.SDL_RENDERER_ACCELERATED,
+            sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_PRESENTVSYNC,
         )
         self.texture = sdl2.SDL_CreateTexture(
             self.renderer,
             sdl2.SDL_PIXELFORMAT_ABGR8888,
             sdl2.SDL_TEXTUREACCESS_STREAMING,
-            3840,
-            2160,
+            width,
+            height,
         )
         sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
-        # Pre-allocate for 4K to avoid reallocation on resize
+        self._texture_w = width
+        self._texture_h = height
+        # Pre-allocate pixel buffer at 4K max to avoid reallocation on resize.
+        # The GPU texture is recreated at actual window size on resize.
         _max_pixels = 3840 * 2160
         self.pixel_data = (ctypes.c_ubyte * (_max_pixels * 4))()
 
@@ -424,10 +426,24 @@ class SDLRuntime(BaseRuntime):
                     rf = self.root.frame
                     self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
 
+                if self._texture_w != w or self._texture_h != h:
+                    sdl2.SDL_DestroyTexture(self.texture)
+                    self.texture = sdl2.SDL_CreateTexture(
+                        self.renderer,
+                        sdl2.SDL_PIXELFORMAT_ABGR8888,
+                        sdl2.SDL_TEXTUREACCESS_STREAMING,
+                        w,
+                        h,
+                    )
+                    sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
+                    self._texture_w, self._texture_h = w, h
+
                 needs_redraw = any_dirty(self.root)
 
                 if needs_redraw:
-                    fb.draw_checkerboard(_CHECKER_SIZE)
+                    bg = self.root._background_color
+                    if bg is None or bg[3] < 1.0:
+                        fb.draw_checkerboard(_CHECKER_SIZE)
                     self.render_fn(fb)
 
                     src_rect = sdl2.rect.SDL_Rect(0, 0, w, h)
@@ -445,8 +461,6 @@ class SDLRuntime(BaseRuntime):
                         None,
                     )
                     sdl2.SDL_RenderPresent(self.renderer)
-
-                    sdl2.SDL_Delay(_UI_RT_SDL_DELAY)
 
                 else:
                     sdl2.SDL_Delay(_UI_RT_SDL_MAX_DELAY)

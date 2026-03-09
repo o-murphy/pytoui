@@ -15,7 +15,7 @@ delegates to _set_first_responder().
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from pytoui.hid import MOUSE_LEFT_ID
 from pytoui.ui._draw import convert_point
@@ -112,6 +112,24 @@ class BaseRuntime:
             sv = sv.superview
         return None
 
+    @staticmethod
+    def _find_touch_responder(
+        hit: _ViewInternals, prop: str
+    ) -> tuple[_ViewInternals | None, Callable[..., None] | None]:
+        """Walk the superview chain from *hit* and return the first view whose
+        *prop* property is not None, together with the callback.
+
+        This implements the UIKit responder chain: if the deepest hit view does
+        not handle an event, the event bubbles up to the nearest ancestor that does.
+        """
+        view: _ViewInternals | None = hit
+        while view is not None:
+            cb = getattr(view, prop)
+            if cb is not None:
+                return view, cb
+            view = view._superview
+        return None, None
+
     # ------------------------------------------------------------------
     # Touch handling
     # ------------------------------------------------------------------
@@ -152,7 +170,7 @@ class BaseRuntime:
                     self._create_touch(interceptor, x, y, "began", touch_id, (x, y))
                 )
 
-        touch_began = target.pytoui_touch_began
+        target, touch_began = self._find_touch_responder(target, "pytoui_touch_began")
         if not touch_began:
             return
         if not target._multitouch_enabled and any(
@@ -342,24 +360,25 @@ class BaseRuntime:
                         frozenset(self._held_mouse_buttons),
                     )
                 )
-        cb = target.pytoui_mouse_down
-        if not cb:
+        target, cb = self._find_touch_responder(target, "pytoui_mouse_down")
+        if not cb or not target:
             return
         self._tracked[button_id] = target
         # Primary subview always gets mouse_down immediately.
         # If it calls scroll_enabled=False, the interceptor is released
         # in _mouse_dragged.
-        cb(
-            self._create_mouse_event(
-                target,
-                x,
-                y,
-                "began",
-                button_id,
-                (x, y),
-                frozenset(self._held_mouse_buttons),
+        if callable(cb):
+            cb(
+                self._create_mouse_event(
+                    target,
+                    x,
+                    y,
+                    "began",
+                    button_id,
+                    (x, y),
+                    frozenset(self._held_mouse_buttons),
+                )
             )
-        )
 
     def _mouse_up(self, x, y, button_id: int):
         self._held_mouse_buttons.discard(button_id)

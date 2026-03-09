@@ -69,10 +69,10 @@ _PICKER_LENS_HEIGHT = 44
 _PICKER_LENS_WIDTH_RATIO = 0.94
 _PICKER_LENS_CORNER_RADIUS = 16
 _PICKER_MAGNIFICATION = 1.35
-_PICKER_WHEEL_SNAP_VEL_TH = 0.5  # was 0.1
-_PICKER_WHEEL_DECELERATION = 0.85  # was 0.95
-_PICKER_WHEEL_SNAP_SPEED = 0.35  # was 0.2
-_PICKER_WHEEL_SNAP_EPSILON = 0.005  # was 0.001
+_PICKER_WHEEL_SNAP_VEL_TH = 0.5
+_PICKER_WHEEL_DECELERATION = 0.85
+_PICKER_WHEEL_SNAP_SPEED = 0.35
+_PICKER_WHEEL_SNAP_EPSILON = 0.005
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -96,16 +96,17 @@ class _DateState:
     """
     Holds two independent pieces of state:
 
-    selected_date  — full date (year + month + day); changed only on a day tap
-                     or via the public LiquidDatePicker.date setter.
-    display        — year + month currently visible on screen; changed when the
-                     user swipes the calendar or scrolls the wheel picker.
+    selected_date  — full date (year + month + day + hour + minute); changed on
+                     a day tap, time wheel settle, or via the public .date setter.
+    display        — year + month + hour + minute currently visible on screen;
+                     changed when the user swipes the calendar or scrolls the
+                     wheel pickers.
 
     Each component registers itself as a receiver via register().
     On every state change _DateState notifies all receivers EXCEPT the sender.
 
     Receivers are expected to implement:
-      on_display_changed()   — called when the display year/month changes
+      on_display_changed()   — called when the display year/month/time changes
       on_selection_changed() — called when selected_date changes
     """
 
@@ -114,6 +115,8 @@ class _DateState:
         self._selected: datetime = d
         self._display_year: int = d.year
         self._display_month: int = d.month
+        self._display_hour: int = d.hour
+        self._display_minute: int = d.minute
         self._receivers: list[object] = []
 
     # ── Registration ─────────────────────────────────────────────────────────
@@ -164,6 +167,14 @@ class _DateState:
         return self._display_month
 
     @property
+    def display_hour(self) -> int:
+        return self._display_hour
+
+    @property
+    def display_minute(self) -> int:
+        return self._display_minute
+
+    @property
     def display_month_index(self) -> int:
         return self._display_year * 12 + (self._display_month - 1)
 
@@ -172,16 +183,23 @@ class _DateState:
     def month_index(self) -> int:
         return self.display_month_index
 
-    def set_display(self, year: int, month: int, sender: object = None) -> None:
+    def set_display_date(self, year: int, month: int, sender: object = None) -> None:
         if year == self._display_year and month == self._display_month:
             return
         self._display_year = year
         self._display_month = month
         self._notify_display(sender)
 
+    def set_display_time(self, hour: int, minute: int, sender: object = None) -> None:
+        if hour == self._display_hour and minute == self._display_minute:
+            return
+        self._display_hour = hour
+        self._display_minute = minute
+        self._notify_display(sender)
+
     def set_display_from_index(self, idx: int, sender: object = None) -> None:
         year, month = self.year_month_from_index(idx)
-        self.set_display(year, month, sender)
+        self.set_display_date(year, month, sender)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -472,7 +490,11 @@ class _CalendarView(View):
         if result is None:
             return
         year, month, day = result
-        self._date_state.set_selected(datetime(year, month, day), sender=self)
+        # Preserve the current selected time when tapping a new day
+        self._date_state.set_selected(
+            self._date_state.selected_date.replace(year=year, month=month, day=day),
+            sender=self,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -506,7 +528,7 @@ class _WheelPickerView(View):
         self._active_state: _WheelState | None = None
         self._last_y = 0.0
         self._last_t = 0.0
-        self._was_moving = False  # used to detect the moment wheels settle
+        self._was_moving = False
 
         self.mouse_wheel_enabled = True
         self.update_interval = 1 / 60
@@ -540,7 +562,7 @@ class _WheelPickerView(View):
         month_idx = round(self._month_state.current_idx) % self._month_state.total
         year = self._year_state.values[year_idx]
         month = self._month_state.values[month_idx]
-        self._date_state.set_display(year, month, sender=self)
+        self._date_state.set_display_date(year, month, sender=self)
 
     def refresh(self) -> None:
         """Force-sync the wheels with the current display state."""
@@ -570,7 +592,6 @@ class _WheelPickerView(View):
 
         self.set_needs_display()
 
-        # Commit exactly once, at the transition from moving → settled
         if self._was_moving and not moving:
             self._commit_to_state()
         self._was_moving = moving
@@ -812,8 +833,7 @@ class LiquidDatePicker(View):
 
     Public API
     ----------
-    date   : datetime — read / write; all components sync automatically
-    action : Callable[[LiquidDatePicker]]
+    date : datetime — read / write; all components sync automatically
     """
 
     def __init__(self, date_state: _DateState, **kwargs):
@@ -825,8 +845,6 @@ class LiquidDatePicker(View):
 
         pw = _DAY_ITEM_SIZE * 7
         header_h = _CALENDAR_HEADER_HEIGHT + _WEEKDAY_HEADER_HEIGHT
-
-        self._action: Callable | None = None
 
         self._header = _DatePickerHeader(
             on_prev=lambda: self._cal._snap_to(round(self._cal._offset) - 1),
@@ -863,11 +881,6 @@ class LiquidDatePicker(View):
         """Display changed — update the header title."""
         self._header.title = self._date_state.month_name
 
-    def on_selection_changed(self) -> None:
-        """selected_date changed — invoke the external action callback."""
-        if self._action is not None:
-            self._action(self)
-
     def _on_expand(self, sender: _DatePickerHeader):
         calendar_view = sender._expanded
         self._cal.hidden = calendar_view
@@ -882,15 +895,7 @@ class LiquidDatePicker(View):
     @date.setter
     def date(self, value: datetime) -> None:
         self._date_state.set_selected(value, sender=None)
-        self._date_state.set_display(value.year, value.month, sender=None)
-
-    @property
-    def action(self) -> Callable | None:
-        return self._action
-
-    @action.setter
-    def action(self, value: Callable | None):
-        self._action = value
+        self._date_state.set_display_date(value.year, value.month, sender=None)
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
@@ -918,16 +923,241 @@ class LiquidDatePicker(View):
         self._cal._offset -= delta
 
 
+# ---------------------------------------------------------------------------
+# LiquidTimePicker
+# ---------------------------------------------------------------------------
+
+
 @_final_
 class LiquidTimePicker(View):
-    def __init__(self, *args, **kwargs):
-        self.frame = (0, 0, 200, 200)
+    def __init__(self, date_state: _DateState, /, **kwargs):
+        self._date_state = date_state
+
         self.corner_radius = 16
         self.background_color = _BG_COLOR
 
+        # FIX: range(0, 24) and range(0, 60) — include 23h and 59m
+        self._hour_state = _WheelState(range(0, 24), date_state.display_hour)
+        self._minute_state = _WheelState(range(0, 60), date_state.display_minute)
+
+        self._active_state: _WheelState | None = None
+        self._last_y = 0.0
+        self._last_t = 0.0
+        self._was_moving = False
+
+        self.mouse_wheel_enabled = True
+        self.update_interval = 1 / 60
+        super().__init__(**kwargs)
+
+        self._date_state.register(self)
+
+    # ── Delegate receiver ─────────────────────────────────────────────────────
+
+    def on_display_changed(self) -> None:
+        """External display change — sync wheels to current display time."""
+        self._set_wheel_value(self._hour_state, self._date_state.display_hour)
+        self._set_wheel_value(self._minute_state, self._date_state.display_minute)
+        self.set_needs_display()
+
+    def on_selection_changed(self) -> None:
+        """selected_date changed externally — sync wheels to selected time."""
+        sel = self._date_state.selected_date
+        self._set_wheel_value(self._hour_state, sel.hour)
+        self._set_wheel_value(self._minute_state, sel.minute)
+        self.set_needs_display()
+
+    def _set_wheel_value(self, state: _WheelState, value) -> None:
+        if value not in state.values:
+            return
+        target_idx = state.values.index(value)
+        current_base = round(state.current_idx) % state.total
+        delta = (
+            target_idx - current_base + state.total // 2
+        ) % state.total - state.total // 2
+        state.current_idx = round(state.current_idx) + delta
+        state.velocity = 0.0
+
+    def _commit_to_state(self) -> None:
+        """Push current wheel values into both display state and selected_date.
+        sender=self ensures we don't receive our own notification back."""
+        # FIX: was using wrong state for hour/minute (swapped)
+        hour_idx = round(self._hour_state.current_idx) % self._hour_state.total
+        minute_idx = round(self._minute_state.current_idx) % self._minute_state.total
+        hour = self._hour_state.values[hour_idx]
+        minute = self._minute_state.values[minute_idx]
+
+        # Update display time (notifies all receivers except self)
+        self._date_state.set_display_time(hour, minute, sender=self)
+
+        # FIX: also update selected_date to keep the full datetime in sync
+        sel = self._date_state.selected_date
+        new_dt = sel.replace(hour=hour, minute=minute)
+        self._date_state.set_selected(new_dt, sender=self)
+
+    def refresh(self) -> None:
+        """Force-sync the wheels with the current display state."""
+        self.on_display_changed()
+
+    # ── update loop ───────────────────────────────────────────────────────────
+
+    def update(self):
+        moving = False
+        for state in [self._hour_state, self._minute_state]:
+            if state.is_dragging:
+                moving = True
+                continue
+            if abs(state.velocity) > _PICKER_WHEEL_SNAP_VEL_TH:
+                state.current_idx += state.velocity * 0.016
+                state.velocity *= _PICKER_WHEEL_DECELERATION
+                moving = True
+            else:
+                target = round(state.current_idx)
+                diff = target - state.current_idx
+                if abs(diff) > _PICKER_WHEEL_SNAP_EPSILON:
+                    state.current_idx += diff * _PICKER_WHEEL_SNAP_SPEED
+                    moving = True
+                else:
+                    state.current_idx = float(target)
+                    state.velocity = 0.0
+
+        self.set_needs_display()
+
+        # Commit exactly once, at the transition from moving → settled
+        if self._was_moving and not moving:
+            self._commit_to_state()
+        self._was_moving = moving
+
+    # ── touch ────────────────────────────────────────────────────────────────
+
+    def mouse_wheel(self, event: MouseWheel):
+        if not self.mouse_wheel_enabled:
+            return
+        state = (
+            self._hour_state
+            if event.location.x < self.width / 2
+            else self._minute_state
+        )
+        state.current_idx = float(
+            round(state.current_idx) + (-1 if event.scroll_dy > 0 else 1)
+        )
+        state.velocity = 0.0
+        self._commit_to_state()
+        self.set_needs_display()
+
+    def touch_began(self, touch: Touch):
+        if touch.location.x < self.width / 2:
+            self._active_state = self._hour_state
+        else:
+            self._active_state = self._minute_state
+        if self._active_state:
+            self._active_state.is_dragging = True
+            self._active_state.velocity = 0
+            self._last_y = touch.location.y
+            self._last_t = time.time()
+
+    def touch_moved(self, touch: Touch):
+        if not self._active_state:
+            return
+        dy = touch.location.y - self._last_y
+        dt = max(time.time() - self._last_t, 0.001)
+        self._active_state.current_idx -= dy / _PICKER_WHEEL_ITEM_HEIGHT
+        self._active_state.velocity = -dy / _PICKER_WHEEL_ITEM_HEIGHT / dt * 0.3
+        self._last_y = touch.location.y
+        self._last_t = time.time()
+        self.set_needs_display()
+
+    def touch_ended(self, touch: Touch):
+        if self._active_state:
+            self._active_state.is_dragging = False
+            self._active_state = None
+
+    # ── draw ─────────────────────────────────────────────────────────────────
+
+    def _draw_text(self, txt, x, y, sx, sy, opacity, bold):
+        tw, th = measure_string(txt, font=_PICKER_ITEM_FONT)
+        with GState():
+            concat_ctm(Transform.translation(x, y))
+            concat_ctm(Transform.scale(sx, sy))
+            draw_string(
+                txt,
+                rect=(-tw / 2, -th / 2, tw, th),
+                font=_PICKER_ITEM_FONT,
+                alignment=ALIGN_CENTER,
+                color=_WHEEL_TEXT_COLOR,
+            )
+
+    def _draw_wheel(self, state: _WheelState, center_x, mid_y, lens_path: Path):
+        w, h = self.width, self.height
+        if w == 0 or h == 0:
+            return
+
+        start_i = int(state.current_idx) - 4
+        end_i = int(state.current_idx) + 5
+
+        for i in range(start_i, end_i):
+            val = state.values[i % state.total]
+            txt = f"{val:02d}"
+            dist = i - state.current_idx
+
+            angle = dist * (_PICKER_WHEEL_ITEM_HEIGHT / (h * 0.45))
+            if abs(angle) > math.pi / 2:
+                continue
+
+            y_pos = mid_y + math.sin(angle) * (h * 0.42)
+
+            with GState():
+                bg_mask = Path.rect(0, 0, w, h)
+                bg_mask.append_path(lens_path)
+                bg_mask.eo_fill_rule = True
+                bg_mask.add_clip()
+                self._draw_text(txt, center_x, y_pos, 1.0, math.cos(angle), 0.3, False)
+
+            with GState():
+                lens_path.add_clip()
+                focus = 1.0 - min(1.0, abs(dist) * 0.8)
+                mag = 1.0 + (_PICKER_MAGNIFICATION - 1.0) * focus
+                self._draw_text(txt, center_x, y_pos, mag * 1.05, mag, 1.0, True)
+
+    def draw(self):
+        w, h = self.width, self.height
+        if w == 0 or h == 0:
+            return
+
+        mid_y = h / 2
+        lw = w * _PICKER_LENS_WIDTH_RATIO
+        lx = (w - lw) / 2
+        ly = mid_y - _PICKER_LENS_HEIGHT / 2
+        lens_path = Path.rounded_rect(
+            lx, ly, lw, _PICKER_LENS_HEIGHT, _PICKER_LENS_CORNER_RADIUS
+        )
+
+        self._draw_wheel(self._hour_state, w * 0.3, mid_y, lens_path)
+        self._draw_wheel(self._minute_state, w * 0.7, mid_y, lens_path)
+
+        with GState():
+            for i in range(int(ly)):
+                a = 0.85 * (1.0 - i / (h / 2.2))
+                r, g, b, _ = _BG_COLOR
+                set_color((r, g, b, a))
+                fill_rect(0, i, w, 1)
+                fill_rect(0, h - i - 1, w, 1)
+
+            r, g, b, _ = _BG_COLOR_REVERSED
+            set_color((r, g, b, 0.03))
+            lens_path.fill()
+
+            set_color((r, g, b, 0.08))
+            lens_path.line_width = 0.5
+            lens_path.stroke()
+
+
+# ---------------------------------------------------------------------------
+# DateTimePicker
+# ---------------------------------------------------------------------------
+
 
 @_final_
-class DateTimePicker(View):
+class DatePicker(View):
     _GAP = 8
     _DATE_W = 150
     _TIME_W = 65
@@ -941,14 +1171,14 @@ class DateTimePicker(View):
         total_w = self._DATE_W + self._GAP + self._TIME_W
         self.frame = (0, 0, total_w, self._H)
 
-        self._date_btn = Button(title=self._date_state.date.strftime("%D %d %Y"))
+        self._date_btn = Button(title=self._fmt_date(self._date_state.date))
         self._date_btn.tint_color = _TEXT_PRIMARY_COLOR
         self._date_btn.background_color = _BG_COLOR
         self._date_btn.corner_radius = 16
         self._date_btn.flex = "L"
         self._date_btn.frame = (0, 0, self._DATE_W, self._H)
 
-        self._time_btn = Button(title=self._date_state.date.strftime("%H:%M"))
+        self._time_btn = Button(title=self._fmt_time(self._date_state.date))
         self._time_btn.tint_color = _TEXT_PRIMARY_COLOR
         self._time_btn.background_color = _BG_COLOR
         self._time_btn.corner_radius = 16
@@ -960,7 +1190,70 @@ class DateTimePicker(View):
 
         self._date_btn.action = self._date_action
         self._time_btn.action = self._time_action
+
+        # FIX: register self (not the buttons) to receive state change callbacks
+        self._date_state.register(self)
+
         self._popup = None
+
+    # ── Delegate receivers ────────────────────────────────────────────────────
+
+    # ── locale helpers ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _fmt_date(dt: datetime) -> str:
+        """
+        Date formatted according to the current locale (e.g. 09.03.2026 or 03/09/2026).
+        """
+        try:
+            locale.setlocale(locale.LC_TIME, "")
+            return dt.strftime("%x")
+        except Exception:
+            return dt.strftime("%d.%m.%Y")
+
+    @staticmethod
+    def _fmt_time(dt: datetime) -> str:
+        """HH:MM in 24h or 12h format depending on the current locale."""
+        try:
+            locale.setlocale(locale.LC_TIME, "")
+            # %X includes seconds; strip them by reformatting hour+minute only
+            # using the locale time separator derived from a known reference time
+            ref = datetime(2000, 1, 1, 13, 45)
+            full = ref.strftime("%X")  # e.g. "13:45:00" or "1:45:00 PM"
+            # detect 12h locale: reference hour 13 would appear as "1" in 12h
+            if "1:45" in full and "13" not in full:
+                # 12-hour locale
+                ampm = dt.strftime("%p")
+                return f"{int(dt.strftime('%I'))}:{dt.minute:02d} {ampm}"
+            else:
+                return f"{dt.hour:02d}:{dt.minute:02d}"
+        except Exception:
+            return f"{dt.hour:02d}:{dt.minute:02d}"
+
+    # ── Delegate receivers ────────────────────────────────────────────────────
+
+    def on_display_changed(self) -> None:
+        """Display year/month/time changed — update date_btn with display date,
+        time_btn with display time."""
+        ds = self._date_state
+        sel = ds.selected_date
+        display_dt = sel.replace(
+            year=ds.display_year,
+            month=ds.display_month,
+            hour=ds.display_hour,
+            minute=ds.display_minute,
+        )
+        self._date_btn.title = self._fmt_date(display_dt)
+        self._time_btn.title = self._fmt_time(display_dt)
+
+    def on_selection_changed(self) -> None:
+        """selected_date changed (day tap or external set) — sync both buttons
+        fully from the confirmed selected datetime."""
+        sel = self._date_state.selected_date
+        self._date_btn.title = self._fmt_date(sel)
+        self._time_btn.title = self._fmt_time(sel)
+
+    # ── popup helpers ─────────────────────────────────────────────────────────
 
     def _close_popups(self):
         if self._popup:
@@ -1024,16 +1317,7 @@ class DateTimePicker(View):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    # picker = LiquidDatePicker()
-    # picker.action = lambda s: print(s.date)
-
-    # root = View()
-    # root.background_color = "grey"
-    # root.add_subview(picker)
-    # picker.frame = (0, 0, picker.width, picker.height)
-    # root.present("fullscreen")
-
-    dp = DateTimePicker()
+    dp = DatePicker()
 
     root = View()
     root.frame = (0, 0, 400, 600)

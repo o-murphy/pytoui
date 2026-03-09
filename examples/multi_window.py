@@ -28,6 +28,7 @@ class SecondView(ui.View):
 
         self.close_btn = ui.Button()
         self.close_btn.title = "Close"
+        self.close_btn.tint_color = "white"
         self.close_btn.background_color = (0.8, 0.2, 0.2, 1.0)
         self.close_btn.corner_radius = 8
         self.close_btn.action = lambda s: self.close()
@@ -54,6 +55,7 @@ class MainView(ui.View):
 
         self._btn = ui.Button()
         self._btn.title = "Open Second Window"
+        self._btn.tint_color = "white"
         self._btn.background_color = (0.2, 0.6, 1.0, 1.0)
         self._btn.corner_radius = 10
         self._btn.action = self._open_second
@@ -61,6 +63,7 @@ class MainView(ui.View):
 
         self.spawn_btn = ui.Button()
         self.spawn_btn.title = "Spawn Window"
+        self.spawn_btn.tint_color = "white"
         self.spawn_btn.background_color = (0.2, 0.7, 0.3, 1.0)
         self.spawn_btn.corner_radius = 10
         self.spawn_btn.action = self._spawn_window

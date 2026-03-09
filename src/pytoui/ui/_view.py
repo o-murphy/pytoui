@@ -113,6 +113,10 @@ class _RenderLoop:
             if self.animated:
                 self._animate_frame()
             self.view.pytoui_render()
+        # pytoui_render() clears _pytoui_needs_display; re-set it so the next
+        # frame is scheduled while the fade-in animation is still running.
+        if self.animated and self.view._alpha < 1.0:
+            self.view._pytoui_needs_display = True
 
     def _animate_frame(self):
         if self.start_time is None:
@@ -124,7 +128,6 @@ class _RenderLoop:
             p = elapsed / self.anim_duration
             p = p * p * (3.0 - 2.0 * p)  # smoothstep
             self.view._alpha = p
-            self.view._pytoui_needs_display = True
         elif self.view._alpha < 1.0:
             self.view._alpha = 1.0
 

@@ -36,7 +36,7 @@ from collections.abc import Callable, Sequence
 from functools import lru_cache
 from re import fullmatch
 from threading import local
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypeAlias, cast
 
 from pytoui._platform import pytoui_desktop_only
 from pytoui.ui._constants import (
@@ -60,13 +60,12 @@ from pytoui.ui._constants import (
     LINE_JOIN_MITER,
     RENDERING_MODE_AUTOMATIC,
 )
-from pytoui.ui._internals import _final_
-from pytoui.ui._types import Point, Rect, Size, _LineCapStyle, _LineJoinMode
+from pytoui.ui._internals import _final_, get_ui_style
+from pytoui.ui._types import _RGBA, Point, Rect, Size, _LineCapStyle, _LineJoinMode
 
 if TYPE_CHECKING:
     from pytoui._osdbuf import FrameBuffer
     from pytoui.ui._types import (
-        _RGBA,
         _Alignment,
         _BlendMode,
         _ColorLike,
@@ -873,7 +872,9 @@ def set_alpha(alpha: float):
 
 # -- Public Pythonista-compatible API -----------------------------------------
 
-_CSS_COLORS_STANDARD: dict[str, _RGBA] = {
+_COLORS_DICT: TypeAlias = dict[str, _RGBA]
+
+_CSS_COLORS_STANDARD: _COLORS_DICT = {
     "aliceblue": (0.94, 0.97, 1.0, 1.0),
     "antiquewhite": (0.98, 0.92, 0.84, 1.0),
     "aqua": (0.0, 1.0, 1.0, 1.0),
@@ -1027,7 +1028,7 @@ _CSS_COLORS_STANDARD: dict[str, _RGBA] = {
 }
 
 
-_CSS_COLORS_UIKIT: dict[str, _RGBA] = {
+_CSS_COLORS_UIKIT: _COLORS_DICT = {
     "aliceblue": (0.94, 0.97, 1.0, 1.0),
     "antiquewhite": (0.98, 0.92, 0.84, 1.0),
     "aqua": (0.0, 1.0, 1.0, 1.0),
@@ -1181,7 +1182,12 @@ _CSS_COLORS_UIKIT: dict[str, _RGBA] = {
 }
 
 
-_UIKIT_SYSTEM_COLORS: dict[str, _RGBA] = {
+_COLORS: _COLORS_DICT = {}
+_COLORS.update(_CSS_COLORS_STANDARD)
+_COLORS.update(_CSS_COLORS_UIKIT)
+
+
+_UIKIT_SYSTEM_COLORS_LIGHT: _COLORS_DICT = {
     "systemblue": (0.0, 0.48, 1.0, 1.0),
     "systemgreen": (0.2, 0.78, 0.35, 1.0),
     "systemindigo": (0.35, 0.34, 0.84, 1.0),
@@ -1208,16 +1214,49 @@ _UIKIT_SYSTEM_COLORS: dict[str, _RGBA] = {
     "tertiarysystembackground": (1.0, 1.0, 1.0, 1.0),
 }
 
-_COLORS: dict[str, _RGBA] = {}
-_COLORS.update(_CSS_COLORS_STANDARD)
-_COLORS.update(_CSS_COLORS_UIKIT)
-_COLORS.update(_UIKIT_SYSTEM_COLORS)
+_UIKIT_SYSTEM_COLORS_DARK: _COLORS_DICT = {
+    "systemblue": (0.04, 0.52, 1.0, 1.0),
+    "systemgreen": (0.19, 0.82, 0.35, 1.0),
+    "systemindigo": (0.37, 0.36, 0.90, 1.0),
+    "systemorange": (1.0, 0.62, 0.04, 1.0),
+    "systempink": (1.0, 0.22, 0.37, 1.0),
+    "systempurple": (0.75, 0.35, 0.95, 1.0),
+    "systemred": (1.0, 0.27, 0.23, 1.0),
+    "systemteal": (0.25, 0.78, 0.88, 1.0),
+    "systemyellow": (1.0, 0.84, 0.04, 1.0),
+    "systemmint": (0.39, 0.90, 0.89, 1.0),
+    "systemcyan": (0.39, 0.82, 1.0, 1.0),
+    "systemgray": (0.56, 0.56, 0.58, 1.0),
+    "systemgray2": (0.39, 0.39, 0.40, 1.0),
+    "systemgray3": (0.28, 0.28, 0.29, 1.0),
+    "systemgray4": (0.23, 0.23, 0.24, 1.0),
+    "systemgray5": (0.17, 0.17, 0.18, 1.0),
+    "systemgray6": (0.11, 0.11, 0.12, 1.0),
+    "label": (1.0, 1.0, 1.0, 1.0),
+    "secondarylabel": (0.92, 0.92, 0.96, 0.6),
+    "tertiarylabel": (0.92, 0.92, 0.96, 0.3),
+    "quaternarylabel": (0.92, 0.92, 0.96, 0.18),
+    "systembackground": (0.0, 0.0, 0.0, 1.0),
+    "secondarysystembackground": (0.11, 0.11, 0.12, 1.0),
+    "tertiarysystembackground": (0.17, 0.17, 0.18, 1.0),
+}
 
 _SYSTEM_TINT: _RGBA = (0.0, 122 / 255, 1.0, 1.0)  # IOS SYSTEM BLUE
 
 
 @lru_cache(maxsize=256)
+def parse_system_color(c: str):
+    named = (
+        _UIKIT_SYSTEM_COLORS_LIGHT
+        if get_ui_style() == "light"
+        else _UIKIT_SYSTEM_COLORS_DARK
+    ).get(c)
+    return named
+
+
+@lru_cache(maxsize=256)
 def parse_color(c: _ColorLike) -> _RGBA:
+
     r: float | int
     g: float | int
     b: float | int
@@ -1251,7 +1290,12 @@ def parse_color(c: _ColorLike) -> _RGBA:
 
     if isinstance(c, str):
         # CSS color name lookup
-        named = _COLORS.get(re.sub(r"[^a-zA-Z0-9]", "", c).lower())
+        c = re.sub(r"[^a-zA-Z0-9]", "", c).lower()
+        named = _COLORS.get(c)
+        if named is not None:
+            return named
+
+        named = parse_system_color(c)
         if named is not None:
             return named
 

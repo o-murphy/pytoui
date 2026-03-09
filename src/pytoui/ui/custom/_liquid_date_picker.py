@@ -19,6 +19,7 @@ from pytoui.ui._draw import (
     measure_string,
     set_color,
 )
+from pytoui.ui._internals import get_ui_style
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
@@ -30,13 +31,27 @@ __all__ = ("LiquidDatePicker",)
 # Constants
 # ---------------------------------------------------------------------------
 
-_IOS_BLUE = (0.0, 122 / 255, 1.0, 1.0)
-_IOS_BLUE_LIGHT = (0.0, 122 / 255, 1.0, 0.25)
-_IOS_BLUE_HOVER = (0.0, 122 / 255, 1.0, 0.08)
-_TEXT_PRIMARY = (0.0, 0.0, 0.0, 1.0)
-_TEXT_SELECTED = (1.0, 1.0, 1.0, 1.0)
-_WEEKDAY_GRAY = (0.5, 0.5, 0.5, 1.0)
-_BG_COLOR = (1.0, 1.0, 1.0, 1.0)
+
+if get_ui_style() == "light":
+    _BG_COLOR = (1.0, 1.0, 1.0, 1.0)
+    _BG_COLOR_REVERSED = (0.0, 0.0, 0.0, 1.0)
+    _TINT_COLOR = (0.0, 0.478, 1.0, 1.0)
+    _TINT_LIGHT_COLOR = (0.0, 0.478, 1.0, 0.25)
+    _TINT_HOVER_COLOR = (0.0, 0.478, 1.0, 0.08)
+    _TEXT_PRIMARY_COLOR = (0.0, 0.0, 0.0, 1.0)
+    _TEXT_TODAY_SELECTED_COLOR = (1.0, 1.0, 1.0, 1.0)
+    _WEEKDAY_TEXT_COLOR = _BG_COLOR_REVERSED
+    _WHEEL_TEXT_COLOR = (0.0, 0.0, 0.0, 1.0)
+else:
+    _BG_COLOR = (0.3, 0.3, 0.3, 1.0)
+    _BG_COLOR_REVERSED = (0.7, 0.7, 0.7, 1.0)
+    _TINT_COLOR = (0.04, 0.52, 1.0, 1.0)
+    _TINT_LIGHT_COLOR = (0.04, 0.52, 1.0, 0.25)
+    _TINT_HOVER_COLOR = (0.04, 0.52, 1.0, 0.08)
+    _TEXT_PRIMARY_COLOR = (1.0, 1.0, 1.0, 1.0)
+    _TEXT_TODAY_SELECTED_COLOR = (1.0, 1.0, 1.0, 1.0)
+    _WEEKDAY_TEXT_COLOR = _BG_COLOR_REVERSED
+    _WHEEL_TEXT_COLOR = (0.7, 0.7, 0.7, 1.0)
 
 _DAY_ITEM_SIZE = 44
 _CALENDAR_HEADER_HEIGHT = 48
@@ -54,8 +69,10 @@ _PICKER_LENS_HEIGHT = 44
 _PICKER_LENS_WIDTH_RATIO = 0.94
 _PICKER_LENS_CORNER_RADIUS = 16
 _PICKER_MAGNIFICATION = 1.35
-
-
+_PICKER_WHEEL_SNAP_VEL_TH = 0.5  # was 0.1
+_PICKER_WHEEL_DECELERATION = 0.85  # was 0.95
+_PICKER_WHEEL_SNAP_SPEED = 0.35  # was 0.2
+_PICKER_WHEEL_SNAP_EPSILON = 0.005  # was 0.001
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -236,7 +253,6 @@ class _CalendarView(View):
 
         self.on_offset_changed: Callable[[float], None] | None = None
         self.on_settled: Callable[[int, int], None] | None = None
-        self.on_day_tapped: Callable[[int, int, int], None] | None = None
         self.mouse_wheel_enabled = True
 
         super().__init__(**kwargs)
@@ -296,20 +312,20 @@ class _CalendarView(View):
                 is_hovered = hov is not None and hov == (year, month, day)
 
                 if is_selected:
-                    set_color(_IOS_BLUE if is_today else _IOS_BLUE_LIGHT)
+                    set_color(_TINT_COLOR if is_today else _TINT_LIGHT_COLOR)
                     Path.oval(cx - r, cy - r, r * 2, r * 2).fill()
                 elif is_hovered:
-                    set_color(_IOS_BLUE_HOVER)
+                    set_color(_TINT_HOVER_COLOR)
                     Path.oval(cx - r, cy - r, r * 2, r * 2).fill()
 
                 if is_selected and is_today:
-                    color, font = _TEXT_SELECTED, _FONT_BOLD
+                    color, font = _TEXT_TODAY_SELECTED_COLOR, _FONT_BOLD
                 elif is_selected:
-                    color, font = _IOS_BLUE, _FONT_BOLD
+                    color, font = _TINT_COLOR, _FONT_BOLD
                 elif is_today:
-                    color, font = _IOS_BLUE, _FONT_REGULAR
+                    color, font = _TINT_COLOR, _FONT_REGULAR
                 else:
-                    color, font = _TEXT_PRIMARY, _FONT_REGULAR
+                    color, font = _TEXT_PRIMARY_COLOR, _FONT_REGULAR
 
                 text = str(day)
                 tw, th = measure_string(text, font=font)
@@ -455,8 +471,6 @@ class _CalendarView(View):
             return
         year, month, day = result
         self._date_state.set_selected(datetime(year, month, day), sender=self)
-        if self.on_day_tapped:
-            self.on_day_tapped(year, month, day)
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +494,7 @@ class _WheelPickerView(View):
         self._date_state = date_state
 
         self.corner_radius = 16
-        self.background_color = "white"
+        self.background_color = _BG_COLOR
 
         self._month_state = _WheelState(range(1, 13), date_state.display_month)
         self._year_state = _WheelState(range(1970, 2101), date_state.display_year)
@@ -536,15 +550,15 @@ class _WheelPickerView(View):
             if state.is_dragging:
                 moving = True
                 continue
-            if abs(state.velocity) > 0.1:
+            if abs(state.velocity) > _PICKER_WHEEL_SNAP_VEL_TH:
                 state.current_idx += state.velocity * 0.016
-                state.velocity *= 0.95
+                state.velocity *= _PICKER_WHEEL_DECELERATION
                 moving = True
             else:
                 target = round(state.current_idx)
                 diff = target - state.current_idx
-                if abs(diff) > 0.001:
-                    state.current_idx += diff * 0.2
+                if abs(diff) > _PICKER_WHEEL_SNAP_EPSILON:
+                    state.current_idx += diff * _PICKER_WHEEL_SNAP_SPEED
                     moving = True
                 else:
                     state.current_idx = float(target)
@@ -604,7 +618,6 @@ class _WheelPickerView(View):
     def _draw_text(self, txt, x, y, sx, sy, opacity, bold):
         tw, th = measure_string(txt, font=_PICKER_ITEM_FONT)
         with GState():
-            set_color((0, 0, 0, opacity))
             concat_ctm(Transform.translation(x, y))
             concat_ctm(Transform.scale(sx, sy))
             draw_string(
@@ -612,6 +625,7 @@ class _WheelPickerView(View):
                 rect=(-tw / 2, -th / 2, tw, th),
                 font=_PICKER_ITEM_FONT,
                 alignment=ALIGN_CENTER,
+                color=_WHEEL_TEXT_COLOR,
             )
 
     def _draw_wheel(self, state: _WheelState, center_x, mid_y, lens_path: Path):
@@ -659,30 +673,22 @@ class _WheelPickerView(View):
             lx, ly, lw, _PICKER_LENS_HEIGHT, _PICKER_LENS_CORNER_RADIUS
         )
 
-        # FIXME: original iOS datepicker has not `:`
-        # with GState():
-        #     set_color((0, 0, 0, 0.6))
-        #     draw_string(
-        #         ":",
-        #         rect=(w / 2 - 5, mid_y - 15, 10, 30),
-        #         font=_PICKER_ITEM_FONT,
-        #         alignment=ALIGN_CENTER,
-        #     )
-
         self._draw_wheel(self._year_state, w * 0.3, mid_y, lens_path)
         self._draw_wheel(self._month_state, w * 0.7, mid_y, lens_path)
 
         with GState():
             for i in range(int(ly)):
                 a = 0.85 * (1.0 - i / (h / 2.2))
-                set_color((1, 1, 1, a))
+                r, g, b, _ = _BG_COLOR
+                set_color((r, g, b, a))
                 fill_rect(0, i, w, 1)
                 fill_rect(0, h - i - 1, w, 1)
 
-            set_color((0, 0, 0, 0.03))
+            r, g, b, _ = _BG_COLOR_REVERSED
+            set_color((r, g, b, 0.03))
             lens_path.fill()
 
-            set_color((0, 0, 0, 0.08))
+            set_color((r, g, b, 0.08))
             lens_path.line_width = 0.5
             lens_path.stroke()
 
@@ -751,13 +757,13 @@ class _DatePickerHeader(View):
         expanded = self._expanded
 
         text = self._title
-        color = _IOS_BLUE if expanded else _TEXT_PRIMARY
+        color = _TINT_COLOR if expanded else _TEXT_PRIMARY_COLOR
 
         tw, th = measure_string(text, font=_FONT_BOLD)
         margin_y = (_CALENDAR_HEADER_HEIGHT - th) / 2
         draw_string(text, rect=(16, margin_y, tw, th), font=_FONT_BOLD, color=color)
 
-        set_color(_IOS_BLUE)
+        set_color(_TINT_COLOR)
         p = Path()
         p.line_width = 2
         p.line_cap_style = LINE_CAP_ROUND
@@ -784,7 +790,7 @@ class _DatePickerHeader(View):
                         _WEEKDAY_HEADER_HEIGHT,
                     ),
                     _WEEKDAY_FONT,
-                    _WEEKDAY_GRAY,
+                    _WEEKDAY_TEXT_COLOR,
                     ALIGN_CENTER,
                 )
 
@@ -828,7 +834,6 @@ class LiquidDatePicker(View):
         self._cal.frame = (0, header_h, pw, self._cal_height())
         self._cal.on_offset_changed = self._on_offset_changed
         self._cal.on_settled = self._on_settled
-        self._cal.on_day_tapped = self._on_day_tapped
         self.add_subview(self._cal)
 
         self._year_picker = _WheelPickerView(self._date_state)
@@ -906,10 +911,6 @@ class LiquidDatePicker(View):
         self._cal._origin_idx = settled_idx
         self._cal._offset -= delta
 
-    def _on_day_tapped(self, year: int, month: int, day: int):
-        # action is fired via on_selection_changed
-        pass
-
 
 # ---------------------------------------------------------------------------
 
@@ -918,7 +919,7 @@ if __name__ == "__main__":
     picker.action = lambda s: print(s.date)
 
     root = View()
-    root.background_color = "black"
+    root.background_color = "grey"
     root.add_subview(picker)
     picker.frame = (0, 0, picker.width, picker.height)
     root.present("fullscreen")

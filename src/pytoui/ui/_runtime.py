@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import ctypes
 import threading
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from pytoui._platform import (
     _UI_ANTIALIAS,
@@ -26,7 +26,7 @@ from pytoui._platform import (
     IS_PYTHONISTA,
 )
 from pytoui.base_runtime import BaseRuntime
-from pytoui.ui._types import Rect, Size, _UiStyle
+from pytoui.ui._types import Rect, Size
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -34,7 +34,6 @@ if TYPE_CHECKING:
 
 __all__ = (
     "launch_runtime",
-    "get_ui_style",
     "get_window_size",
     "get_screen_size",
     "get_keyboard_frame",
@@ -105,17 +104,6 @@ def get_window_size() -> Size:
     for rt in _root_to_runtime.values():
         return Size(*rt.current_size)
     return get_screen_size()
-
-
-def get_ui_style() -> _UiStyle:
-    """Return the current UI style: 'dark' or 'light'.
-
-    Controlled by the UI_STYLE environment variable (default: 'dark').
-    """
-    import os
-
-    style = cast(_UiStyle, os.environ.get("UI_STYLE", "dark").lower())
-    return style if style in ("dark", "light") else "dark"
 
 
 def get_keyboard_frame() -> Rect:
@@ -196,6 +184,5 @@ if IS_PYTHONISTA:
         close_all,
         get_keyboard_frame,
         get_screen_size,
-        get_ui_style,
         get_window_size,
     )

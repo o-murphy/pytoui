@@ -176,14 +176,13 @@ from pytoui.ui._draw import (
     set_shadow,
 )
 from pytoui.ui._image_view import ImageView
-from pytoui.ui._internals import settrace
+from pytoui.ui._internals import get_ui_style, settrace
 from pytoui.ui._label import Label
 from pytoui.ui._navigation_view import NavigationView
 from pytoui.ui._runtime import (
     close_all,
     get_keyboard_frame,
     get_screen_size,
-    get_ui_style,
     get_window_size,
 )
 from pytoui.ui._scroll_view import ScrollView

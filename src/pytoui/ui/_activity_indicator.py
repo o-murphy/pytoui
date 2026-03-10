@@ -102,7 +102,7 @@ class _ActivityIndicator(View):
 
         num_lines = 12
         # center within the (possibly user-resized) frame
-        cx, cy = self.width / 2, self.height / 2
+        cx, cy = self.bounds.center()
 
         # fixed pixel geometry per style — frame size does NOT affect petal size
         if self._style == ACTIVITY_INDICATOR_STYLE_WHITE_LARGE:

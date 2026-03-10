@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from pytoui.ui._constants import (
     ALIGN_NATURAL,
-    LB_WORD_WRAP,
+    LB_TRUNCATE_TAIL,
 )
 from pytoui.ui._draw import (
     draw_string,
@@ -47,7 +47,7 @@ class Label(View):
         self._font: _Font = ("<system>", 17.0)
         self._text_color: _RGBA = (0.0, 0.0, 0.0, 1.0)
         self._alignment: _Alignment = ALIGN_NATURAL
-        self._line_break_mode: _LineBrakeMode = LB_WORD_WRAP
+        self._line_break_mode: _LineBrakeMode = LB_TRUNCATE_TAIL
         self._number_of_lines: int = 1
 
         # Automatic scaling (iOS Auto-shrink)

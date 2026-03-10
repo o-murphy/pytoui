@@ -267,22 +267,17 @@ pub(crate) fn path_fill(fb_handle: i32, path_handle: i32, color: u32, blend: u8)
         FillRule::Winding
     };
     with_fb(fb_handle, |fb| {
-        let clip_bytes = fb
-            .clip_mask
-            .as_ref()
-            .map(|m| (m.data().to_vec(), fb.w as u32, fb.h as u32));
         if let Some(path) = build_path_from_cmds(&cmds) {
             let ctm = fb.ctm;
             let aa = fb.antialias;
+            // Temporarily take clip_mask to avoid cloning it — avoids O(w*h) allocation.
+            // Restored unconditionally below regardless of pixmap_mut success.
+            let clip_mask = fb.clip_mask.take();
             if let Some(mut pm) = fb.pixmap_mut() {
                 let paint = make_paint(r, g, b, a, bm, aa);
-                let clip_mask = clip_bytes.as_ref().and_then(|(data, w, h)| {
-                    let mut m = Mask::new(*w, *h)?;
-                    m.data_mut().copy_from_slice(data);
-                    Some(m)
-                });
                 pm.fill_path(&path, &paint, fill_rule, ctm, clip_mask.as_ref());
             }
+            fb.clip_mask = clip_mask;
         }
     });
 }
@@ -308,13 +303,10 @@ pub(crate) fn path_stroke(fb_handle: i32, path_handle: i32, color: u32, blend: u
         }
     };
     with_fb(fb_handle, |fb| {
-        let clip_bytes = fb
-            .clip_mask
-            .as_ref()
-            .map(|m| (m.data().to_vec(), fb.w as u32, fb.h as u32));
         if let Some(path) = build_path_from_cmds(&cmds) {
             let ctm = fb.ctm;
             let aa = fb.antialias;
+            let clip_mask = fb.clip_mask.take();
             if let Some(mut pm) = fb.pixmap_mut() {
                 let paint = make_paint(r, g, b, a, bm, aa);
                 let mut stroke = Stroke::default();
@@ -324,13 +316,9 @@ pub(crate) fn path_stroke(fb_handle: i32, path_handle: i32, color: u32, blend: u
                 if !dash_iv.is_empty() {
                     stroke.dash = StrokeDash::new(dash_iv, dash_ph);
                 }
-                let clip_mask = clip_bytes.as_ref().and_then(|(data, w, h)| {
-                    let mut m = Mask::new(*w, *h)?;
-                    m.data_mut().copy_from_slice(data);
-                    Some(m)
-                });
                 pm.stroke_path(&path, &paint, &stroke, ctm, clip_mask.as_ref());
             }
+            fb.clip_mask = clip_mask;
         }
     });
 }
@@ -412,8 +400,8 @@ pub(crate) fn path_add_clip(fb_handle: i32, path_handle: i32) {
     with_fb(fb_handle, |fb| {
         let w = fb.w as u32;
         let h = fb.h as u32;
+        let ctm = fb.ctm;
         if let Some(path) = build_path_from_cmds(&cmds) {
-            let ctm = fb.ctm;
             let aa = fb.antialias;
             if let Some(existing) = &mut fb.clip_mask {
                 existing.intersect_path(&path, fill_rule, aa, ctm);

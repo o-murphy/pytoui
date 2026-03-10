@@ -15,6 +15,9 @@ use crate::helpers::{
 
 pub(crate) struct FrameBuffer {
     pub(crate) pixels: &'static mut [u8], // premultiplied RGBA
+    /// Non-None when this FB owns its pixel buffer (created via CreateOwnedFB).
+    /// Keeps the allocation alive for the lifetime of the FrameBuffer.
+    pub(crate) _owned_pixels: Option<Vec<u8>>,
     pub(crate) w: i32,
     pub(crate) h: i32,
     pub antialias: bool,
@@ -756,6 +759,7 @@ pub(crate) unsafe fn create_framebuffer(data: *mut c_uchar, width: c_int, height
     let pixels = slice::from_raw_parts_mut(data, size);
     let fb = FrameBuffer {
         pixels,
+        _owned_pixels: None,
         w: width,
         h: height,
         antialias: true,
@@ -787,6 +791,157 @@ pub(crate) fn fill_over(handle: i32, color: u32) {
                 pm.fill_rect(rect, &paint, Transform::identity(), None);
             }
         }
+    });
+}
+
+/// Create a framebuffer with its own pixel allocation (not backed by Python).
+/// Returns a handle like CreateFrameBuffer. Pixels are zeroed (transparent).
+pub(crate) unsafe fn create_owned_framebuffer(width: i32, height: i32) -> i32 {
+    let size = (width * height * 4) as usize;
+    let mut owned: Vec<u8> = vec![0u8; size];
+    let ptr = owned.as_mut_ptr();
+    // SAFETY: owned is stored in fb._owned_pixels (same struct), never reallocated.
+    let pixels: &'static mut [u8] = std::slice::from_raw_parts_mut(ptr, size);
+    let fb = FrameBuffer {
+        pixels,
+        _owned_pixels: Some(owned),
+        w: width,
+        h: height,
+        antialias: true,
+        ctm: Transform::identity(),
+        clip_mask: None,
+        gstate_stack: Vec::new(),
+    };
+    let mut map = FB_MAP.write();
+    let id = NEXT_FB_ID;
+    NEXT_FB_ID += 1;
+    map.insert(id, Mutex::new(fb));
+    id
+}
+
+/// Clear the framebuffer to transparent (all zeros) and reset clip/gstate.
+pub(crate) fn clear_framebuffer(handle: i32) {
+    with_fb(handle, |fb| {
+        fb.pixels.fill(0);
+        fb.clip_mask = None;
+        fb.gstate_stack.clear();
+        fb.ctm = Transform::identity();
+    });
+}
+
+/// Composite src framebuffer into dst at pixel position (x, y) with given opacity.
+/// Respects dst's current clip_mask (take/restore pattern).
+/// src pixels must be premultiplied RGBA (as produced by tiny-skia rendering).
+pub(crate) fn composite_framebuffer(
+    dst_handle: i32,
+    src_handle: i32,
+    x: i32,
+    y: i32,
+    alpha: f32,
+) {
+    // Copy src pixels first to avoid holding two FB locks simultaneously.
+    let (mut src_data, src_w, src_h) = {
+        let map = FB_MAP.read();
+        let Some(lock) = map.get(&src_handle) else {
+            return;
+        };
+        let src = lock.lock();
+        (src.pixels.to_vec(), src.w, src.h)
+    };
+
+    if src_w <= 0 || src_h <= 0 {
+        return;
+    }
+
+    with_fb(dst_handle, |dst| {
+        // Respect dst's clip_mask (take/restore to avoid clone).
+        let clip_mask = dst.clip_mask.take();
+        if let Some(src_pm) =
+            PixmapMut::from_bytes(&mut src_data, src_w as u32, src_h as u32)
+        {
+            if let Some(mut dst_pm) = dst.pixmap_mut() {
+                dst_pm.draw_pixmap(
+                    x,
+                    y,
+                    src_pm.as_ref(),
+                    &tiny_skia::PixmapPaint {
+                        opacity: alpha,
+                        blend_mode: BlendMode::SourceOver,
+                        quality: tiny_skia::FilterQuality::Nearest,
+                    },
+                    Transform::identity(),
+                    clip_mask.as_ref(),
+                );
+            }
+        }
+        dst.clip_mask = clip_mask;
+    });
+}
+
+pub(crate) fn composite_framebuffer_rounded(
+    dst_handle: i32,
+    src_handle: i32,
+    x: i32,
+    y: i32,
+    alpha: f32,
+    radius: f32,
+) {
+    let (mut src_data, src_w, src_h) = {
+        let map = FB_MAP.read();
+        let Some(lock) = map.get(&src_handle) else {
+            return;
+        };
+        let src = lock.lock();
+        (src.pixels.to_vec(), src.w, src.h)
+    };
+
+    if src_w <= 0 || src_h <= 0 {
+        return;
+    }
+
+    // Apply rounded-rect alpha mask to the src copy (source-space, origin at 0,0).
+    if radius > 0.0 {
+        if let Some(path) =
+            rounded_rect_path(0.0, 0.0, src_w as f32, src_h as f32, radius)
+        {
+            if let Some(mut mask) = Mask::new(src_w as u32, src_h as u32) {
+                mask.fill_path(&path, FillRule::Winding, true, Transform::identity());
+                let mask_data = mask.data();
+                // Premultiplied RGBA: scale all channels by mask coverage
+                for (i, chunk) in src_data.chunks_mut(4).enumerate() {
+                    let m = mask_data[i] as u32;
+                    if m < 255 {
+                        chunk[0] = ((chunk[0] as u32 * m) / 255) as u8;
+                        chunk[1] = ((chunk[1] as u32 * m) / 255) as u8;
+                        chunk[2] = ((chunk[2] as u32 * m) / 255) as u8;
+                        chunk[3] = ((chunk[3] as u32 * m) / 255) as u8;
+                    }
+                }
+            }
+        }
+    }
+
+    with_fb(dst_handle, |dst| {
+        let clip_mask = dst.clip_mask.take();
+        if let Some(src_pm) =
+            PixmapMut::from_bytes(&mut src_data, src_w as u32, src_h as u32)
+        {
+            if let Some(mut dst_pm) = dst.pixmap_mut() {
+                dst_pm.draw_pixmap(
+                    x,
+                    y,
+                    src_pm.as_ref(),
+                    &tiny_skia::PixmapPaint {
+                        opacity: alpha,
+                        blend_mode: BlendMode::SourceOver,
+                        quality: tiny_skia::FilterQuality::Nearest,
+                    },
+                    Transform::identity(),
+                    clip_mask.as_ref(),
+                );
+            }
+        }
+        dst.clip_mask = clip_mask;
     });
 }
 

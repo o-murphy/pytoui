@@ -633,6 +633,7 @@ class __DatePickerKwargs(__ViewKwargs):
 class DatePicker(View):
     action: __Action | None
     countdown_duration: float
+    enabled: bool
     date: datetime | None
     mode: __DatePickerMode
     def __init__(self, *args, **kwargs: Unpack[__DatePickerKwargs]) -> None: ...

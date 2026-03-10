@@ -35,6 +35,7 @@ class Slider(View):
         "_track_color",
     )
 
+    _MARGIN = 25.0
     _IOS_TRACK = (0.85, 0.85, 0.85, 1.0)
     _LOGICAL_HEIGHT = 31.0
 
@@ -146,7 +147,7 @@ class Slider(View):
         track_h = 4.0
         thumb_radius = 14.0 * self._thumb_scale
 
-        margin = 25.0
+        margin = self._MARGIN
         available_width = self.width - (margin * 2)
         pos_x = margin + (available_width * self._anim_value)
 
@@ -211,7 +212,7 @@ class Slider(View):
         p.stroke()
 
     def _update_value_from_touch(self, touch: Touch):
-        margin = 25.0
+        margin = self._MARGIN
         available_width = self.width - (margin * 2)
         if available_width <= 0:
             return

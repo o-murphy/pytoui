@@ -8,7 +8,6 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* NavigationView on stack pop/push animations like ScrollView paging animation
 * Image: implement methods with the rust backend
 
 NEXT:
@@ -48,8 +47,8 @@ View classes:
 * ButtonItem (not yet implemented in View)
 * ~~ImageView - _make_test_image works only on PC~~
 * ~~Label~~
-* NavigationView
-* ~~ScrollView~~ (PC implementation done)
+* ~~NavigationView~~
+* ~~ScrollView~~
 * ~~SegmentedControl~~
 * ~~Slider~~
 * ~~Switch~~
@@ -58,7 +57,7 @@ View classes:
 * TextField
 * TextView
 * WebView
-* DatePicker (in progress)
+* DatePicker (in progress, almost, the countdown mode is not done)
 * ~~ActivityIndicator~~
 
 Other Classes:

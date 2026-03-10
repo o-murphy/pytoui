@@ -33,6 +33,13 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: uv-pytest
+        name: uv run pytest
+        entry: uv
+        args: ["run", "pytest"]
+        language: system
+        pass_filenames: false
+
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.9.13
     hooks:

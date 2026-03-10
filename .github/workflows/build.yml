@@ -20,7 +20,12 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    name: Tests
+    uses: ./.github/workflows/run_tests.yml
+
   build-pure:
+    needs: test
     name: Build pure Python wheel + sdist
     runs-on: ubuntu-latest
     steps:
@@ -46,6 +51,7 @@ jobs:
           retention-days: 14
 
   build-native:
+    needs: test
     name: Build wheels on ${{ matrix.os }}
     strategy:
       fail-fast: false

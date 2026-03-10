@@ -34,6 +34,9 @@ from pytoui.ui._draw import (
 from pytoui.ui._internals import _get_system_tint, _getset_descriptor
 from pytoui.ui._types import Rect, Size
 
+if not IS_PYTHONISTA:
+    from pytoui._osdbuf import FrameBuffer as _FrameBuffer
+
 if TYPE_CHECKING:
     from pytoui.ui._navigation_view import _NavigationView, _NavigationViewInternals
     from pytoui.ui._types import (
@@ -174,6 +177,7 @@ class _ViewInternals:
         # (clipped to this view's bounds). Used by ScrollView for indicators.
         "_pytoui_internal_subviews",
         "_pytoui_draw_overlay",
+        "_pytoui_layer",  # per-view owned FrameBuffer (None = not yet created)
     )
 
     def __init__(self, view: _View):
@@ -218,6 +222,7 @@ class _ViewInternals:
         # CUSTOM RENDER LAYERS
         self._pytoui_internal_subviews: list[_ViewInternals] = []
         self._pytoui_draw_overlay: Callable[[], None] | None = None
+        self._pytoui_layer: _FrameBuffer | None = None
 
     @property
     def ref(self) -> _View:
@@ -716,36 +721,6 @@ class _ViewInternals:
             p.line_width = self._border_width
             p.stroke()
 
-    def _pytoui_render_subviews(self, fw: float, fh: float):
-        """Traverse children"""
-        bx, by = self._bounds.x, self._bounds.y
-        for sv in self._subviews:
-            sf = sv._frame
-            if (
-                sf.x + sf.w <= bx
-                or sf.x >= bx + fw
-                or sf.y + sf.h <= by
-                or sf.y >= by + fh
-            ):
-                sv._clear_dirty_tree()
-                continue
-            sv.pytoui_render()
-
-    def _pytoui_render_internal_subviews(self, fw: float, fh: float):
-        """Traverse children"""
-        bx, by = self._bounds.x, self._bounds.y
-        for sv in self._pytoui_internal_subviews:
-            sf = sv._frame
-            if (
-                sf.x + sf.w <= bx
-                or sf.x >= bx + fw
-                or sf.y + sf.h <= by
-                or sf.y >= by + fh
-            ):
-                sv._clear_dirty_tree()
-                continue
-            sv.pytoui_render()
-
     def _pytoui_render_overlay(self):
         """
         System overlay: drawn on top of all regular subviews,
@@ -778,18 +753,14 @@ class _ViewInternals:
 
     def pytoui_draw_snapshot(self):
         self.pytoui_layout()
-
-        # Hidden views don't render and don't traverse
         if self._hidden:
             return
-
         ox, oy = _screen_origin(self)
         fw, fh = self._frame.size
         if fw <= 0 or fh <= 0:
             return
         cr = self._corner_radius
 
-        # render self
         _set_origin(ox, oy)
         set_alpha(self._alpha)
 
@@ -801,20 +772,136 @@ class _ViewInternals:
         self._pytoui_render_background(clip_path, fw, fh, cr)
         self._pytoui_render_self(fw, fh)
 
-        # --- Traverse children ALWAYS ---
-        self._pytoui_render_internal_subviews(fw, fh)
-        self._pytoui_render_subviews(fw, fh)
+        # Pass current screen FB to subviews for compositing
+        ctx = _get_draw_ctx()
+        scale = ctx.backend.scale_factor if ctx.backend is not None else 1.0
+        parent_layer = ctx.backend
+        bx, by = self._bounds.x, self._bounds.y
 
-        # System overlay: drawn on top of all regular subviews,
-        # within the same clip. Each entry is a zero-arg callable.
+        for sv in self._pytoui_internal_subviews:
+            sf = sv._frame
+            if (
+                sf.x + sf.w <= bx
+                or sf.x >= bx + fw
+                or sf.y + sf.h <= by
+                or sf.y >= by + fh
+            ):
+                continue
+            sv.pytoui_render(
+                parent_layer, int((sf.x - bx) * scale), int((sf.y - by) * scale)
+            )
+
+        for sv in self._subviews:
+            sf = sv._frame
+            if (
+                sf.x + sf.w <= bx
+                or sf.x >= bx + fw
+                or sf.y + sf.h <= by
+                or sf.y >= by + fh
+            ):
+                sv._clear_dirty_tree()
+                continue
+            sv.pytoui_render(
+                parent_layer, int((sf.x - bx) * scale), int((sf.y - by) * scale)
+            )
+
         self._pytoui_render_overlay()
 
-    def pytoui_render(self):
+    def pytoui_render(self, parent_layer=None, px: int = 0, py: int = 0):
+        if parent_layer is None:
+            # Root path: render directly into current ctx.backend (screen FB)
+            with GState():
+                self.pytoui_draw_snapshot()
+            self._pytoui_needs_display = False
+            self._pytoui_needs_layout = False
+            return
 
-        with GState():
-            self.pytoui_draw_snapshot()
-        self._pytoui_needs_display = False
-        self._pytoui_needs_layout = False
+        # Subview path: use own per-view layer
+        if self._hidden:
+            return
+
+        self.pytoui_layout()
+
+        fw, fh = self._frame.size
+        if fw <= 0 or fh <= 0:
+            return
+
+        scale = parent_layer.scale_factor
+        pw = max(1, int(fw * scale))
+        ph = max(1, int(fh * scale))
+
+        layer = self._pytoui_layer
+        if layer is None or layer._width != pw or layer._height != ph:
+            layer = _FrameBuffer.create_owned(pw, ph)
+            layer.scale_factor = scale
+            self._pytoui_layer = layer
+            self._pytoui_needs_display = True
+
+        if self._pytoui_needs_display:
+            layer.clear()
+            cr = self._corner_radius
+
+            ctx = _get_draw_ctx()
+            saved_backend = ctx.backend
+            saved_origin = ctx.origin
+            ctx.backend = layer
+            ctx.origin = (0.0, 0.0)
+            _sync_ctm_to_rust(ctx)
+
+            try:
+                # Corner clip: only when needed; cr=0 → bounds implicit by layer size
+                if cr > 0:
+                    Path.rounded_rect(0, 0, fw, fh, cr).add_clip()
+
+                set_alpha(1.0)  # alpha applied during compositing, not rendering
+                cp = (
+                    Path.rounded_rect(0, 0, fw, fh, cr)
+                    if cr > 0
+                    else Path.rect(0, 0, fw, fh)
+                )
+                self._pytoui_render_background(cp, fw, fh, cr)
+                self._pytoui_render_self(fw, fh)
+
+                bx, by = self._bounds.x, self._bounds.y
+
+                for sv in self._pytoui_internal_subviews:
+                    sf = sv._frame
+                    if (
+                        sf.x + sf.w <= bx
+                        or sf.x >= bx + fw
+                        or sf.y + sf.h <= by
+                        or sf.y >= by + fh
+                    ):
+                        continue
+                    sv.pytoui_render(
+                        layer, int((sf.x - bx) * scale), int((sf.y - by) * scale)
+                    )
+
+                for sv in self._subviews:
+                    sf = sv._frame
+                    if (
+                        sf.x + sf.w <= bx
+                        or sf.x >= bx + fw
+                        or sf.y + sf.h <= by
+                        or sf.y >= by + fh
+                    ):
+                        sv._clear_dirty_tree()
+                        continue
+                    sv.pytoui_render(
+                        layer, int((sf.x - bx) * scale), int((sf.y - by) * scale)
+                    )
+
+                self._pytoui_render_overlay()
+            finally:
+                ctx.backend = saved_backend
+                ctx.origin = saved_origin
+                _sync_ctm_to_rust(ctx)
+
+            self._pytoui_needs_display = False
+            self._pytoui_needs_layout = False
+
+        # Composite own layer into parent
+        layer.composite_into(parent_layer, px, py, self._alpha)
 
     def __getitem__(self, name: str) -> _ViewInternals:
         for view in self._subviews:

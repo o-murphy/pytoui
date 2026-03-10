@@ -425,6 +425,27 @@ pub extern "C" fn GStatePop(handle: i32) {
     framebuffer::gstate_pop(handle)
 }
 
+#[no_mangle]
+pub extern "C" fn CreateOwnedFB(width: i32, height: i32) -> i32 {
+    unsafe { framebuffer::create_owned_framebuffer(width, height) }
+}
+
+#[no_mangle]
+pub extern "C" fn ClearFB(handle: i32) {
+    framebuffer::clear_framebuffer(handle)
+}
+
+#[no_mangle]
+pub extern "C" fn CompositeFB(
+    dst_handle: i32,
+    src_handle: i32,
+    x: i32,
+    y: i32,
+    alpha: f32,
+) {
+    framebuffer::composite_framebuffer(dst_handle, src_handle, x, y, alpha)
+}
+
 // --- Transforms ---
 
 #[no_mangle]

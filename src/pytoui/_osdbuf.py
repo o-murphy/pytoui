@@ -391,6 +391,21 @@ class FrameBuffer:
         L.GStatePop.argtypes = [ctypes.c_int]
         L.GStatePop.restype = None
 
+        L.CreateOwnedFB.argtypes = [ctypes.c_int, ctypes.c_int]
+        L.CreateOwnedFB.restype = ctypes.c_int
+
+        L.ClearFB.argtypes = [ctypes.c_int]
+        L.ClearFB.restype = None
+
+        L.CompositeFB.argtypes = [
+            ctypes.c_int,  # dst_handle
+            ctypes.c_int,  # src_handle
+            ctypes.c_int,  # x
+            ctypes.c_int,  # y
+            ctypes.c_float,  # alpha
+        ]
+        L.CompositeFB.restype = None
+
         # Transform
         _tf6 = [ctypes.c_float] * 6
         L.CreateTransform.argtypes = _tf6
@@ -568,6 +583,35 @@ class FrameBuffer:
             self.fill(0)
             self._lib.DestroyFrameBuffer(self._handle)
             self._handle = 0
+
+    @classmethod
+    def create_owned(cls, width: int, height: int) -> "FrameBuffer":
+        """
+        Create a FrameBuffer with its own pixel allocation (no Python buffer needed).
+        """
+        lib = cls._ensure_lib_loaded()
+        handle = lib.CreateOwnedFB(width, height)
+        if handle <= 0:
+            raise RuntimeError(f"Failed to create owned framebuffer ({width}x{height})")
+        fb = object.__new__(cls)
+        fb._handle = handle
+        fb._lib = lib
+        fb._width = width
+        fb._height = height
+        fb._cx = width // 2
+        fb._cy = height // 2
+        fb.scale_factor = 1.0
+        return fb
+
+    def clear(self) -> None:
+        """Clear to transparent and reset clip/gstate/ctm."""
+        self._lib.ClearFB(self._handle)
+
+    def composite_into(
+        self, dst: "FrameBuffer", x: int, y: int, alpha: float = 1.0
+    ) -> None:
+        """Composite self (src) into dst at pixel position (x, y) with given alpha."""
+        self._lib.CompositeFB(dst._handle, self._handle, x, y, ctypes.c_float(alpha))
 
     # ============= Font API (global, class-level) =============
 

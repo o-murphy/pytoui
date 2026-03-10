@@ -850,10 +850,6 @@ class _ViewInternals:
             _sync_ctm_to_rust(ctx)
 
             try:
-                # Corner clip: only when needed; cr=0 → bounds implicit by layer size
-                if cr > 0:
-                    Path.rounded_rect(0, 0, fw, fh, cr).add_clip()
-
                 set_alpha(1.0)  # alpha applied during compositing, not rendering
                 cp = (
                     Path.rounded_rect(0, 0, fw, fh, cr)
@@ -902,8 +898,12 @@ class _ViewInternals:
             self._pytoui_needs_display = False
             self._pytoui_needs_layout = False
 
-        # Composite own layer into parent
-        layer.composite_into(parent_layer, px, py, self._alpha)
+        # Composite own layer into parent (rounded if corner_radius > 0)
+        cr = self._corner_radius
+        if cr > 0:
+            layer.composite_into_rounded(parent_layer, px, py, self._alpha, cr * scale)
+        else:
+            layer.composite_into(parent_layer, px, py, self._alpha)
 
     def __getitem__(self, name: str) -> _ViewInternals:
         for view in self._subviews:

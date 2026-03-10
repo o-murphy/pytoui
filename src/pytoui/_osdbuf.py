@@ -406,6 +406,16 @@ class FrameBuffer:
         ]
         L.CompositeFB.restype = None
 
+        L.CompositeFBRounded.argtypes = [
+            ctypes.c_int,  # dst_handle
+            ctypes.c_int,  # src_handle
+            ctypes.c_int,  # x
+            ctypes.c_int,  # y
+            ctypes.c_float,  # alpha
+            ctypes.c_float,  # radius (pixels)
+        ]
+        L.CompositeFBRounded.restype = None
+
         # Transform
         _tf6 = [ctypes.c_float] * 6
         L.CreateTransform.argtypes = _tf6
@@ -612,6 +622,24 @@ class FrameBuffer:
     ) -> None:
         """Composite self (src) into dst at pixel position (x, y) with given alpha."""
         self._lib.CompositeFB(dst._handle, self._handle, x, y, ctypes.c_float(alpha))
+
+    def composite_into_rounded(
+        self,
+        dst: "FrameBuffer",
+        x: int,
+        y: int,
+        alpha: float = 1.0,
+        radius: float = 0.0,
+    ) -> None:
+        """Composite self (src) into dst with a rounded-rect mask (radius in pixels)."""
+        self._lib.CompositeFBRounded(
+            dst._handle,
+            self._handle,
+            x,
+            y,
+            ctypes.c_float(alpha),
+            ctypes.c_float(radius),
+        )
 
     # ============= Font API (global, class-level) =============
 

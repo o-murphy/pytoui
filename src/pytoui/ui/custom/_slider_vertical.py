@@ -30,6 +30,7 @@ class VerticalSlider(View):
         "_track_color",
     )
 
+    _MARGIN = 25.0
     _IOS_TRACK = (0.85, 0.85, 0.85, 1.0)
     _LOGICAL_WIDTH = 31.0
 
@@ -138,7 +139,7 @@ class VerticalSlider(View):
         track_w = 4.0
         thumb_radius = 14.0 * self._thumb_scale
 
-        margin = 25.0
+        margin = self._MARGIN
         available_height = self.height - (margin * 2)
         # Y: 0.0 bot (height - margin), 1.0 top (margin)
         pos_y = (self.height - margin) - (available_height * self._anim_value)
@@ -205,7 +206,7 @@ class VerticalSlider(View):
         p.stroke()
 
     def _update_value_from_touch(self, touch: Touch):
-        margin = 25.0
+        margin = self._MARGIN
         available_height = self.height - (margin * 2)
         if available_height <= 0:
             return

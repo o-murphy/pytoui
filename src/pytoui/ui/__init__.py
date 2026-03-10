@@ -218,6 +218,7 @@ from pytoui.ui._types import (
     Touch,
     Vector2,
     autoreleasepool,
+    basestring,
 )
 from pytoui.ui._view import View
 from pytoui.ui._web_view import WebView

@@ -878,6 +878,73 @@ pub(crate) fn composite_framebuffer(
     });
 }
 
+pub(crate) fn composite_framebuffer_rounded(
+    dst_handle: i32,
+    src_handle: i32,
+    x: i32,
+    y: i32,
+    alpha: f32,
+    radius: f32,
+) {
+    let (mut src_data, src_w, src_h) = {
+        let map = FB_MAP.read();
+        let Some(lock) = map.get(&src_handle) else {
+            return;
+        };
+        let src = lock.lock();
+        (src.pixels.to_vec(), src.w, src.h)
+    };
+
+    if src_w <= 0 || src_h <= 0 {
+        return;
+    }
+
+    // Apply rounded-rect alpha mask to the src copy (source-space, origin at 0,0).
+    if radius > 0.0 {
+        if let Some(path) =
+            rounded_rect_path(0.0, 0.0, src_w as f32, src_h as f32, radius)
+        {
+            if let Some(mut mask) = Mask::new(src_w as u32, src_h as u32) {
+                mask.fill_path(&path, FillRule::Winding, true, Transform::identity());
+                let mask_data = mask.data();
+                // Premultiplied RGBA: scale all channels by mask coverage
+                for (i, chunk) in src_data.chunks_mut(4).enumerate() {
+                    let m = mask_data[i] as u32;
+                    if m < 255 {
+                        chunk[0] = ((chunk[0] as u32 * m) / 255) as u8;
+                        chunk[1] = ((chunk[1] as u32 * m) / 255) as u8;
+                        chunk[2] = ((chunk[2] as u32 * m) / 255) as u8;
+                        chunk[3] = ((chunk[3] as u32 * m) / 255) as u8;
+                    }
+                }
+            }
+        }
+    }
+
+    with_fb(dst_handle, |dst| {
+        let clip_mask = dst.clip_mask.take();
+        if let Some(src_pm) =
+            PixmapMut::from_bytes(&mut src_data, src_w as u32, src_h as u32)
+        {
+            if let Some(mut dst_pm) = dst.pixmap_mut() {
+                dst_pm.draw_pixmap(
+                    x,
+                    y,
+                    src_pm.as_ref(),
+                    &tiny_skia::PixmapPaint {
+                        opacity: alpha,
+                        blend_mode: BlendMode::SourceOver,
+                        quality: tiny_skia::FilterQuality::Nearest,
+                    },
+                    Transform::identity(),
+                    clip_mask.as_ref(),
+                );
+            }
+        }
+        dst.clip_mask = clip_mask;
+    });
+}
+
 pub(crate) fn gstate_push(handle: i32) {
     with_fb(handle, |fb| {
         let clip_data = fb.clip_mask.as_ref().map(|m| m.data().to_vec());

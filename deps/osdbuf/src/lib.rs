@@ -446,6 +446,18 @@ pub extern "C" fn CompositeFB(
     framebuffer::composite_framebuffer(dst_handle, src_handle, x, y, alpha)
 }
 
+#[no_mangle]
+pub extern "C" fn CompositeFBRounded(
+    dst_handle: i32,
+    src_handle: i32,
+    x: i32,
+    y: i32,
+    alpha: f32,
+    radius: f32,
+) {
+    framebuffer::composite_framebuffer_rounded(dst_handle, src_handle, x, y, alpha, radius)
+}
+
 // --- Transforms ---
 
 #[no_mangle]

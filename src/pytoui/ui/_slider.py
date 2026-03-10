@@ -7,6 +7,7 @@ from pytoui._platform import (
     _UI_DISABLE_ANIMATIONS,
     IS_PYTHONISTA,
 )
+from pytoui.helpers import modal_protect_off, modal_protect_on
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._internals import _final_
 from pytoui.ui._types import Rect
@@ -223,6 +224,7 @@ class _Slider(View):
         local_x = touch.location[0] - margin
         self.value = max(0.0, min(1.0, local_x / available_width))
 
+    @modal_protect_on
     def touch_began(self, touch: Touch):
         if not self.enabled:
             return
@@ -247,6 +249,7 @@ class _Slider(View):
             if self.continuous:
                 self._ensure_action_and_call(self)  # type: ignore[attr-defined]
 
+    @modal_protect_off
     def touch_ended(self, touch: Touch):
         if self._tracked:
             self._tracked = False

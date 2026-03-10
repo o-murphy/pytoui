@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from functools import wraps
 from typing import TYPE_CHECKING
 
 from pytoui._platform import IS_PYTHONISTA
@@ -9,8 +12,6 @@ if TYPE_CHECKING:
 __all__ = ("modal_protect_on", "modal_protect_off")
 
 if IS_PYTHONISTA:
-    from functools import wraps
-
     from objc_util import ObjCInstance  # type: ignore[import-not-found]
 
     def _get_presented_vc(view: View):

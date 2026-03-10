@@ -205,7 +205,7 @@ class VerticalSlider(View):
         p.stroke()
 
     def _update_value_from_touch(self, touch: Touch):
-        margin = 15.0
+        margin = 25.0
         available_height = self.height - (margin * 2)
         if available_height <= 0:
             return

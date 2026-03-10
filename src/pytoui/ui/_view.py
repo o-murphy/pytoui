@@ -786,6 +786,7 @@ class _ViewInternals:
                 or sf.y + sf.h <= by
                 or sf.y >= by + fh
             ):
+                sv._clear_dirty_tree()
                 continue
             sv.pytoui_render(
                 parent_layer, int((sf.x - bx) * scale), int((sf.y - by) * scale)
@@ -872,6 +873,7 @@ class _ViewInternals:
                         or sf.y + sf.h <= by
                         or sf.y >= by + fh
                     ):
+                        sv._clear_dirty_tree()
                         continue
                     sv.pytoui_render(
                         layer, int((sf.x - bx) * scale), int((sf.y - by) * scale)
@@ -985,6 +987,13 @@ class _ViewInternals:
 
     def set_needs_display(self):
         self._pytoui_needs_display = True
+        # Bubble dirty up so parent layers know to re-render and recomposite
+        sv = self._superview
+        while sv is not None:
+            if sv._pytoui_needs_display:
+                break  # chain already dirty above this point
+            sv._pytoui_needs_display = True
+            sv = sv._superview
 
     def set_needs_layout(self):
         self._pytoui_needs_layout = True

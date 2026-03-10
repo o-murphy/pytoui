@@ -811,10 +811,10 @@ class _ViewInternals:
     def pytoui_render(self, parent_layer=None, px: int = 0, py: int = 0):
         if parent_layer is None:
             # Root path: render directly into current ctx.backend (screen FB)
-            with GState():
-                self.pytoui_draw_snapshot()
             self._pytoui_needs_display = False
             self._pytoui_needs_layout = False
+            with GState():
+                self.pytoui_draw_snapshot()
             return
 
         # Subview path: use own per-view layer
@@ -839,6 +839,8 @@ class _ViewInternals:
             self._pytoui_needs_display = True
 
         if self._pytoui_needs_display:
+            self._pytoui_needs_display = False
+            self._pytoui_needs_layout = False
             layer.clear()
             cr = self._corner_radius
 
@@ -894,9 +896,6 @@ class _ViewInternals:
                 ctx.backend = saved_backend
                 ctx.origin = saved_origin
                 _sync_ctm_to_rust(ctx)
-
-            self._pytoui_needs_display = False
-            self._pytoui_needs_layout = False
 
         # Composite own layer into parent (rounded if corner_radius > 0)
         cr = self._corner_radius

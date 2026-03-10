@@ -1208,11 +1208,12 @@ class _DatePicker(View):
         *args,
         **kwargs,
     ):
-        self._mode: _DatePickerMode = (DATE_PICKER_MODE_DATE_AND_TIME,)
-        self._enabled: bool = True
         self._action: _Action | None = None
-
+        self._countdown_duration: float = 0
+        self._enabled: bool = True
         self._date = _DateState()
+        self._mode: _DatePickerMode = DATE_PICKER_MODE_DATE_AND_TIME
+
         self._popup: View | None = None
         self._overlay: _PopupOverlay | None = None
 
@@ -1281,7 +1282,16 @@ class _DatePicker(View):
 
     @countdown_duration.setter
     def countdown_duration(self, value: float):
-        self._countdown_duration = value
+        if __debug__:
+            import warnings
+
+            warnings.warn(
+                "_DatePicker.countdown_duration()"
+                "is not yet fully implemented in pytoui",
+                UserWarning,
+                stacklevel=2,
+            )
+        self._countdown_duration = float(value)
 
     # ── mode ─────────────────────────────────────────────────────────────────
 

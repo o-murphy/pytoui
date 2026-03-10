@@ -23,7 +23,7 @@ def main():
         label.text = f"{sender.value:.2f}"
 
     slider = ui.Slider()
-    slider.value = 0.3
+    slider.value = value
     slider.frame = (0, 0, 300, 50)
     slider.center = (200, 300)
     slider.flex = "W"

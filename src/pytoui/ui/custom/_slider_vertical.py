@@ -81,7 +81,7 @@ class VerticalSlider(View):
         if self._value != new_val:
             self._value = new_val
             # If animations are disabled, sync visual value instantly
-            if self._anim_disabled:
+            if self._anim_disabled or not self._tracked:
                 self._anim_value = self._value
             self.set_needs_display()
 

@@ -10,7 +10,6 @@ macOS arm64/x86_64/universal2, Windows AMD64/x86/ARM64).
 from __future__ import annotations
 
 import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -114,7 +113,13 @@ def _detect_targets() -> list[str]:
 
     # ── Linux ────────────────────────────────────────────────────────────
     if sys.platform.startswith("linux"):
-        arch = platform.machine().lower()
+        # Use the Python interpreter's own platform tag, not platform.machine().
+        # platform.machine() returns the HOST kernel arch (always x86_64 on an
+        # x86_64 host), so inside a 32-bit manylinux_i686 container it returns
+        # "x86_64" instead of "i686" — causing the Rust code to be compiled for
+        # x86_64 and auditwheel to retag the wheel, producing duplicate filenames.
+        # sysconfig.get_platform() reflects the INTERPRETER's arch (correct).
+        arch = plat[len("linux-") :].lower()  # "linux-i686" → "i686"
 
         # Detect musl via cibuildwheel's env var or ldd output
         is_musl = "musl" in os.environ.get("AUDITWHEEL_PLAT", "").lower()

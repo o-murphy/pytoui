@@ -19,7 +19,7 @@ def main():
         label.text = f"{sender.value:.2f}"
 
     slider = VerticalSlider()
-    slider.value = 0.3
+    slider.value = value
     slider.frame = (0, 0, 50, 300)
     slider.center = (200, 300)
     slider.flex = "W"

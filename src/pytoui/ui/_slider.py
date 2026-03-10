@@ -19,7 +19,7 @@ __all__ = ("Slider",)
 
 
 @_final_
-class Slider(View):
+class _Slider(View):
     _PREFERRED_AXIS = "x"  # horizontal drag → Slider; vertical → parent ScrollView
 
     __slots__ = (
@@ -88,8 +88,11 @@ class Slider(View):
         new_val = max(0.0, min(1.0, float(val)))
         if self._value != new_val:
             self._value = new_val
-            # If animations are disabled, sync visual value instantly
-            if self._anim_disabled:
+            # Sync visual position instantly on programmatic set (not during drag).
+            # During drag _tracked=True and draw() already mirrors _anim_value
+            # directly; outside drag the lerp would stall on Pythonista's
+            # rendering loop, so just snap to the target value.
+            if self._anim_disabled or not self._tracked:
                 self._anim_value = self._value
             self.set_needs_display()
 
@@ -281,3 +284,6 @@ class Slider(View):
             action(sender if sender is not None else self)
         else:
             action()
+
+
+Slider = _Slider

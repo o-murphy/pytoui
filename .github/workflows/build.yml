@@ -106,7 +106,7 @@ jobs:
           activate-environment: "true"
       
       - name: Install cibuildwheel
-        run: uv tool install cibuildwheel
+        run: uv tool install "cibuildwheel==2.23.3"
         shell: bash
 
       - name: Build wheels

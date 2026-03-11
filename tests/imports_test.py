@@ -66,6 +66,13 @@ _console = types.ModuleType('console')
 _console.alert = lambda *a, **kw: None
 sys.modules['console'] = _console
 
+_objc_util = types.ModuleType('objc_util')
+for _n in [
+    'ObjCClass', 'ObjCInstance',
+]:
+    setattr(_objc_util, _n, type(_n, (), {}))
+sys.modules['objc_util'] = _objc_util
+    
 # Patch IS_PYTHONISTA=True BEFORE importing any pytoui.ui.* module so that
 # every `from pytoui._platform import IS_PYTHONISTA` reads the patched value.
 import pytoui._platform as _plat

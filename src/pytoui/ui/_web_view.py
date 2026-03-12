@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._constants import ALIGN_CENTER, LB_WORD_WRAP
@@ -8,7 +8,16 @@ from pytoui.ui._draw import draw_string, measure_string
 from pytoui.ui._internals import _final_
 from pytoui.ui._view import View
 
-__all__ = ("WebView",)
+__all__ = ("WebView", "_WebView", "_WebViewDelegate")
+
+
+class _WebViewDelegate(Protocol):
+    def webview_should_start_load(self, webview: WebView, url, nav_type) -> bool:
+        return True
+
+    def webview_did_start_load(self, webview: WebView): ...
+    def webview_did_finish_load(self, webview: WebView): ...
+    def webview_did_fail_load(self, webview: WebView, error_code, error_msg): ...
 
 
 @_final_
@@ -16,18 +25,18 @@ class _WebView(View):
     def __init__(self, *args, **kwargs):
         self.background_color = "black"
 
-        self._delegate: Any = None
+        self._delegate: _WebViewDelegate | None = None
         self._scales_page_to_fit: bool = True
 
         self._url: str | None = None
         super().__init__(*args, **kwargs)
 
     @property
-    def delegate(self) -> Any:
+    def delegate(self) -> _WebViewDelegate | None:
         return self._delegate
 
     @delegate.setter
-    def delegate(self, value: Any):
+    def delegate(self, value: _WebViewDelegate | None):
         self._delegate = value
 
     @property

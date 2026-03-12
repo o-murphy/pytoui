@@ -1,19 +1,42 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Protocol
 
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._draw import Image
 from pytoui.ui._image_view import ImageView
 from pytoui.ui._label import Label
-from pytoui.ui._scroll_view import _ScrollView
+from pytoui.ui._scroll_view import _ScrollView, _ScrollViewDelegate
 from pytoui.ui._types import basestring
 from pytoui.ui._view import View
 
 if TYPE_CHECKING:
     from pytoui.ui._types import _ColorLike
 
-__all__ = ("TableView", "TableViewCell", "ListDataSourceList", "ListDataSource")
+__all__ = (
+    "TableView",
+    "TableViewCell",
+    "TableView",
+    "_TableViewDelegate",
+    "ListDataSourceList",
+    "ListDataSource",
+)
+
+
+class _TableViewDelegate(_ScrollViewDelegate, Protocol):
+    def tableview_did_select(self, tableview: TableView, section, row):
+        # Called when a row was selected.
+        ...
+
+    def tableview_did_deselect(self, tableview: TableView, section, row):
+        # Called when a row was de-selected (in multiple selection mode).
+        ...
+
+    def tableview_title_for_delete_button(
+        self, tableview: TableView, section, row
+    ) -> str:
+        # Return the title for the 'swipe-to-***' button.
+        return "Delete"
 
 
 class TableView(_ScrollView):
@@ -24,7 +47,7 @@ class TableView(_ScrollView):
     allows_selection: bool
     allows_selection_during_editing: bool
     data_source: ListDataSource | None
-    delegate: Any
+    delegate: _TableViewDelegate | None
     editing: bool
     row_height: float
     selected_row: int
@@ -188,5 +211,6 @@ if IS_PYTHONISTA:
     from ui import (  # type: ignore[misc,assignment]
         ListDataSource,
         ListDataSourceList,
+        TableView,
         TableViewCell,
     )

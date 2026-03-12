@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Protocol
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
@@ -11,11 +11,22 @@ from pytoui.ui._types import Point, Rect, Size
 from pytoui.ui._view import _View, _ViewInternals
 
 if TYPE_CHECKING:
-    from pytoui.ui._types import MouseWheel, Touch, _PointLike, _SizeLike
+    from pytoui.ui._types import (
+        MouseWheel,
+        Touch,
+        _PointLike,
+        _ScrollIndicatorStyle,
+        _SizeLike,
+    )
 
-_ScrollIndicatorStyle: TypeAlias = Literal["default", "white", "black"]
+__all__ = ("ScrollView", "_ScrollView", "_ScrollViewDelegate", "_ScrollViewInternals")
 
-__all__ = ("ScrollView", "_ScrollView", "_ScrollViewInternals", "_ScrollIndicatorStyle")
+
+class _ScrollViewDelegate(Protocol):
+    def scrollview_did_scroll(self, scrollview: ScrollView):
+        # You can use the content_offset attribute
+        # to determine the current scroll position
+        ...
 
 
 class _ScrollViewInternals(_ViewInternals):
@@ -77,7 +88,7 @@ class _ScrollViewInternals(_ViewInternals):
         self._content_offset: Point = Point(0.0, 0.0)
         self._content_size: Size = Size(0.0, 0.0)
         self._decelerating: bool = False
-        self._delegate: Any | None = None
+        self._delegate: _ScrollViewDelegate | None = None
         self._directional_lock_enabled: bool = False
         self._dragging: bool = False
         self._indicator_style: _ScrollIndicatorStyle = "default"
@@ -179,11 +190,11 @@ class _ScrollViewInternals(_ViewInternals):
         return self._decelerating
 
     @property
-    def delegate(self) -> Any | None:
+    def delegate(self) -> _ScrollViewDelegate | None:
         return self._delegate
 
     @delegate.setter
-    def delegate(self, value: Any | None):
+    def delegate(self, value: _ScrollViewDelegate | None):
         self._delegate = value
 
     @property
@@ -709,7 +720,7 @@ class _ScrollView(_View):
         return self._internals_.decelerating
 
     @property
-    def delegate(self) -> Any | None:
+    def delegate(self) -> _ScrollViewDelegate | None:
         """
         The delegate is an object that is notified about scrolling events that occur in
         the scroll view with the callback defined below.
@@ -726,7 +737,7 @@ class _ScrollView(_View):
         return self._internals_.delegate
 
     @delegate.setter
-    def delegate(self, value: Any | None):
+    def delegate(self, value: _ScrollViewDelegate | None):
         self._internals_.delegate = value
 
     @property

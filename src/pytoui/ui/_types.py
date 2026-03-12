@@ -29,6 +29,7 @@ __all__ = (
     "_LineCapStyle",
     "_CapitalizationType",
     "_RenderingMode",
+    "_ScrollIndicatorStyle",
     "_ColorLike",
     "_Font",
     "_PointLike",
@@ -104,6 +105,7 @@ _LineJoinMode: TypeAlias = Literal[0, 1, 2]
 _LineCapStyle: TypeAlias = Literal[0, 1, 2]
 _CapitalizationType: TypeAlias = Literal[0, 1, 2, 3]
 _RenderingMode: TypeAlias = Literal[0, 1, 2]
+_ScrollIndicatorStyle: TypeAlias = Literal["default", "white", "black"]
 _UiStyle: TypeAlias = Literal["dark", "light"]
 
 

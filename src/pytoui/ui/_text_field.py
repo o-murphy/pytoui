@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from pytoui._platform import IS_PYTHONISTA
 from pytoui.ui._view import View
@@ -15,7 +15,23 @@ if TYPE_CHECKING:
     )
 
 
-__all__ = ("TextField",)
+__all__ = ("TextField", "_TextField", "_TextFieldDelegate")
+
+
+class _TextFieldDelegate(Protocol):
+    def textfield_should_begin_editing(self, textfield) -> bool:
+        return True
+
+    def textfield_did_begin_editing(self, textfield: TextField): ...
+    def textfield_did_end_editing(self, textfield: TextField): ...
+    def textfield_should_return(self, textfield: TextField) -> bool:
+        textfield.end_editing()
+        return True
+
+    def textfield_should_change(self, textfield: TextField, range, replacement) -> bool:
+        return True
+
+    def textfield_did_change(self, textfield: TextField): ...
 
 
 class _TextField(View):
@@ -24,7 +40,7 @@ class _TextField(View):
     autocorrection_type: Any
     bordered: bool
     clear_button_mode: int  # 0=never, 1=while editing, 2=unless editing, 3=always
-    delegate: Any
+    delegate: _TextFieldDelegate | None
     enabled: bool
     font: _Font
     keyboard_type: _KeyboardType

@@ -5,6 +5,7 @@ import re
 from typing import (
     Any,
     Literal,
+    Protocol,
     TypeAlias,
     TypedDict,
     TYPE_CHECKING,
@@ -713,6 +714,11 @@ class NavigationView(View):
     def pop_view(self, animated: bool = True) -> None: ...
     def push_view(self, view: View, animated: bool = True) -> None: ...
 
+class __ScrollViewDelegate(Protocol):
+    def scrollview_did_scroll(self, scrollview: ScrollView):
+        # You can use the content_offset attribute to determine the current scroll position
+        ...
+
 class __ScrollViewKwargs(__ViewKwargs, total=False):
     always_bounce_horizontal: NotRequired[bool]
     always_bounce_vertical: NotRequired[bool]
@@ -721,7 +727,7 @@ class __ScrollViewKwargs(__ViewKwargs, total=False):
     content_offset: NotRequired[__PointLike]
     content_size: NotRequired[__SizeLike]
     decelerating: NotRequired[bool]
-    delegate: NotRequired[Any | None]
+    delegate: NotRequired[__ScrollViewDelegate | None]
     directional_lock_enabled: NotRequired[bool]
     dragging: NotRequired[bool]
     indicator_style: NotRequired[__ScrollIndicatorStyle]
@@ -739,8 +745,9 @@ class ScrollView(View):
     content_inset: tuple[float, float, float, float]
     content_offset: __PointLike
     content_size: __SizeLike
-    decelerating: bool
-    delegate: Any | None
+    @property
+    def decelerating(self) -> bool: ...
+    delegate: __ScrollViewDelegate | None
     directional_lock_enabled: bool
     dragging: bool
     indicator_style: __ScrollIndicatorStyle
@@ -787,13 +794,28 @@ class Switch(View):
     value: bool
     def __init__(self, *args, **kwargs: Unpack[__SwitchKwargs]) -> None: ...
 
+class __TableViewDelegate(__ScrollViewDelegate, Protocol):
+    def tableview_did_select(self, tableview: TableView, section, row):
+        # Called when a row was selected.
+        ...
+
+    def tableview_did_deselect(self, tableview: TableView, section, row):
+        # Called when a row was de-selected (in multiple selection mode).
+        ...
+
+    def tableview_title_for_delete_button(
+        self, tableview: TableView, section, row
+    ) -> str:
+        # Return the title for the 'swipe-to-***' button.
+        return "Delete"
+
 class TableView(ScrollView):
     allows_multiple_selection: bool
     allows_multiple_selection_during_editing: bool
     allows_selection: bool
     allows_selection_during_editing: bool
     data_source: ListDataSource | None
-    delegate: Any
+    delegate: __TableViewDelegate | None
     editing: bool
     row_height: float
     selected_row: int
@@ -817,13 +839,25 @@ class TableViewCell(View):
     text_label: Any
     def __init__(self, *args, **kwargs): ...
 
+class __TextFieldDelegate(Protocol):
+    def textfield_should_begin_editing(self, textfield) -> bool:
+        return True
+    def textfield_did_begin_editing(self, textfield: TextField): ...
+    def textfield_did_end_editing(self, textfield: TextField): ...
+    def textfield_should_return(self, textfield: TextField) -> bool:
+        textfield.end_editing()
+        return True
+    def textfield_should_change(self, textfield: TextField, range, replacement) -> bool:
+        return True
+    def textfield_did_change(self, textfield: TextField): ...
+
 class TextField(View):
     action: __Action | None
     autocapitalization_type: __CapitalizationType
     autocorrection_type: Any
     bordered: Any
     clear_button_mode: int
-    delegate: Any
+    delegate: __TextFieldDelegate | None
     enabled: bool
     font: __Font
     keyboard_type: __KeyboardType
@@ -836,12 +870,22 @@ class TextField(View):
     def begin_editing(self, *args, **kwargs) -> Any: ...
     def end_editing(self, *args, **kwargs) -> Any: ...
 
+class __TextViewDelegate(__ScrollViewDelegate, Protocol):
+    def textview_should_begin_editing(self, textview) -> bool:
+        return True
+    def textview_did_begin_editing(self, textview): ...
+    def textview_did_end_editing(self, textview): ...
+    def textview_should_change(self, textview, range, replacement) -> bool:
+        return True
+    def textview_did_change(self, textview): ...
+    def textview_did_change_selection(self, textview): ...
+
 class TextView(ScrollView):
     alignment: __Alignment
     auto_content_inset: Any
     autocapitalization_type: __CapitalizationType
     autocorrection_type: Any
-    delegate: Any
+    delegate: __TextViewDelegate | None
     editable: Any
     font: __Font
     keyboard_type: __KeyboardType
@@ -870,8 +914,15 @@ class __WebViewKwargs(__ViewKwargs):
     delegate: NotRequired[Any]
     scales_page_to_fit: NotRequired[bool]
 
+class __WebViewDelegate(Protocol):
+    def webview_should_start_load(self, webview: WebView, url, nav_type) -> bool:
+        return True
+    def webview_did_start_load(self, webview: WebView): ...
+    def webview_did_finish_load(self, webview: WebView): ...
+    def webview_did_fail_load(self, webview: WebView, error_code, error_msg): ...
+
 class WebView(View):
-    delegate: Any
+    delegate: __WebViewDelegate | None
     scales_page_to_fit: bool
     def __init__(self, *args, **kwargs: Unpack[__WebViewKwargs]): ...
     def eval_js(self, *args, **kwargs) -> Any: ...

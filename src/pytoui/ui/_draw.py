@@ -39,6 +39,7 @@ from threading import local
 from typing import TYPE_CHECKING, TypeAlias, cast
 
 from pytoui._platform import pytoui_desktop_only
+from pytoui.objc_util import ObjCInstance
 from pytoui.ui._constants import (
     ALIGN_LEFT,
     ALIGN_NATURAL,
@@ -1580,6 +1581,8 @@ class Path:
         self._has_segments: bool = False
         self._eo_fill_rule: bool = False
 
+        self._objc_instance: ObjCInstance = ObjCInstance()
+
     def __del__(self):
         backend = _get_draw_ctx().backend
         if not backend:
@@ -1851,8 +1854,8 @@ class Path:
 
     # ObjC-compat
     @property
-    def objc_instance(self) -> None:
-        return None
+    def objc_instance(self) -> ObjCInstance:
+        return self._objc_instance
 
     @property
     def _objc_ptr(self) -> None:

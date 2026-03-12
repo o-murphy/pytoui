@@ -11,6 +11,7 @@ from typing import (
 from uuid import uuid4
 
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
+from pytoui.objc_util import ObjCInstance
 from pytoui.ui._button_item import ButtonItem
 from pytoui.ui._constants import (
     CONTENT_REDRAW,
@@ -178,6 +179,7 @@ class _ViewInternals:
         "_pytoui_internal_subviews",
         "_pytoui_draw_overlay",
         "_pytoui_layer",  # per-view owned FrameBuffer (None = not yet created)
+        "_objc_instance",
     )
 
     def __init__(self, view: _View):
@@ -223,6 +225,9 @@ class _ViewInternals:
         self._pytoui_internal_subviews: list[_ViewInternals] = []
         self._pytoui_draw_overlay: Callable[[], None] | None = None
         self._pytoui_layer: _FrameBuffer | None = None
+
+        # Compat
+        self._objc_instance: ObjCInstance = ObjCInstance(self)
 
     @property
     def ref(self) -> _View:
@@ -1076,8 +1081,8 @@ class _ViewInternals:
 
     # ObjC-compat
     @property
-    def objc_instance(self) -> None:
-        return None
+    def objc_instance(self) -> ObjCInstance:
+        return self._objc_instance
 
     @property
     def _objc_ptr(self) -> None:
@@ -1523,7 +1528,7 @@ class _View:
 
     # ObjC-compat
     @property
-    def objc_instance(self):
+    def objc_instance(self) -> ObjCInstance:
         return self._internals_.objc_instance
 
     @property

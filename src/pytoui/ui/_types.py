@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Literal, TypeAlias, Union
 
+from pytoui.objc_util import ObjCInstance
 from pytoui.ui._internals import _final_
 
 __all__ = (
@@ -640,6 +641,8 @@ class Touch:
         self._timestamp = timestamp
         self._touch_id = touch_id
 
+        self._objc_instance: ObjCInstance = ObjCInstance()
+
     @property
     def location(self) -> Point:
         return self._location
@@ -663,7 +666,7 @@ class Touch:
     # ObjC-compat
     @property
     def objc_instance(self) -> None:
-        return None
+        return self._objc_instance
 
     @property
     def _objc_ptr(self) -> None:

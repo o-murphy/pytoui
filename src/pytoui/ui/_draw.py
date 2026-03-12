@@ -1569,6 +1569,16 @@ class Path:
     Segments are stored in Rust; fill/stroke delegate directly to PathFill/PathStroke.
     """
 
+    __slots__ = (
+        "_handle",
+        "_line_width",
+        "_line_join_style",
+        "_line_cap_style",
+        "_has_segments",
+        "_eo_fill_rule",
+        "_objc_instance",
+    )
+
     def __init__(self):
         backend = _get_draw_ctx().backend
         if not backend:
@@ -1581,7 +1591,7 @@ class Path:
         self._has_segments: bool = False
         self._eo_fill_rule: bool = False
 
-        self._objc_instance: ObjCInstance = ObjCInstance()
+        self._objc_instance: ObjCInstance = ObjCInstance(self)
 
     def __del__(self):
         backend = _get_draw_ctx().backend
@@ -1858,11 +1868,11 @@ class Path:
         return self._objc_instance
 
     @property
-    def _objc_ptr(self) -> None:
-        return None
+    def _objc_ptr(self) -> int:
+        return id(self._objc_instance)
 
     def _debug_quicklook_(self) -> str:
-        return self.__repr__()
+        return self._objc_instance.__repr__()
 
 
 # ---------------------------------------------------------------------------

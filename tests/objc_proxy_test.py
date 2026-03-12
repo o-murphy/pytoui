@@ -1,5 +1,5 @@
-from pytoui.ui import View
 from pytoui.objc_util import ObjCInstance
+from pytoui.ui import View, Rect
 
 
 def test_objc_proxy():
@@ -9,4 +9,7 @@ def test_objc_proxy():
     assert isinstance(v.objc_instance.dumb_prop, ObjCInstance)
     assert callable(v.objc_instance.dumb_prop)
     v.objc_instance.dumb_prop = "dumb value"
-    v.objc_instance.dumb_prop()
+    assert callable(v.objc_instance.frame)
+    assert isinstance(v.objc_instance.frame(), Rect)
+    v.objc_instance.frame = (1, 1), (2, 2)
+    assert v.frame == Rect(1, 1, 2, 2)

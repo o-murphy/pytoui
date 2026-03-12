@@ -625,6 +625,7 @@ class Touch:
         "_prev_location",
         "_timestamp",  # ms since 1970
         "_touch_id",
+        "_objc_instance",
     )
 
     def __init__(
@@ -641,7 +642,7 @@ class Touch:
         self._timestamp = timestamp
         self._touch_id = touch_id
 
-        self._objc_instance: ObjCInstance = ObjCInstance()
+        self._objc_instance: ObjCInstance = ObjCInstance(self)
 
     @property
     def location(self) -> Point:
@@ -665,15 +666,15 @@ class Touch:
 
     # ObjC-compat
     @property
-    def objc_instance(self) -> None:
+    def objc_instance(self) -> ObjCInstance:
         return self._objc_instance
 
     @property
-    def _objc_ptr(self) -> None:
-        return None
+    def _objc_ptr(self) -> int:
+        return id(self._objc_instance)
 
     def _debug_quicklook_(self) -> str:
-        return self.__repr__()
+        return self._objc_instance.__repr__()
 
 
 from pytoui.hid import MOUSE_SCROLL_ID

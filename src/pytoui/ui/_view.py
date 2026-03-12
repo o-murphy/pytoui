@@ -6,7 +6,11 @@ from threading import Event
 from typing import (
     TYPE_CHECKING,
     Callable,
+    Generic,
+    TypeVar,
+    Union,
     cast,
+    overload,
 )
 from uuid import uuid4
 
@@ -52,6 +56,7 @@ if TYPE_CHECKING:
         _PresentOrientation,
         _PresentStyle,
         _RectLike,
+        _SizeLike,
         _ViewFlex,
     )
 
@@ -134,6 +139,46 @@ class _RenderLoop:
             self.view._alpha = p
         elif self.view._alpha < 1.0:
             self.view._alpha = 1.0
+
+
+__ClassT = TypeVar("__ClassT")
+__PropT = TypeVar("__PropT")
+
+
+class _getset_desc(Generic[__ClassT, __PropT]):
+    def __init__(self, name: str, setter_convert: Callable[..., __PropT] | None = None):
+        self._name = name
+        self._setter_convert = setter_convert
+
+    @overload
+    def __get__(self, obj: None, objtype=None) -> "_getset_desc": ...
+
+    @overload
+    def __get__(self, obj: __ClassT, objtype=None) -> Callable[[], __PropT]: ...
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+
+        def getter():
+            return getattr(obj._instance, self._name)
+
+        return getter
+
+    def __set__(self, obj, value):
+        # якщо заданий setter_convert, розпаковуємо аргументи
+        if self._setter_convert:
+            if isinstance(value, tuple) and len(value) == 2:
+                value = self._setter_convert(*value)
+            else:
+                value = self._setter_convert(value)
+        setattr(obj._instance, self._name, value)
+
+
+class _SUIView(ObjCInstance):
+    frame = _getset_desc(
+        "_frame", setter_convert=lambda origin, size: Rect(*origin, *size)
+    )
 
 
 class _ViewInternals:
@@ -227,7 +272,7 @@ class _ViewInternals:
         self._pytoui_layer: _FrameBuffer | None = None
 
         # Compat
-        self._objc_instance: ObjCInstance = ObjCInstance(self)
+        self._objc_instance: _SUIView = _SUIView(self)
 
     @property
     def ref(self) -> _View:
@@ -1081,15 +1126,15 @@ class _ViewInternals:
 
     # ObjC-compat
     @property
-    def objc_instance(self) -> ObjCInstance:
+    def objc_instance(self) -> _SUIView:
         return self._objc_instance
 
     @property
-    def _objc_ptr(self) -> None:
-        return None
+    def _objc_ptr(self) -> int:
+        return id(self._objc_instance)
 
     def _debug_quicklook_(self) -> str:
-        return self.__repr__()
+        return self._objc_instance.__repr__()
 
 
 class _View:
@@ -1528,7 +1573,7 @@ class _View:
 
     # ObjC-compat
     @property
-    def objc_instance(self) -> ObjCInstance:
+    def objc_instance(self) -> _SUIView:
         return self._internals_.objc_instance
 
     @property

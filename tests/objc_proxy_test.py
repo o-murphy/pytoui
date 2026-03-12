@@ -1,5 +1,5 @@
 from pytoui.objc_util import ObjCInstance
-from pytoui.ui import View, Rect
+from pytoui.ui import Rect, View
 
 
 def test_objc_proxy():

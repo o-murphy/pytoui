@@ -1,6 +1,6 @@
+import ctypes
 from typing import Any
 from warnings import warn
-import ctypes
 
 from pytoui._platform import IS_PYTHONISTA
 

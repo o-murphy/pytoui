@@ -8,7 +8,6 @@ from typing import (
     Callable,
     Generic,
     TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -56,7 +55,6 @@ if TYPE_CHECKING:
         _PresentOrientation,
         _PresentStyle,
         _RectLike,
-        _SizeLike,
         _ViewFlex,
     )
 

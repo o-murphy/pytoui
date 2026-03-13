@@ -53,24 +53,24 @@ class _ScrollViewInternals(_ViewInternals):
         "_showsVerticalScrollIndicator",
         "_isTracking",
         # Internal drag/kinetics state
-        "_vel_x",
-        "_vel_y",
-        "_locked_axis",
-        "_drag_start_ox",
-        "_drag_start_oy",
-        "_drag_start_touch_x",
-        "_drag_start_touch_y",
-        "_last_touch_x",
-        "_last_touch_y",
-        "_last_touch_time",
+        "_pytoui_velX",  # verticalVelocity
+        "_pytoui_velY",  # horizontalVelocity
+        "_pytoui_lockedAxis",
+        "_pytoui_dragStartOx",
+        "_pytoui_dragStartOy",
+        "_pytoui_dragStartTouchX",
+        "_pytoui_dragStartTouchY",
+        "_pytoui_lastTouchX",
+        "_pytoui_lastTouchY",
+        "_pytoui_lastTouchTime",
         # Flash indicator timer
-        "_flash_until",
+        "_pytoui_flashUntil",
         # Paging debounce
-        "_last_page_flip_time",
+        "_pytoui_lastPageFlipTime",
         # Paging slide animation
-        "_page_anim_target",
-        "_page_anim_start",
-        "_page_anim_t0",
+        "_pytoui_pageAnimTarget",
+        "_pytoui_pageAnimStart",
+        "_pytoui_pageAnimT0",
     )
 
     # Kinetic deceleration constants
@@ -106,21 +106,21 @@ class _ScrollViewInternals(_ViewInternals):
         self._isTracking: bool = False
 
         # ── Internal state ────────────────────────────────────────────────────
-        self._vel_x: float = 0.0
-        self._vel_y: float = 0.0
-        self._locked_axis: str | None = None
-        self._drag_start_ox: float = 0.0
-        self._drag_start_oy: float = 0.0
-        self._drag_start_touch_x: float = 0.0
-        self._drag_start_touch_y: float = 0.0
-        self._last_touch_x: float = 0.0
-        self._last_touch_y: float = 0.0
-        self._last_touch_time: float = 0.0
-        self._flash_until: float = 0.0
-        self._last_page_flip_time: float = 0.0
-        self._page_anim_target: tuple[float, float] | None = None
-        self._page_anim_start: tuple[float, float] = (0.0, 0.0)
-        self._page_anim_t0: float = 0.0
+        self._pytoui_velX: float = 0.0
+        self._pytoui_velY: float = 0.0
+        self._pytoui_lockedAxis: str | None = None
+        self._pytoui_dragStartOx: float = 0.0
+        self._pytoui_dragStartOy: float = 0.0
+        self._pytoui_dragStartTouchX: float = 0.0
+        self._pytoui_dragStartTouchY: float = 0.0
+        self._pytoui_lastTouchX: float = 0.0
+        self._pytoui_lastTouchY: float = 0.0
+        self._pytoui_lastTouchTime: float = 0.0
+        self._pytoui_flashUntil: float = 0.0
+        self._pytoui_lastPageFlipTime: float = 0.0
+        self._pytoui_pageAnimTarget: tuple[float, float] | None = None
+        self._pytoui_pageAnimStart: tuple[float, float] = (0.0, 0.0)
+        self._pytoui_pageAnimT0: float = 0.0
 
         self.pytoui_setUpdateInterval_(1 / 60)
         # ── pytoui setup (desktop only) ───────────────────────────────────────
@@ -247,7 +247,7 @@ class _ScrollViewInternals(_ViewInternals):
 
     def flashScrollIndicators(self):
         """Briefly show the scroll indicators."""
-        self._flash_until = time.monotonic() + 0.5
+        self._pytoui_flashUntil = time.monotonic() + 0.5
         if self.pytoui_updateInterval() <= 0:
             self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
         self.setNeedsDisplay()
@@ -327,7 +327,7 @@ class _ScrollViewInternals(_ViewInternals):
     def _mouse_wheel_page(self, event: MouseWheel):
         """Advance one page per wheel tick when paging_enabled."""
         now = time.monotonic()
-        if now - self._last_page_flip_time < 0.35:
+        if now - self._pytoui_lastPageFlipTime < 0.35:
             return
         ox, oy = self._contentOffset
         can_h = self._can_scroll_h()
@@ -355,7 +355,7 @@ class _ScrollViewInternals(_ViewInternals):
             self._start_page_anim(ox, (cur + step) * fh)
         else:
             return
-        self._last_page_flip_time = now
+        self._pytoui_lastPageFlipTime = now
 
     # ── Touch drag scrolling ───────────────────────────────────────────────────
 
@@ -367,16 +367,16 @@ class _ScrollViewInternals(_ViewInternals):
 
         self._isTracking = True
         self._isDragging = False
-        self._locked_axis = None
+        self._pytoui_lockedAxis = None
 
         ox, oy = self._contentOffset
-        self._drag_start_ox = ox
-        self._drag_start_oy = oy
-        self._drag_start_touch_x = touch.location.x
-        self._drag_start_touch_y = touch.location.y
-        self._last_touch_x = touch.location.x
-        self._last_touch_y = touch.location.y
-        self._last_touch_time = touch.timestamp / 1000.0
+        self._pytoui_dragStartOx = ox
+        self._pytoui_dragStartOy = oy
+        self._pytoui_dragStartTouchX = touch.location.x
+        self._pytoui_dragStartTouchY = touch.location.y
+        self._pytoui_lastTouchX = touch.location.x
+        self._pytoui_lastTouchY = touch.location.y
+        self._pytoui_lastTouchTime = touch.timestamp / 1000.0
 
     def touch_moved(self, touch: Touch):
         if not self._isTracking:
@@ -385,11 +385,11 @@ class _ScrollViewInternals(_ViewInternals):
         tx = touch.location.x
         ty = touch.location.y
         now = touch.timestamp / 1000.0
-        dt = now - self._last_touch_time
+        dt = now - self._pytoui_lastTouchTime
 
         # Drag delta from start (finger right → content scrolls left → offset increases)
-        dx = self._drag_start_touch_x - tx
-        dy = self._drag_start_touch_y - ty
+        dx = self._pytoui_dragStartTouchX - tx
+        dy = self._pytoui_dragStartTouchY - ty
 
         if not self._isDragging:
             if abs(dx) > 3 or abs(dy) > 3:
@@ -398,30 +398,38 @@ class _ScrollViewInternals(_ViewInternals):
                 return
 
         # Determine directional lock once
-        if self._directionalLockEnabled and self._locked_axis is None:
-            self._locked_axis = "x" if abs(dx) >= abs(dy) else "y"
+        if self._directionalLockEnabled and self._pytoui_lockedAxis is None:
+            self._pytoui_lockedAxis = "x" if abs(dx) >= abs(dy) else "y"
 
         can_h = self._can_scroll_h()
         can_v = self._can_scroll_v()
 
-        if self._locked_axis == "x":
-            target_x = (self._drag_start_ox + dx) if can_h else self._drag_start_ox
-            target_y = self._drag_start_oy
-        elif self._locked_axis == "y":
-            target_x = self._drag_start_ox
-            target_y = (self._drag_start_oy + dy) if can_v else self._drag_start_oy
+        if self._pytoui_lockedAxis == "x":
+            target_x = (
+                (self._pytoui_dragStartOx + dx) if can_h else self._pytoui_dragStartOx
+            )
+            target_y = self._pytoui_dragStartOy
+        elif self._pytoui_lockedAxis == "y":
+            target_x = self._pytoui_dragStartOx
+            target_y = (
+                (self._pytoui_dragStartOy + dy) if can_v else self._pytoui_dragStartOy
+            )
         else:
-            target_x = (self._drag_start_ox + dx) if can_h else self._drag_start_ox
-            target_y = (self._drag_start_oy + dy) if can_v else self._drag_start_oy
+            target_x = (
+                (self._pytoui_dragStartOx + dx) if can_h else self._pytoui_dragStartOx
+            )
+            target_y = (
+                (self._pytoui_dragStartOy + dy) if can_v else self._pytoui_dragStartOy
+            )
 
         # Track instantaneous velocity (px/sec, positive = finger moved right/down)
         if dt > 0.001:
             # negate: drag right → scroll left
-            self._vel_x = -(tx - self._last_touch_x) / dt
-            self._vel_y = -(ty - self._last_touch_y) / dt
-        self._last_touch_x = tx
-        self._last_touch_y = ty
-        self._last_touch_time = now
+            self._pytoui_velX = -(tx - self._pytoui_lastTouchX) / dt
+            self._pytoui_velY = -(ty - self._pytoui_lastTouchY) / dt
+        self._pytoui_lastTouchX = tx
+        self._pytoui_lastTouchY = ty
+        self._pytoui_lastTouchTime = now
 
         self._set_offset(target_x, target_y)
 
@@ -442,12 +450,15 @@ class _ScrollViewInternals(_ViewInternals):
             return
 
         # Start kinetic deceleration if there's meaningful velocity
-        if abs(self._vel_x) > self._MIN_VEL or abs(self._vel_y) > self._MIN_VEL:
+        if (
+            abs(self._pytoui_velX) > self._MIN_VEL
+            or abs(self._pytoui_velY) > self._MIN_VEL
+        ):
             self._isDecelerating = True
             self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
         else:
-            self._vel_x = 0.0
-            self._vel_y = 0.0
+            self._pytoui_velX = 0.0
+            self._pytoui_velY = 0.0
             self.flashScrollIndicators()
 
     def _start_page_anim(self, tx: float, ty: float) -> None:
@@ -457,9 +468,9 @@ class _ScrollViewInternals(_ViewInternals):
             self._set_offset(tx, ty)
             self.flashScrollIndicators()
             return
-        self._page_anim_start = (ox, oy)
-        self._page_anim_target = (tx, ty)
-        self._page_anim_t0 = time.monotonic()
+        self._pytoui_pageAnimStart = (ox, oy)
+        self._pytoui_pageAnimTarget = (tx, ty)
+        self._pytoui_pageAnimT0 = time.monotonic()
         if self.pytoui_updateInterval() <= 0:
             self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
 
@@ -479,17 +490,17 @@ class _ScrollViewInternals(_ViewInternals):
                 page = round(page)
             return page * page_size
 
-        new_x = nearest_page(ox, fw, self._vel_x) if self._can_scroll_h() else ox
-        new_y = nearest_page(oy, fh, self._vel_y) if self._can_scroll_v() else oy
-        self._vel_x = 0.0
-        self._vel_y = 0.0
+        new_x = nearest_page(ox, fw, self._pytoui_velX) if self._can_scroll_h() else ox
+        new_y = nearest_page(oy, fh, self._pytoui_velY) if self._can_scroll_v() else oy
+        self._pytoui_velX = 0.0
+        self._pytoui_velY = 0.0
         self._start_page_anim(new_x, new_y)
 
     def _stop(self) -> None:
         """Cancel any ongoing animation, deceleration or drag."""
-        self._page_anim_target = None
-        self._vel_x = 0.0
-        self._vel_y = 0.0
+        self._pytoui_pageAnimTarget = None
+        self._pytoui_velX = 0.0
+        self._pytoui_velY = 0.0
         self._isDecelerating = False
         self.pytoui_setUpdateInterval_(0.0)
 
@@ -501,39 +512,39 @@ class _ScrollViewInternals(_ViewInternals):
         now = time.monotonic()
 
         # Page animation has priority over deceleration
-        if self._page_anim_target is not None:
-            elapsed = now - self._page_anim_t0
+        if self._pytoui_pageAnimTarget is not None:
+            elapsed = now - self._pytoui_pageAnimT0
             t = min(1.0, elapsed / self._PAGE_ANIM_DUR)
             e = 1.0 - (1.0 - t) ** 3  # cubic easeOut
-            sx, sy = self._page_anim_start
-            tx, ty = self._page_anim_target
+            sx, sy = self._pytoui_pageAnimStart
+            tx, ty = self._pytoui_pageAnimTarget
             new_x = sx + (tx - sx) * e
             new_y = sy + (ty - sy) * e
             self._set_offset(new_x, new_y, notify=True)
             if t >= 1.0:
-                self._page_anim_target = None
+                self._pytoui_pageAnimTarget = None
                 self.flashScrollIndicators()
             return  # don't run deceleration while page-animating
 
         if not self._isDecelerating:
             # Keep running while flash timer is active
-            if self._flash_until > now:
+            if self._pytoui_flashUntil > now:
                 self.setNeedsDisplay()
             else:
                 self.pytoui_setUpdateInterval_(0.0)
             return
 
         # Per-frame delta from velocity (px/sec → px/frame)
-        dx = self._vel_x * self._UPDATE_INTERVAL
-        dy = self._vel_y * self._UPDATE_INTERVAL
+        dx = self._pytoui_velX * self._UPDATE_INTERVAL
+        dy = self._pytoui_velY * self._UPDATE_INTERVAL
 
         ox, oy = self._contentOffset
         new_x = (ox + dx) if self._can_scroll_h() else ox
         new_y = (oy + dy) if self._can_scroll_v() else oy
 
         # Apply friction
-        self._vel_x *= self._decelerationRate
-        self._vel_y *= self._decelerationRate
+        self._pytoui_velX *= self._decelerationRate
+        self._pytoui_velY *= self._decelerationRate
 
         self._set_offset(new_x, new_y)
 
@@ -543,15 +554,15 @@ class _ScrollViewInternals(_ViewInternals):
         in_bounds = abs(new_x - clamped_x) < 0.5 and abs(new_y - clamped_y) < 0.5
 
         if (
-            abs(self._vel_x) < self._MIN_VEL
-            and abs(self._vel_y) < self._MIN_VEL
+            abs(self._pytoui_velX) < self._MIN_VEL
+            and abs(self._pytoui_velY) < self._MIN_VEL
             and in_bounds
         ):
-            self._vel_x = 0.0
-            self._vel_y = 0.0
+            self._pytoui_velX = 0.0
+            self._pytoui_velY = 0.0
             self._isDecelerating = False
             # Keep update loop alive if flash is still active
-            if self._flash_until <= now:
+            if self._pytoui_flashUntil <= now:
                 self.pytoui_setUpdateInterval_(0.0)
 
     # ── Scroll indicators overlay ──────────────────────────────────────────────
@@ -560,8 +571,8 @@ class _ScrollViewInternals(_ViewInternals):
         """Draw scroll indicator bars on top of content."""
         fw, fh = self.frame().size
         now = time.monotonic()
-        animating = self._page_anim_target is not None
-        flashing = self._flash_until > now
+        animating = self._pytoui_pageAnimTarget is not None
+        flashing = self._pytoui_flashUntil > now
         if not (self._isDragging or self._isDecelerating or animating or flashing):
             return
 

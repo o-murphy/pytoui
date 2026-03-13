@@ -183,7 +183,7 @@ class WinitRuntime(BaseRuntime):
             rf = self.root.frame()
             self.root.setFrame_((rf.x, rf.y, float(lw), float(lh)))
 
-        if not self.root.pytoui_presented:
+        if not self.root.pytoui_isPresented():
             return 1
 
         if not any_dirty(self.root):

@@ -122,11 +122,11 @@ class _ScrollViewInternals(_ViewInternals):
         self._page_anim_start: tuple[float, float] = (0.0, 0.0)
         self._page_anim_t0: float = 0.0
 
-        self.update_interval = 1 / 60
+        self.pytoui_setUpdateInterval_(1 / 60)
         # ── pytoui setup (desktop only) ───────────────────────────────────────
         self.mouse_wheel_enabled = True
-        self._pytoui_is_scroll_container = True
-        self._pytoui_draw_overlay = self._draw_scroll_indicators
+        self._pytoui_isScrollContainer = True
+        self._pytoui_drawOverlay = self._draw_scroll_indicators
 
     # ── Pythonista public API ──────────────────────────────────────────────────
 
@@ -236,11 +236,11 @@ class _ScrollViewInternals(_ViewInternals):
 
     @property
     def mouse_wheel_enabled(self) -> bool:
-        return self._scroll_enabled and self._pytoui_mouse_wheel_enabled
+        return self._scroll_enabled and self._pytoui_isMouseWheelEnabled
 
     @mouse_wheel_enabled.setter
     def mouse_wheel_enabled(self, value: bool):
-        self._pytoui_mouse_wheel_enabled = bool(value) and self._scroll_enabled
+        self._pytoui_isMouseWheelEnabled = bool(value) and self._scroll_enabled
 
     @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:
@@ -273,9 +273,9 @@ class _ScrollViewInternals(_ViewInternals):
     def _flash_scroll_indicators(self):
         """Briefly show the scroll indicators."""
         self._flash_until = time.monotonic() + 0.5
-        if self.update_interval <= 0:
-            self.update_interval = self._UPDATE_INTERVAL
-        self.set_needs_display()
+        if self.pytoui_updateInterval() <= 0:
+            self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
+        self.setNeedsDisplay()
 
     # ── Internal helpers ───────────────────────────────────────────────────────
 
@@ -469,7 +469,7 @@ class _ScrollViewInternals(_ViewInternals):
         # Start kinetic deceleration if there's meaningful velocity
         if abs(self._vel_x) > self._MIN_VEL or abs(self._vel_y) > self._MIN_VEL:
             self._decelerating = True
-            self.update_interval = self._UPDATE_INTERVAL
+            self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
         else:
             self._vel_x = 0.0
             self._vel_y = 0.0
@@ -485,11 +485,11 @@ class _ScrollViewInternals(_ViewInternals):
         self._page_anim_start = (ox, oy)
         self._page_anim_target = (tx, ty)
         self._page_anim_t0 = time.monotonic()
-        if self.update_interval <= 0:
-            self.update_interval = self._UPDATE_INTERVAL
+        if self.pytoui_updateInterval() <= 0:
+            self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
 
     def _snap_to_page(self):
-        fw, fh = self.frame.size
+        fw, fh = self.frame().size
         ox, oy = self._content_offset
 
         def nearest_page(offset: float, page_size: float, vel: float) -> float:
@@ -516,7 +516,7 @@ class _ScrollViewInternals(_ViewInternals):
         self._vel_x = 0.0
         self._vel_y = 0.0
         self._decelerating = False
-        self.update_interval = 0.0
+        self.pytoui_setUpdateInterval_(0.0)
 
     # ── Kinetic deceleration via update() ─────────────────────────────────────
 
@@ -542,9 +542,9 @@ class _ScrollViewInternals(_ViewInternals):
         if not self._decelerating:
             # Keep running while flash timer is active
             if self._flash_until > now:
-                self.set_needs_display()
+                self.setNeedsDisplay()
             else:
-                self.update_interval = 0.0
+                self.pytoui_setUpdateInterval_(0.0)
             return
 
         # Per-frame delta from velocity (px/sec → px/frame)
@@ -576,13 +576,13 @@ class _ScrollViewInternals(_ViewInternals):
             self._decelerating = False
             # Keep update loop alive if flash is still active
             if self._flash_until <= now:
-                self.update_interval = 0.0
+                self.pytoui_setUpdateInterval_(0.0)
 
     # ── Scroll indicators overlay ──────────────────────────────────────────────
 
     def _draw_scroll_indicators(self):
         """Draw scroll indicator bars on top of content."""
-        fw, fh = self.frame.size
+        fw, fh = self.frame().size
         now = time.monotonic()
         animating = self._page_anim_target is not None
         flashing = self._flash_until > now

@@ -61,8 +61,8 @@ class _NavigationViewInternals(_ViewInternals):
 
         self._title_label = Label()
         self._title_label.alignment = ALIGN_CENTER
-        self.pytoui_add_internal_subview(self._back_button._internals_)
-        self.pytoui_add_internal_subview(self._title_label._internals_)
+        self.pytoui_AddInternalSubview_(self._back_button._internals_)
+        self.pytoui_AddInternalSubview_(self._title_label._internals_)
 
     def pytoui_layout(self, force: bool = False):
         nav_h = self.NAVIGATION_BAR_HEIGHT if not self._navigation_bar_hidden else 0
@@ -135,10 +135,10 @@ class _NavigationViewInternals(_ViewInternals):
     def _finish_anim(self):
         """Clean up after a slide animation completes."""
         if self._anim_outgoing is not None:
-            self.pytoui_remove_internal_subview(self._anim_outgoing)
+            self.pytoui_removeInternalSubview(self._anim_outgoing)
             self._anim_outgoing = None
         self._anim_dir = 0
-        self.update_interval = 0.0
+        self.pytoui_setUpdateInterval_(0.0)
 
     def push_view(self, view: _ViewInternals, animated: bool = True):
         """Add view to nav stack"""
@@ -153,7 +153,7 @@ class _NavigationViewInternals(_ViewInternals):
 
         # add to stack
         self._navigation_stack.append(view)
-        view._navigation_view = self
+        view._pytoui_navigationView = self
         self._current_content_view = view
         self._title_label.text = view.name() or ""
 
@@ -168,17 +168,17 @@ class _NavigationViewInternals(_ViewInternals):
             )
 
         # add new view (will be laid out off-screen right when animated)
-        self.pytoui_add_internal_subview(view)
+        self.pytoui_AddInternalSubview_(view)
 
         if animated and not _UI_DISABLE_ANIMATIONS and old_view is not None:
             self._anim_outgoing = old_view
             self._anim_dir = 1  # push: incoming from right
             self._anim_t0 = time.monotonic()
-            self.update_interval = 1.0 / 60.0
+            self.pytoui_setUpdateInterval_(1.0 / 60.0)
         else:
             # Instant: remove old view immediately
             if old_view is not None:
-                self.pytoui_remove_internal_subview(old_view)
+                self.pytoui_removeInternalSubview(old_view)
 
         self.setNeedsLayout()
 
@@ -192,14 +192,14 @@ class _NavigationViewInternals(_ViewInternals):
             self._finish_anim()
 
         outgoing = self._navigation_stack.pop()
-        outgoing._navigation_view = None
+        outgoing._pytoui_navigationView = None
 
         # Restore previous view
         prev_view = self._navigation_stack[-1] if self._navigation_stack else None
         self._current_content_view = prev_view
 
         if prev_view:
-            self.pytoui_add_internal_subview(prev_view)
+            self.pytoui_AddInternalSubview_(prev_view)
             self._title_label.text = prev_view.name() or ""
 
         count = len(self._navigation_stack)
@@ -215,9 +215,9 @@ class _NavigationViewInternals(_ViewInternals):
             self._anim_outgoing = outgoing
             self._anim_dir = -1  # pop: incoming from left
             self._anim_t0 = time.monotonic()
-            self.update_interval = 1.0 / 60.0
+            self.pytoui_setUpdateInterval_(1.0 / 60.0)
         else:
-            self.pytoui_remove_internal_subview(outgoing)
+            self.pytoui_removeInternalSubview(outgoing)
 
         self.setNeedsLayout()
 

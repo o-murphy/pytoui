@@ -400,7 +400,7 @@ class SDLRuntime(BaseRuntime):
         except (ValueError, OSError):
             pass
         try:
-            while self.running and self.root.pytoui_presented:
+            while self.running and self.root.pytoui_isPresented:
                 now = time.time()
 
                 if _UI_RT_FPS:

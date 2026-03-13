@@ -122,11 +122,11 @@ class _ScrollViewInternals(_ViewInternals):
         self._pytoui_pageAnimStart: tuple[float, float] = (0.0, 0.0)
         self._pytoui_pageAnimT0: float = 0.0
 
-        self.pytoui_setUpdateInterval_(1 / 60)
         # ── pytoui setup (desktop only) ───────────────────────────────────────
-        self.pytoui_setMouseWheelEnabled_(True)
         self._pytoui_isScrollContainer = True
         self._pytoui_drawOverlay = self._draw_scroll_indicators
+        self.pytoui_setUpdateInterval_(1 / 60)
+        self.pytoui_setMouseWheelEnabled_(True)
 
     # ── Pythonista public API ──────────────────────────────────────────────────
 
@@ -248,7 +248,7 @@ class _ScrollViewInternals(_ViewInternals):
     def flashScrollIndicators(self):
         """Briefly show the scroll indicators."""
         self._pytoui_flashUntil = time.monotonic() + 0.5
-        if self.pytoui_updateInterval() <= 0:
+        if self._pytoui_updateInterval <= 0:
             self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
         self.setNeedsDisplay()
 
@@ -471,7 +471,7 @@ class _ScrollViewInternals(_ViewInternals):
         self._pytoui_pageAnimStart = (ox, oy)
         self._pytoui_pageAnimTarget = (tx, ty)
         self._pytoui_pageAnimT0 = time.monotonic()
-        if self.pytoui_updateInterval() <= 0:
+        if self._pytoui_updateInterval <= 0:
             self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
 
     def _snap_to_page(self):

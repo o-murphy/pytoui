@@ -136,7 +136,7 @@ class _NavigationViewInternals(_ViewInternals):
         self._pytoui_titleLabel.text_color = self._pytoui_titleColor
         self.setNeedsDisplay()
 
-    def _pytoui_finish_anim(self):
+    def _pytoui_finishAnim(self):
         """Clean up after a slide animation completes."""
         if self._pytoui_animOutgoing is not None:
             self.pytoui_removeInternalSubview(self._pytoui_animOutgoing)
@@ -151,7 +151,7 @@ class _NavigationViewInternals(_ViewInternals):
 
         # Finish any in-progress animation immediately
         if self._pytoui_animDir != 0:
-            self._pytoui_finish_anim()
+            self._pytoui_finishAnim()
 
         old_view = self._pytoui_currentContentView
 
@@ -193,7 +193,7 @@ class _NavigationViewInternals(_ViewInternals):
 
         # Finish any in-progress animation immediately
         if self._pytoui_animDir != 0:
-            self._pytoui_finish_anim()
+            self._pytoui_finishAnim()
 
         outgoing = self._pytoui_navigationStack.pop()
         outgoing._pytoui_navigationView = None
@@ -234,7 +234,7 @@ class _NavigationViewInternals(_ViewInternals):
             return
         elapsed = time.monotonic() - self._pytoui_animT0
         if elapsed >= self._ANIM_DUR:
-            self._pytoui_finish_anim()
+            self._pytoui_finishAnim()
         self.setNeedsLayout()
 
 

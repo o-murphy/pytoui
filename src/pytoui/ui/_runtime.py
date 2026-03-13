@@ -146,7 +146,7 @@ def launch_runtime(root_view: _ViewInternals, render_fn) -> None:
     RawFrameBufferRuntime (headless/testing) runs synchronously on the calling
     thread since it has no event loop and is expected to complete instantly.
     """
-    w, h = root_view.frame.size
+    w, h = root_view.frame().size
     w = int(w) if w > 0 else 400
     h = int(h) if h > 0 else 600
     runtime_class = _get_runtime()

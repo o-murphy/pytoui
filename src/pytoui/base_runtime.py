@@ -105,11 +105,11 @@ class BaseRuntime:
     def _find_scroll_interceptor(self, view: _ViewInternals) -> _ViewInternals | None:
         """Walk up from view and return the nearest ancestor with
         mouse_wheel_enabled=True (i.e. a ScrollView with scroll_enabled)."""
-        sv = view.superview
+        sv = view.superview()
         while sv is not None:
             if sv._pytoui_mouse_wheel_enabled:
                 return sv
-            sv = sv.superview
+            sv = sv.superview()
         return None
 
     @staticmethod
@@ -173,7 +173,7 @@ class BaseRuntime:
         target, touch_began = self._find_touch_responder(target, "pytoui_touch_began")
         if not touch_began:
             return
-        if not target._multitouch_enabled and any(
+        if not target.isMultipleTouchEnabled and any(
             v is target for v in self._tracked.values()
         ):
             return
@@ -316,11 +316,13 @@ class BaseRuntime:
     # Mouse handling (desktop-only — never called on real Pythonista)
     # ------------------------------------------------------------------
 
-    def _create_mouse_event(self, view, x, y, phase, button_id, prev, buttons):
+    def _create_mouse_event(
+        self, view: _ViewInternals, x: float, y: float, phase, button_id, prev, buttons
+    ):
         from pytoui.ui._types import MouseEvent
 
-        local = convert_point((x, y), to_view=view)
-        prev_local = convert_point(prev, to_view=view)
+        local = convert_point((x, y), to_view=view.ref)
+        prev_local = convert_point(prev, to_view=view.ref)
         return MouseEvent(
             location=(local.x, local.y),
             phase=phase,
@@ -644,7 +646,7 @@ class BaseRuntime:
                     if cb is not None:
                         cb(cmd)
                     return True
-            target = target.superview
+            target = target.superview()
         return False
 
     # ------------------------------------------------------------------
@@ -658,16 +660,16 @@ class BaseRuntime:
 
 def get_runtime_for_view(view: _ViewInternals) -> BaseRuntime | None:
     root = view
-    while root.superview is not None:
-        root = root.superview
+    while root.superview() is not None:
+        root = root.superview()  # type: ignore[assignment]
     return _root_to_runtime.get(id(root))
 
 
 def any_dirty(view: _ViewInternals) -> bool:
     """Return True if view or any descendant needs redrawing."""
-    if view.pytoui_needs_display:
+    if view.needsDisplay():
         return True
-    for sv in view._subviews:
+    for sv in view.subviews():
         if any_dirty(sv):
             return True
     for sv in view._pytoui_internal_subviews:

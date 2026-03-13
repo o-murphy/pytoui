@@ -38,11 +38,12 @@ class _NavigationViewInternals(_ViewInternals):
 
     def __init__(self, view: _NavigationView):
         super().__init__(view)
-        self.content_mode = CONTENT_REDRAW
+        self.setContentMode_(CONTENT_REDRAW)
 
         self._navigation_bar_hidden: bool = False
-        self._bar_tint_color: _RGBA | None = self.tint_color
-        self._title_color: _RGBA = self.tint_color
+        tint_color = self.tintColor()
+        self._bar_tint_color: _RGBA | None = tint_color
+        self._title_color: _RGBA = tint_color
 
         self._navigation_stack: list[_ViewInternals] = []
         self._current_content_view: _ViewInternals | None = None
@@ -88,10 +89,10 @@ class _NavigationViewInternals(_ViewInternals):
             incoming_x = w * self._anim_dir * (1.0 - progress)
             outgoing_x = -w * self._anim_dir * progress
 
-            self._current_content_view.frame = (incoming_x, content_y, w, content_h)
-            self._anim_outgoing.frame = (outgoing_x, content_y, w, content_h)
+            self._current_content_view.setFrame_((incoming_x, content_y, w, content_h))
+            self._anim_outgoing.setFrame_((outgoing_x, content_y, w, content_h))
         elif self._current_content_view:
-            self._current_content_view.frame = (x, content_y, w, content_h)
+            self._current_content_view.setFrame_((x, content_y, w, content_h))
 
         super().pytoui_layout(force)
 
@@ -106,8 +107,8 @@ class _NavigationViewInternals(_ViewInternals):
     @navigation_bar_hidden.setter
     def navigation_bar_hidden(self, value: bool):
         self._navigation_bar_hidden = bool(value)
-        self.set_needs_display()
-        self.set_needs_layout()
+        self.setNeedsDisplay()
+        self.setNeedsLayout()
 
     @property
     def bar_tint_color(self) -> _RGBA | None:
@@ -117,9 +118,9 @@ class _NavigationViewInternals(_ViewInternals):
     def bar_tint_color(self, value: _ColorLike):
         self._bar_tint_color = parse_color(value)
         if value is None:
-            self._bar_tint_color = self.tint_color
+            self._bar_tint_color = self.tintColor()
         self._back_button.tint_color = self._bar_tint_color
-        self.set_needs_display()
+        self.setNeedsDisplay()
 
     @property
     def title_color(self) -> _RGBA:
@@ -129,7 +130,7 @@ class _NavigationViewInternals(_ViewInternals):
     def title_color(self, value: _ColorLike):
         self._title_color = parse_color(value)
         self._title_label.text_color = self._title_color
-        self.set_needs_display()
+        self.setNeedsDisplay()
 
     def _finish_anim(self):
         """Clean up after a slide animation completes."""
@@ -154,15 +155,16 @@ class _NavigationViewInternals(_ViewInternals):
         self._navigation_stack.append(view)
         view._navigation_view = self
         self._current_content_view = view
-        self._title_label.text = view.name or ""
+        self._title_label.text = view.name() or ""
 
         # update UI
         count = len(self._navigation_stack)
         self._back_button.hidden = count <= 1
         if count > 1:
             prev_view = self._navigation_stack[-2]
+            prev_view_name = prev_view.name()
             self._back_button.title = (
-                f"< {prev_view.name if prev_view.name else self.DEFAULT_BACK_BTN_TITLE}"
+                f"< {prev_view_name if prev_view_name else self.DEFAULT_BACK_BTN_TITLE}"
             )
 
         # add new view (will be laid out off-screen right when animated)
@@ -178,7 +180,7 @@ class _NavigationViewInternals(_ViewInternals):
             if old_view is not None:
                 self.pytoui_remove_internal_subview(old_view)
 
-        self.set_needs_layout()
+        self.setNeedsLayout()
 
     def pop_view(self, animated: bool = True):
         """Removes top view from nav stack"""
@@ -198,14 +200,15 @@ class _NavigationViewInternals(_ViewInternals):
 
         if prev_view:
             self.pytoui_add_internal_subview(prev_view)
-            self._title_label.text = prev_view.name or ""
+            self._title_label.text = prev_view.name() or ""
 
         count = len(self._navigation_stack)
         self._back_button.hidden = count <= 1
         if count > 1:
             prev2 = self._navigation_stack[-2]
+            prev2_name = prev2.name()
             self._back_button.title = (
-                f"< {prev2.name if prev2.name else self.DEFAULT_BACK_BTN_TITLE}"
+                f"< {prev2_name if prev2_name else self.DEFAULT_BACK_BTN_TITLE}"
             )
 
         if animated and not _UI_DISABLE_ANIMATIONS and prev_view is not None:
@@ -216,7 +219,7 @@ class _NavigationViewInternals(_ViewInternals):
         else:
             self.pytoui_remove_internal_subview(outgoing)
 
-        self.set_needs_layout()
+        self.setNeedsLayout()
 
     def pytoui_update(self):
         super().pytoui_update()
@@ -225,7 +228,7 @@ class _NavigationViewInternals(_ViewInternals):
         elapsed = time.monotonic() - self._anim_t0
         if elapsed >= self._ANIM_DUR:
             self._finish_anim()
-        self.set_needs_layout()
+        self.setNeedsLayout()
 
     def current_view(self) -> _ViewInternals | None:
         return self._current_content_view

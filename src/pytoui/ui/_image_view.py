@@ -43,11 +43,11 @@ class _ImageView(View):
 
     def __init__(self, *args, **kwargs):
         self._image: Image | None = None
-        self._content_mode: _ContentMode = CONTENT_SCALE_TO_FILL
+        self._content_mode_local: _ContentMode = CONTENT_SCALE_TO_FILL
         self.touch_enabled = False
         # pytoui_render must always call draw() without applying any CTM transform —
         # ImageView handles all content_mode layout internally inside draw().
-        self._internals_.content_mode = CONTENT_REDRAW
+        self._internals_.setContentMode_(CONTENT_REDRAW)
 
         super().__init__(*args, **kwargs)
 
@@ -56,14 +56,14 @@ class _ImageView(View):
         """
         The image content mode (CONTENT_SCALE_TO_FILL, CONTENT_SCALE_ASPECT_FIT, etc.).
         """
-        return self._content_mode
+        return self._content_mode_local
 
     @content_mode.setter
     def content_mode(self, value: _ContentMode):
         # Store the image-layout mode in _content_mode (used by draw()).
         # _internals_.content_mode stays CONTENT_REDRAW so pytoui_render never
         # applies its own CTM transform on top of the image.
-        self._content_mode = value
+        self._content_mode_local = value
         self.set_needs_display()
 
     @property
@@ -111,7 +111,7 @@ class _ImageView(View):
         if iw <= 0 or ih <= 0 or fw <= 0 or fh <= 0:
             return
 
-        mode = self._content_mode
+        mode = self._content_mode_local
 
         # Calculate draw position and target size based on content_mode.
         # All values (x, y, draw_w, draw_h) are in POINTS.

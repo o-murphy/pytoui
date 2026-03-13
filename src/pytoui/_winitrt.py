@@ -26,7 +26,6 @@ from pytoui.hid import (
     _winit_mods_to_set,
 )
 from pytoui.ui._draw import _tick, _tick_delays
-from pytoui.ui._types import Rect
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -175,14 +174,14 @@ class WinitRuntime(BaseRuntime):
             fb = self._fb
             self._last_lw = lw
             self._last_lh = lh
-            rf = self.root.frame
-            self.root.frame = Rect(rf.x, rf.y, float(lw), float(lh))
+            rf = self.root.frame()
+            self.root.setFrame_((rf.x, rf.y, float(lw), float(lh)))
         elif lw != self._last_lw or lh != self._last_lh or fb.scale_factor != scale:
             fb.scale_factor = scale
             self._last_lw = lw
             self._last_lh = lh
-            rf = self.root.frame
-            self.root.frame = Rect(rf.x, rf.y, float(lw), float(lh))
+            rf = self.root.frame()
+            self.root.setFrame_((rf.x, rf.y, float(lw), float(lh)))
 
         if not self.root.pytoui_presented:
             return 1

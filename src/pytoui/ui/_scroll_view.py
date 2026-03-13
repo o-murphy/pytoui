@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Protocol
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._internals import _final_, _getset_descriptor
-from pytoui.ui._types import Point, Rect, Size
+from pytoui.ui._types import Point, Size
 from pytoui.ui._view import _View, _ViewInternals
 
 if TYPE_CHECKING:
@@ -183,7 +183,7 @@ class _ScrollViewInternals(_ViewInternals):
     @content_size.setter
     def content_size(self, value: _SizeLike):
         self._content_size = Size(*value)
-        self.set_needs_display()
+        self.setNeedsDisplay()
 
     @property
     def decelerating(self) -> bool:
@@ -323,9 +323,9 @@ class _ScrollViewInternals(_ViewInternals):
         self._content_offset = Point(x, y)
         # bounds.origin = content_offset: shifts the view's coordinate system
         # so _screen_origin correctly offsets all subviews.
-        bw, bh = self.bounds.size
-        self.bounds = Rect(x, y, bw, bh)
-        self.set_needs_display()
+        bw, bh = self.bounds().size
+        self.setBounds_((x, y, bw, bh))
+        self.needsDisplay()
         if notify:
             self._notify_delegate()
 

@@ -4,6 +4,8 @@ import math
 import time
 from typing import TYPE_CHECKING, Protocol
 
+from typing_extensions import override
+
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._internals import _final_, _getset_descriptor
@@ -124,7 +126,7 @@ class _ScrollViewInternals(_ViewInternals):
 
         self.pytoui_setUpdateInterval_(1 / 60)
         # ── pytoui setup (desktop only) ───────────────────────────────────────
-        self.mouse_wheel_enabled = True
+        self.pytoui_setMouseWheelEnabled_(True)
         self._pytoui_isScrollContainer = True
         self._pytoui_drawOverlay = self._draw_scroll_indicators
 
@@ -232,14 +234,14 @@ class _ScrollViewInternals(_ViewInternals):
     @scroll_enabled.setter
     def scroll_enabled(self, value: bool):
         self._scroll_enabled = bool(value)
-        self.mouse_wheel_enabled = bool(value)
+        self.pytoui_setMouseWheelEnabled_(value)
 
-    @property
-    def mouse_wheel_enabled(self) -> bool:
+    @override
+    def pytoui_isMouseWheelEnabled(self) -> bool:
         return self._scroll_enabled and self._pytoui_isMouseWheelEnabled
 
-    @mouse_wheel_enabled.setter
-    def mouse_wheel_enabled(self, value: bool):
+    @override
+    def pytoui_setMouseWheelEnabled_(self, value: bool):
         self._pytoui_isMouseWheelEnabled = bool(value) and self._scroll_enabled
 
     @property
@@ -520,6 +522,7 @@ class _ScrollViewInternals(_ViewInternals):
 
     # ── Kinetic deceleration via update() ─────────────────────────────────────
 
+    @override
     def pytoui_update(self):
         super().pytoui_update()
         now = time.monotonic()
@@ -795,11 +798,11 @@ class _ScrollView(_View):
     @property
     def mouse_wheel_enabled(self) -> bool:
         """mouse_wheel_enabled is tied to scroll_enabled on ScrollView."""
-        return self._internals_.mouse_wheel_enabled
+        return self._internals_.pytoui_isMouseWheelEnabled()
 
     @mouse_wheel_enabled.setter
     def mouse_wheel_enabled(self, value: bool):
-        self._internals_.mouse_wheel_enabled = value
+        self._internals_.pytoui_setMouseWheelEnabled_(value)
 
     @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:

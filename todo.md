@@ -15,6 +15,7 @@ NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)
 * ~~add keyboard input support (for future text input functionality)~~ (done: TextField/TextView with real native text input — SDL_TEXTINPUT/SDL_TEXTEDITING + winit Ime::Commit/Preedit with KeyEvent.text fallback for compositors where text-input-v3 misbehaves, e.g. KWin/Wayland)
 * TextField/TextView: no interactive drag-selection (selected_range always collapsed (cursor,cursor); replace_range still works programmatically) — deliberately deferred since pytoui has no clipboard at all, so selection with no copy/paste would be dead UI. Add clipboard support first if this is wanted.
+* TextField/TextView should be refactored to the `_*ViewInternals` pattern (like `_ScrollViewInternals`/`_NavigationViewInternals`) instead of keeping `_pytoui_key_input`/`_pytoui_text_commit`/`_pytoui_text_preedit` as private methods directly on `_TextField`/`_TextView`
 * dialogs.alert() and other
 * View
   * View.present.style

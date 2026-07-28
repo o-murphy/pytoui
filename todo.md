@@ -8,6 +8,7 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
+* Invalid wheels abi tags https://github.com/o-murphy/pytoui/actions/runs/30387405043 and no abi3 universal wheels there are
 * Image: implement methods with the rust backend
 
 NEXT:

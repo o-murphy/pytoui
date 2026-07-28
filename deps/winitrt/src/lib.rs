@@ -26,6 +26,14 @@ use winit::{
 // render_callback returns 0 = continue, != 0 = close window (view.close())
 type RenderCb = extern "C" fn() -> i32;
 type EventCb  = extern "C" fn(i32, f64, f64, i64);
+// IME/text-input callback — kept separate from EventCb so its richer (string)
+// payload never touches the existing numeric touch/mouse/scroll/key call sites.
+// kind: 0=Enabled, 1=Preedit, 2=Commit, 3=Disabled.
+// text_ptr/text_len: valid only for Preedit/Commit — raw UTF-8 bytes, NOT
+// NUL-terminated (the call is fully synchronous, so the Python callback must
+// copy the bytes before returning).
+// cursor_start/cursor_end: BYTE offsets within the preedit text; -1,-1 if none.
+type ImeCb = extern "C" fn(i32, *const u8, i64, i64, i64);
 
 // ── UserEvent: request to add a new window ────────────────────────────────────
 struct AddWindowReq {
@@ -38,6 +46,7 @@ struct AddWindowReq {
     scale_factor_ptr: *mut f64,
     render_cb:        RenderCb,
     event_cb:         EventCb,
+    ime_cb:           ImeCb,
     decorations:      bool,
     /// Python thread blocks on done_rx; we send () when the window closes
     done_tx:          mpsc::SyncSender<()>,
@@ -49,6 +58,10 @@ unsafe impl Send for AddWindowReq {}
 enum AppEvent {
     AddWindow(AddWindowReq),
     GetScreenSize { tx: mpsc::SyncSender<(u32, u32)> },
+    /// Toggle IME/text-input mode for whichever window was registered with a
+    /// matching event_cb (each window has a distinct Python callback object,
+    /// so pointer identity is enough to find it — no window-id plumbing needed).
+    SetImeAllowed(EventCb, bool),
 }
 
 // ── Single window state (lives on the EventLoop thread) ───────────────────────
@@ -62,6 +75,7 @@ struct WinState {
     scale_factor:     f64,
     render_cb:        RenderCb,
     event_cb:         EventCb,
+    ime_cb:           ImeCb,
     done_tx:          mpsc::SyncSender<()>,
     cursor_pos:       (f64, f64),  // logical coords (physical / scale_factor)
     modifiers:        Modifiers,   // current modifier state
@@ -245,6 +259,15 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                 tx.send(size).ok();
             }
 
+            // ── Toggle IME/text-input mode (focus-driven, from Python) ────────
+            Event::UserEvent(AppEvent::SetImeAllowed(cb, allowed)) => {
+                for (_, st) in windows.iter() {
+                    if st.event_cb as usize == cb as usize {
+                        st.window.set_ime_allowed(allowed);
+                    }
+                }
+            }
+
             // ── New window request from Python ────────────────────────────────
             Event::UserEvent(AppEvent::AddWindow(req)) => {
                 let window = Arc::new(
@@ -280,6 +303,7 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                     scale_factor:     scale,
                     render_cb:        req.render_cb,
                     event_cb:         req.event_cb,
+                    ime_cb:           req.ime_cb,
                     done_tx:          req.done_tx,
                     cursor_pos:       (0.0, 0.0),
                     modifiers:        Modifiers::default(),
@@ -312,6 +336,24 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                             if let Some(code) = key_to_code(&logical_key, &physical_key) {
                                 let flags = mod_flags(&st.modifiers);
                                 (st.event_cb)(5, code as f64, flags as f64, 0);
+                            }
+                        }
+                    }
+
+                    WindowEvent::Ime(ime) => {
+                        if let Some(st) = windows.get(&window_id) {
+                            match ime {
+                                Ime::Enabled => (st.ime_cb)(0, std::ptr::null(), 0, -1, -1),
+                                Ime::Preedit(text, cursor) => {
+                                    let (s, e) = cursor
+                                        .map(|(a, b)| (a as i64, b as i64))
+                                        .unwrap_or((-1, -1));
+                                    (st.ime_cb)(1, text.as_ptr(), text.len() as i64, s, e);
+                                }
+                                Ime::Commit(text) => {
+                                    (st.ime_cb)(2, text.as_ptr(), text.len() as i64, -1, -1);
+                                }
+                                Ime::Disabled => (st.ime_cb)(3, std::ptr::null(), 0, -1, -1),
                             }
                         }
                     }
@@ -489,6 +531,7 @@ pub extern "C" fn winit_run(
     scale_factor_ptr: *mut f64,
     render_callback:  RenderCb,
     event_callback:   EventCb,
+    ime_callback:     ImeCb,
     decorations:      u8,
     title:            *const c_char,
 ) {
@@ -509,12 +552,20 @@ pub extern "C" fn winit_run(
         scale_factor_ptr,
         render_cb:        render_callback,
         event_cb:         event_callback,
+        ime_cb:           ime_callback,
         decorations:      decorations != 0,
         done_tx,
     })).ok();
 
     // Block until the window is closed
     done_rx.recv().ok();
+}
+
+/// Toggle IME/text-input mode for the window registered with a matching
+/// event_cb (see AppEvent::SetImeAllowed). Safe to call from any thread.
+#[no_mangle]
+pub extern "C" fn winit_set_ime_allowed(event_cb: EventCb, allowed: i32) {
+    proxy().lock().unwrap().send_event(AppEvent::SetImeAllowed(event_cb, allowed != 0)).ok();
 }
 
 /// Return the size of the primary monitor (w, h).

@@ -186,6 +186,14 @@ def _route_event(sdl2, event) -> None:
     elif t == sdl2.SDL_KEYDOWN:
         wid = event.key.windowID
         _send(wid, ("keydown", event.key.keysym.sym, int(event.key.keysym.mod)))
+    elif t == sdl2.SDL_TEXTINPUT:
+        wid = event.text.windowID
+        text = bytes(event.text.text).split(b"\0", 1)[0].decode("utf-8")
+        _send(wid, ("textinput", text))
+    elif t == sdl2.SDL_TEXTEDITING:
+        wid = event.edit.windowID
+        text = bytes(event.edit.text).split(b"\0", 1)[0].decode("utf-8")
+        _send(wid, ("textediting", text, int(event.edit.start), int(event.edit.length)))
 
 
 def _send(wid: int, msg: tuple) -> None:
@@ -285,6 +293,12 @@ class SDLRuntime(BaseRuntime):
         sdl2.SDL_GetDisplayBounds(0, ctypes.byref(rect))
         return (rect.w, rect.h)
 
+    def _set_text_input_active(self, active: bool) -> None:
+        if active:
+            self._sdl2.SDL_StartTextInput()
+        else:
+            self._sdl2.SDL_StopTextInput()
+
     # ------------------------------------------------------------------
     # Event dispatch (from per-window queue)
     # ------------------------------------------------------------------
@@ -308,8 +322,16 @@ class SDLRuntime(BaseRuntime):
                     if key_str:
                         mods = _sdl_mods_to_set(sdl2, mod)
                         handled = self._key_down(key_str, mods)
+                        if not handled:
+                            handled = self._dispatch_text_input(key_str, mods)
                     if sym == sdl2.SDLK_ESCAPE and not handled:
                         self.running = False
+                case "textinput":
+                    self._dispatch_text_commit(msg[1])
+                case "textediting":
+                    text, start, length = msg[1], msg[2], msg[3]
+                    cursor = (start, start + length) if text else None
+                    self._dispatch_text_preedit(text, cursor)
                 case "window_resize":
                     self._current_w, self._current_h = msg[1], msg[2]
                 case "focus_gained":

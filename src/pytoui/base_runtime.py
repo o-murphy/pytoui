@@ -97,6 +97,10 @@ class BaseRuntime:
         self._first_responder = view
         if view is not None:
             view.pytoui_didBecomeFirstResponder()
+        self._set_text_input_active(view is not None and view.pytoui_wantsTextInput())
+
+    def _set_text_input_active(self, active: bool) -> None:
+        """Toggle native OS text-input/IME mode. No-op by default; runtimes override."""
 
     # ------------------------------------------------------------------
     # Scroll intercept helpers
@@ -650,6 +654,33 @@ class BaseRuntime:
                     return True
             target = target.superview()
         return False
+
+    def _dispatch_text_input(self, key_input: str, modifiers: frozenset[str]) -> bool:
+        """Deliver a raw keystroke as text-editing input to the first responder.
+
+        Only called when _key_down() found no matching key command. Does NOT
+        bubble up the responder chain (mirrors UIKit's insertText:/
+        deleteBackward: semantics — only the first responder itself handles
+        text input, unlike keyCommands which bubble).
+        """
+        target = self._first_responder
+        if target is None:
+            return False
+        return target.pytoui_textInput(key_input, modifiers)
+
+    def _dispatch_text_commit(self, text: str) -> bool:
+        """Deliver IME-committed text to the first responder. No bubbling."""
+        target = self._first_responder
+        if target is None:
+            return False
+        return target.pytoui_textCommit(text)
+
+    def _dispatch_text_preedit(self, text: str, cursor: tuple[int, int] | None) -> bool:
+        """Deliver an in-progress IME composition preview. No bubbling."""
+        target = self._first_responder
+        if target is None:
+            return False
+        return target.pytoui_textPreedit(text, cursor)
 
     # ------------------------------------------------------------------
     # Update loop

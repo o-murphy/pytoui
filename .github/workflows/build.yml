@@ -29,7 +29,7 @@ jobs:
     name: Build pure Python wheel + sdist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -38,13 +38,14 @@ jobs:
         with:
           github-token: ${{ github.token }}
           activate-environment: "true"
+          python-version: "3.11"
 
       - name: Build pure wheel and sdist
         run: PURE=1 uv build
         shell: bash
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-pure
           path: ./dist
@@ -89,7 +90,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -104,7 +105,8 @@ jobs:
         with:
           github-token: ${{ github.token }}
           activate-environment: "true"
-      
+          python-version: "3.11"
+    
       - name: Install cibuildwheel
         run: uv tool install cibuildwheel
         shell: bash
@@ -118,7 +120,7 @@ jobs:
         shell: bash
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.os }}-${{ matrix.cibw_archs }}
           path: ./dist
@@ -149,7 +151,7 @@ jobs:
         shell: bash
 
       - name: Upload combined artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: ./dist

@@ -112,13 +112,13 @@ disable_error_code = ["annotation-unchecked"]
 
 [dependency-groups]
 dev = [
-    "cibuildwheel>=2.23.3",
-    "mypy>=1.19.1",
+    "cibuildwheel>=2.23.4",
+    "mypy>=2.3.0",
     "pillow>=12.1.1",
-    "pre-commit>=4.5.1",
+    "pre-commit>=4.6.1",
     "pysdl2>=0.9.17",
-    "pysdl2-dll>=2.32.0; platform_system == 'Windows'",
-    "pytest>=9.0.2",
-    "ruff>=0.15.0",
-    "typing-extensions>=4.15.0",
+    "pysdl2-dll>=2.32.10; platform_system == 'Windows'",
+    "pytest>=9.1.1",
+    "ruff>=0.16.0",
+    "typing-extensions>=4.16.0",
 ]

@@ -4,6 +4,8 @@ import math
 import time
 from typing import TYPE_CHECKING, Protocol
 
+from typing_extensions import override
+
 from pytoui._platform import _UI_DISABLE_ANIMATIONS, IS_PYTHONISTA
 from pytoui.ui._draw import Path, set_color
 from pytoui.ui._internals import _final_, _getset_descriptor
@@ -32,48 +34,46 @@ class _ScrollViewDelegate(Protocol):
 class _ScrollViewInternals(_ViewInternals):
     __slots__ = (
         # Pythonista-compatible state
-        "_always_bounce_horizontal",
-        "_always_bounce_vertical",
+        "_alwaysbounceHorizontal",
+        "_alwaysbounceVertical",
         "_bounces",
-        "_content_inset",
-        "_content_offset",
-        "_content_size",
-        "_decelerating",
+        "_contentInset",
+        "_contentOffset",
+        "_contentSize",
+        "_isDecelerating",
+        "_decelerationRate",
         "_delegate",
-        "_directional_lock_enabled",
-        "_dragging",
-        "_indicator_style",
-        "_paging_enabled",
-        "_scroll_enabled",
-        "_scroll_indicator_insets",
-        "_shows_horizontal_scroll_indicator",
-        "_shows_vertical_scroll_indicator",
-        "_tracking",
+        "_directionalLockEnabled",
+        "_isDragging",
+        "_indicatorStyle",
+        "_isPagingEnabled",
+        "_isScrollEnabled",
+        "_scrollIndicatorInsets",
+        "_showsHorizontalScrollIndicator",
+        "_showsVerticalScrollIndicator",
+        "_isTracking",
         # Internal drag/kinetics state
-        "_vel_x",
-        "_vel_y",
-        "_locked_axis",
-        "_drag_start_ox",
-        "_drag_start_oy",
-        "_drag_start_touch_x",
-        "_drag_start_touch_y",
-        "_last_touch_x",
-        "_last_touch_y",
-        "_last_touch_time",
-        # Touch tracking: touch_id → original subview target
-        "_tracked",
+        "_horizontalVelocity",
+        "_verticalVelocity",
+        "_pytoui_lockedAxis",
+        "_pytoui_dragStartOx",
+        "_pytoui_dragStartOy",
+        "_pytoui_dragStartTouchX",
+        "_pytoui_dragStartTouchY",
+        "_pytoui_lastTouchX",
+        "_pytoui_lastTouchY",
+        "_pytoui_lastTouchTime",
         # Flash indicator timer
-        "_flash_until",
+        "_pytoui_flashUntil",
         # Paging debounce
-        "_last_page_flip_time",
+        "_pytoui_lastPageFlipTime",
         # Paging slide animation
-        "_page_anim_target",
-        "_page_anim_start",
-        "_page_anim_t0",
+        "_pytoui_pageAnimTarget",
+        "_pytoui_pageAnimStart",
+        "_pytoui_pageAnimT0",
     )
 
     # Kinetic deceleration constants
-    _DECEL_RATE: float = 0.95  # velocity multiplier per frame (≈60 fps)
     _MIN_VEL: float = 0.5  # px/frame threshold to stop deceleration
     _UPDATE_INTERVAL: float = 1.0 / 60.0
     _PAGE_ANIM_DUR: float = 0.30  # paging slide animation duration (seconds)
@@ -81,212 +81,188 @@ class _ScrollViewInternals(_ViewInternals):
     def __init__(self, view: _ScrollView):
         super().__init__(view)
         # ── Pythonista-compatible defaults ────────────────────────────────────
-        self._always_bounce_horizontal: bool = False
-        self._always_bounce_vertical: bool = False
+        self._alwaysbounceHorizontal: bool = False
+        self._alwaysbounceVertical: bool = False
         self._bounces: bool = True
-        self._content_inset: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
-        self._content_offset: Point = Point(0.0, 0.0)
-        self._content_size: Size = Size(0.0, 0.0)
-        self._decelerating: bool = False
+        self._contentInset: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+        self._contentOffset: Point = Point(0.0, 0.0)
+        self._contentSize: Size = Size(0.0, 0.0)
+        self._isDecelerating: bool = False
+        self._decelerationRate: float = 0.95
         self._delegate: _ScrollViewDelegate | None = None
-        self._directional_lock_enabled: bool = False
-        self._dragging: bool = False
-        self._indicator_style: _ScrollIndicatorStyle = "default"
-        self._paging_enabled: bool = False
-        self._scroll_enabled: bool = True
-        self._scroll_indicator_insets: tuple[float, float, float, float] = (
+        self._directionalLockEnabled: bool = False
+        self._isDragging: bool = False
+        self._indicatorStyle: _ScrollIndicatorStyle = "default"
+        self._isPagingEnabled: bool = False
+        self._isScrollEnabled: bool = True
+        self._scrollIndicatorInsets: tuple[float, float, float, float] = (
             0.0,
             0.0,
             0.0,
             0.0,
         )
-        self._shows_horizontal_scroll_indicator: bool = True
-        self._shows_vertical_scroll_indicator: bool = True
-        self._tracking: bool = False
+        self._showsHorizontalScrollIndicator: bool = True
+        self._showsVerticalScrollIndicator: bool = True
+        self._isTracking: bool = False
+
+        self._horizontalVelocity: float = 0.0
+        self._verticalVelocity: float = 0.0
 
         # ── Internal state ────────────────────────────────────────────────────
-        self._vel_x: float = 0.0
-        self._vel_y: float = 0.0
-        self._locked_axis: str | None = None
-        self._drag_start_ox: float = 0.0
-        self._drag_start_oy: float = 0.0
-        self._drag_start_touch_x: float = 0.0
-        self._drag_start_touch_y: float = 0.0
-        self._last_touch_x: float = 0.0
-        self._last_touch_y: float = 0.0
-        self._last_touch_time: float = 0.0
-        self._tracked: dict = {}
-        self._flash_until: float = 0.0
-        self._last_page_flip_time: float = 0.0
-        self._page_anim_target: tuple[float, float] | None = None
-        self._page_anim_start: tuple[float, float] = (0.0, 0.0)
-        self._page_anim_t0: float = 0.0
+        self._pytoui_lockedAxis: str | None = None
+        self._pytoui_dragStartOx: float = 0.0
+        self._pytoui_dragStartOy: float = 0.0
+        self._pytoui_dragStartTouchX: float = 0.0
+        self._pytoui_dragStartTouchY: float = 0.0
+        self._pytoui_lastTouchX: float = 0.0
+        self._pytoui_lastTouchY: float = 0.0
+        self._pytoui_lastTouchTime: float = 0.0
+        self._pytoui_flashUntil: float = 0.0
+        self._pytoui_lastPageFlipTime: float = 0.0
+        self._pytoui_pageAnimTarget: tuple[float, float] | None = None
+        self._pytoui_pageAnimStart: tuple[float, float] = (0.0, 0.0)
+        self._pytoui_pageAnimT0: float = 0.0
 
-        self.update_interval = 1 / 60
         # ── pytoui setup (desktop only) ───────────────────────────────────────
-        self.mouse_wheel_enabled = True
-        self._pytoui_is_scroll_container = True
-        self._pytoui_draw_overlay = self._draw_scroll_indicators
+        self._pytoui_isScrollContainer = True
+        self._pytoui_drawOverlay = self._draw_scroll_indicators
+        self.pytoui_setUpdateInterval_(1 / 60)
+        self.pytoui_setMouseWheelEnabled_(True)
 
     # ── Pythonista public API ──────────────────────────────────────────────────
 
-    @property
-    def always_bounce_horizontal(self) -> bool:
+    def alwaysbounceHorizontal(self) -> bool:
         """A boolean value that determines whether bouncing always occurs
         when vertical scrolling reaches the end of the content.
         If this attribute is set to True and bounces is True,
         vertical dragging is allowed even if the content is smaller
         than the bounds of the scroll view.
         The default value is False."""
-        return self._always_bounce_horizontal
+        return self._alwaysbounceHorizontal
 
-    @always_bounce_horizontal.setter
-    def always_bounce_horizontal(self, value: bool):
-        self._always_bounce_horizontal = bool(value)
+    def setAlwaysbounceHorizontal_(self, value: bool):
+        self._alwaysbounceHorizontal = bool(value)
 
-    @property
-    def always_bounce_vertical(self) -> bool:
-        return self._always_bounce_vertical
+    def alwaysbounceVertical(self) -> bool:
+        return self._alwaysbounceVertical
 
-    @always_bounce_vertical.setter
-    def always_bounce_vertical(self, value: bool):
-        self._always_bounce_vertical = bool(value)
+    def setAlwaysbounceVertical_(self, value: bool):
+        self._alwaysbounceVertical = bool(value)
 
-    @property
     def bounces(self) -> bool:
         return self._bounces
 
-    @bounces.setter
-    def bounces(self, value: bool):
+    def setBounces_(self, value: bool):
         self._bounces = bool(value)
 
-    @property
-    def content_inset(self) -> tuple[float, float, float, float]:
-        return self._content_inset
+    def contentInset(self) -> tuple[float, float, float, float]:
+        return self._contentInset
 
-    @content_inset.setter
-    def content_inset(self, value: tuple[float, float, float, float]):
-        self._content_inset = value
+    def setContentInset_(self, value: tuple[float, float, float, float]):
+        self._contentInset = value
 
-    @property
-    def content_offset(self) -> Point:
-        return self._content_offset
+    def contentOffset(self) -> Point:
+        return self._contentOffset
 
-    @content_offset.setter
-    def content_offset(self, value: _PointLike):
+    def setContentOffset_(self, value: _PointLike):
         self._set_offset(float(value[0]), float(value[1]), clamp=True)
 
-    @property
-    def content_size(self) -> Size:
-        return self._content_size
+    def contentSize(self) -> Size:
+        return self._contentSize
 
-    @content_size.setter
-    def content_size(self, value: _SizeLike):
-        self._content_size = Size(*value)
+    def setContentSize(self, value: _SizeLike):
+        self._contentSize = Size(*value)
         self.setNeedsDisplay()
 
-    @property
-    def decelerating(self) -> bool:
-        return self._decelerating
+    def isDecelerating(self) -> bool:
+        return self._isDecelerating
 
-    @property
+    def decelerationRate(self) -> float:
+        return self._decelerationRate
+
+    def setDecelerationRate_(self, value: float):
+        self._decelerationRate = float(value)
+
     def delegate(self) -> _ScrollViewDelegate | None:
         return self._delegate
 
-    @delegate.setter
-    def delegate(self, value: _ScrollViewDelegate | None):
+    def setDelegate_(self, value: _ScrollViewDelegate | None):
         self._delegate = value
 
-    @property
-    def directional_lock_enabled(self) -> bool:
-        return self._directional_lock_enabled
+    def isDirectionalLockEnabled(self) -> bool:
+        return self._directionalLockEnabled
 
-    @directional_lock_enabled.setter
-    def directional_lock_enabled(self, value: bool):
-        self._directional_lock_enabled = bool(value)
+    def setDirectionalLockEnabled_(self, value: bool):
+        self._directionalLockEnabled = bool(value)
 
-    @property
-    def dragging(self) -> bool:
-        return self._dragging
+    def isDragging(self) -> bool:
+        return self._isDragging
 
-    @property
-    def indicator_style(self) -> _ScrollIndicatorStyle:
-        return self._indicator_style
+    def indicatorStyle(self) -> _ScrollIndicatorStyle:
+        return self._indicatorStyle
 
-    @indicator_style.setter
-    def indicator_style(self, value: _ScrollIndicatorStyle):
-        self._indicator_style = value
+    def setIndicatorStyle_(self, value: _ScrollIndicatorStyle):
+        self._indicatorStyle = value
 
-    @property
-    def paging_enabled(self) -> bool:
-        return self._paging_enabled
+    def isPagingEnabled(self) -> bool:
+        return self._isPagingEnabled
 
-    @paging_enabled.setter
-    def paging_enabled(self, value: bool):
-        self._paging_enabled = bool(value)
+    def setPagingEnabled_(self, value: bool):
+        self._isPagingEnabled = bool(value)
 
-    @property
-    def scroll_enabled(self) -> bool:
-        return self._scroll_enabled
+    def isScrollEnabled(self) -> bool:
+        return self._isScrollEnabled
 
-    @scroll_enabled.setter
-    def scroll_enabled(self, value: bool):
-        self._scroll_enabled = bool(value)
-        self.mouse_wheel_enabled = bool(value)
+    def setScrollEnabled_(self, value: bool):
+        self._isScrollEnabled = bool(value)
+        self.pytoui_setMouseWheelEnabled_(value)
 
-    @property
-    def mouse_wheel_enabled(self) -> bool:
-        return self._scroll_enabled and self._pytoui_mouse_wheel_enabled
+    @override
+    def pytoui_isMouseWheelEnabled(self) -> bool:
+        return self._isScrollEnabled and self._pytoui_isMouseWheelEnabled
 
-    @mouse_wheel_enabled.setter
-    def mouse_wheel_enabled(self, value: bool):
-        self._pytoui_mouse_wheel_enabled = bool(value) and self._scroll_enabled
+    @override
+    def pytoui_setMouseWheelEnabled_(self, value: bool):
+        self._pytoui_isMouseWheelEnabled = bool(value) and self._isScrollEnabled
 
-    @property
-    def scroll_indicator_insets(self) -> tuple[float, float, float, float]:
-        return self._scroll_indicator_insets
+    def scrollIndicatorInsets(self) -> tuple[float, float, float, float]:
+        return self._scrollIndicatorInsets
 
-    @scroll_indicator_insets.setter
-    def scroll_indicator_insets(self, value: tuple[float, float, float, float]):
-        self._scroll_indicator_insets = value
+    def setScrollIndicatorInsets_(self, value: tuple[float, float, float, float]):
+        self._scrollIndicatorInsets = value
 
-    @property
-    def shows_horizontal_scroll_indicator(self) -> bool:
-        return self._shows_horizontal_scroll_indicator
+    def showsHorizontalScrollIndicator(self) -> bool:
+        return self._showsHorizontalScrollIndicator
 
-    @shows_horizontal_scroll_indicator.setter
-    def shows_horizontal_scroll_indicator(self, value: bool):
-        self._shows_horizontal_scroll_indicator = bool(value)
+    def setShowsHorizontalScrollIndicator_(self, value: bool):
+        self._showsHorizontalScrollIndicator = bool(value)
 
-    @property
-    def shows_vertical_scroll_indicator(self) -> bool:
-        return self._shows_vertical_scroll_indicator
+    def showsVerticalScrollIndicator(self) -> bool:
+        return self._showsVerticalScrollIndicator
 
-    @shows_vertical_scroll_indicator.setter
-    def shows_vertical_scroll_indicator(self, value: bool):
-        self._shows_vertical_scroll_indicator = bool(value)
+    def setShowsVerticalScrollIndicator_(self, value: bool):
+        self._showsVerticalScrollIndicator = bool(value)
 
-    @property
-    def tracking(self) -> bool:
-        return self._tracking
+    def isTracking(self) -> bool:
+        return self._isTracking
 
-    def _flash_scroll_indicators(self):
+    def flashScrollIndicators(self):
         """Briefly show the scroll indicators."""
-        self._flash_until = time.monotonic() + 0.5
-        if self.update_interval <= 0:
-            self.update_interval = self._UPDATE_INTERVAL
-        self.set_needs_display()
+        self._pytoui_flashUntil = time.monotonic() + 0.5
+        if self._pytoui_updateInterval <= 0:
+            self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
+        self.setNeedsDisplay()
 
     # ── Internal helpers ───────────────────────────────────────────────────────
 
     def _min_offset(self) -> tuple[float, float]:
-        inset_t, inset_l, _inset_b, _inset_r = self._content_inset
+        inset_t, inset_l, _inset_b, _inset_r = self._contentInset
         return -inset_l, -inset_t
 
     def _max_offset(self) -> tuple[float, float]:
-        inset_t, inset_l, inset_b, inset_r = self._content_inset
+        inset_t, inset_l, inset_b, inset_r = self._contentInset
         fw, fh = self._frame.size
-        cw, ch = self._content_size
+        cw, ch = self._contentSize
         max_x = max(0.0, cw - fw + inset_r) - inset_l
         max_y = max(0.0, ch - fh + inset_b) - inset_t
         return max_x, max_y
@@ -302,25 +278,25 @@ class _ScrollViewInternals(_ViewInternals):
         return max(mn, min(mx, y))
 
     def _can_scroll_h(self) -> bool:
-        if not self._scroll_enabled:
+        if not self._isScrollEnabled:
             return False
         mn, _ = self._min_offset()
         mx, _ = self._max_offset()
-        return mx > mn or (self._bounces and self._always_bounce_horizontal)
+        return mx > mn or (self._bounces and self._alwaysbounceHorizontal)
 
     def _can_scroll_v(self) -> bool:
-        if not self._scroll_enabled:
+        if not self._isScrollEnabled:
             return False
         _, mn = self._min_offset()
         _, mx = self._max_offset()
-        return mx > mn or (self._bounces and self._always_bounce_vertical)
+        return mx > mn or (self._bounces and self._alwaysbounceVertical)
 
     def _set_offset(self, x: float, y: float, clamp: bool = True, notify: bool = True):
         """Update content_offset and sync bounds.origin (standard iOS mechanic)."""
         if clamp:
             x = self._clamp_x(x)
             y = self._clamp_y(y)
-        self._content_offset = Point(x, y)
+        self._contentOffset = Point(x, y)
         # bounds.origin = content_offset: shifts the view's coordinate system
         # so _screen_origin correctly offsets all subviews.
         bw, bh = self.bounds().size
@@ -333,28 +309,28 @@ class _ScrollViewInternals(_ViewInternals):
         if self._delegate is not None:
             cb = getattr(self._delegate, "scrollview_did_scroll", None)
             if cb is not None:
-                cb(self)
+                cb(self.ref())
 
     # ── Desktop scroll (mouse wheel) ───────────────────────────────────────────
 
     def mouse_wheel(self, event: MouseWheel):
-        if not self._scroll_enabled:
+        if not self._isScrollEnabled:
             return
-        if self._paging_enabled:
+        if self._isPagingEnabled:
             self._mouse_wheel_page(event)
             return
-        ox, oy = self._content_offset
+        ox, oy = self._contentOffset
         new_x = ox - event.scroll_dx if self._can_scroll_h() else ox
         new_y = oy - event.scroll_dy if self._can_scroll_v() else oy
         self._set_offset(new_x, new_y)
-        self._flash_scroll_indicators()
+        self.flashScrollIndicators()
 
     def _mouse_wheel_page(self, event: MouseWheel):
         """Advance one page per wheel tick when paging_enabled."""
         now = time.monotonic()
-        if now - self._last_page_flip_time < 0.35:
+        if now - self._pytoui_lastPageFlipTime < 0.35:
             return
-        ox, oy = self._content_offset
+        ox, oy = self._contentOffset
         can_h = self._can_scroll_h()
         can_v = self._can_scroll_v()
         dx, dy = event.scroll_dx, event.scroll_dy
@@ -380,117 +356,128 @@ class _ScrollViewInternals(_ViewInternals):
             self._start_page_anim(ox, (cur + step) * fh)
         else:
             return
-        self._last_page_flip_time = now
+        self._pytoui_lastPageFlipTime = now
 
     # ── Touch drag scrolling ───────────────────────────────────────────────────
 
     def touch_began(self, touch: Touch):
-        if not self._scroll_enabled:
+        if not self._isScrollEnabled:
             return
         # Cancel any running deceleration or page animation
         self._stop()
 
-        self._tracking = True
-        self._dragging = False
-        self._locked_axis = None
+        self._isTracking = True
+        self._isDragging = False
+        self._pytoui_lockedAxis = None
 
-        ox, oy = self._content_offset
-        self._drag_start_ox = ox
-        self._drag_start_oy = oy
-        self._drag_start_touch_x = touch.location.x
-        self._drag_start_touch_y = touch.location.y
-        self._last_touch_x = touch.location.x
-        self._last_touch_y = touch.location.y
-        self._last_touch_time = touch.timestamp / 1000.0
+        ox, oy = self._contentOffset
+        self._pytoui_dragStartOx = ox
+        self._pytoui_dragStartOy = oy
+        self._pytoui_dragStartTouchX = touch.location.x
+        self._pytoui_dragStartTouchY = touch.location.y
+        self._pytoui_lastTouchX = touch.location.x
+        self._pytoui_lastTouchY = touch.location.y
+        self._pytoui_lastTouchTime = touch.timestamp / 1000.0
 
     def touch_moved(self, touch: Touch):
-        if not self._tracking:
+        if not self._isTracking:
             return
 
         tx = touch.location.x
         ty = touch.location.y
         now = touch.timestamp / 1000.0
-        dt = now - self._last_touch_time
+        dt = now - self._pytoui_lastTouchTime
 
         # Drag delta from start (finger right → content scrolls left → offset increases)
-        dx = self._drag_start_touch_x - tx
-        dy = self._drag_start_touch_y - ty
+        dx = self._pytoui_dragStartTouchX - tx
+        dy = self._pytoui_dragStartTouchY - ty
 
-        if not self._dragging:
+        if not self._isDragging:
             if abs(dx) > 3 or abs(dy) > 3:
-                self._dragging = True
+                self._isDragging = True
             else:
                 return
 
         # Determine directional lock once
-        if self._directional_lock_enabled and self._locked_axis is None:
-            self._locked_axis = "x" if abs(dx) >= abs(dy) else "y"
+        if self._directionalLockEnabled and self._pytoui_lockedAxis is None:
+            self._pytoui_lockedAxis = "x" if abs(dx) >= abs(dy) else "y"
 
         can_h = self._can_scroll_h()
         can_v = self._can_scroll_v()
 
-        if self._locked_axis == "x":
-            target_x = (self._drag_start_ox + dx) if can_h else self._drag_start_ox
-            target_y = self._drag_start_oy
-        elif self._locked_axis == "y":
-            target_x = self._drag_start_ox
-            target_y = (self._drag_start_oy + dy) if can_v else self._drag_start_oy
+        if self._pytoui_lockedAxis == "x":
+            target_x = (
+                (self._pytoui_dragStartOx + dx) if can_h else self._pytoui_dragStartOx
+            )
+            target_y = self._pytoui_dragStartOy
+        elif self._pytoui_lockedAxis == "y":
+            target_x = self._pytoui_dragStartOx
+            target_y = (
+                (self._pytoui_dragStartOy + dy) if can_v else self._pytoui_dragStartOy
+            )
         else:
-            target_x = (self._drag_start_ox + dx) if can_h else self._drag_start_ox
-            target_y = (self._drag_start_oy + dy) if can_v else self._drag_start_oy
+            target_x = (
+                (self._pytoui_dragStartOx + dx) if can_h else self._pytoui_dragStartOx
+            )
+            target_y = (
+                (self._pytoui_dragStartOy + dy) if can_v else self._pytoui_dragStartOy
+            )
 
         # Track instantaneous velocity (px/sec, positive = finger moved right/down)
         if dt > 0.001:
             # negate: drag right → scroll left
-            self._vel_x = -(tx - self._last_touch_x) / dt
-            self._vel_y = -(ty - self._last_touch_y) / dt
-        self._last_touch_x = tx
-        self._last_touch_y = ty
-        self._last_touch_time = now
+            self._horizontalVelocity = -(tx - self._pytoui_lastTouchX) / dt
+            self._verticalVelocity = -(ty - self._pytoui_lastTouchY) / dt
+        self._pytoui_lastTouchX = tx
+        self._pytoui_lastTouchY = ty
+        self._pytoui_lastTouchTime = now
 
         self._set_offset(target_x, target_y)
 
     def touch_ended(self, touch: Touch):
-        if not self._tracking:
+        if not self._isTracking:
             return
 
-        was_dragging = self._dragging
-        self._tracking = False
-        self._dragging = False
+        was_dragging = self._isDragging
+        self._isTracking = False
+        self._isDragging = False
 
         if not was_dragging:
             return
 
-        if self._paging_enabled:
+        if self._isPagingEnabled:
             self._snap_to_page()
-            self._flash_scroll_indicators()
+            self.flashScrollIndicators()
             return
 
         # Start kinetic deceleration if there's meaningful velocity
-        if abs(self._vel_x) > self._MIN_VEL or abs(self._vel_y) > self._MIN_VEL:
-            self._decelerating = True
-            self.update_interval = self._UPDATE_INTERVAL
+        if (
+            abs(self._horizontalVelocity) > self._MIN_VEL
+            or abs(self._verticalVelocity) > self._MIN_VEL
+        ):
+            self._isDecelerating = True
+            self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
         else:
-            self._vel_x = 0.0
-            self._vel_y = 0.0
-            self._flash_scroll_indicators()
+            self._horizontalVelocity = 0.0
+            self._verticalVelocity = 0.0
+            self.flashScrollIndicators()
 
     def _start_page_anim(self, tx: float, ty: float) -> None:
         """Smoothly slide content to page target (tx, ty)."""
-        ox, oy = self._content_offset
+        ox, oy = self._contentOffset
         if _UI_DISABLE_ANIMATIONS or (ox == tx and oy == ty):
             self._set_offset(tx, ty)
-            self._flash_scroll_indicators()
+            self.flashScrollIndicators()
             return
-        self._page_anim_start = (ox, oy)
-        self._page_anim_target = (tx, ty)
-        self._page_anim_t0 = time.monotonic()
-        if self.update_interval <= 0:
-            self.update_interval = self._UPDATE_INTERVAL
+        self._pytoui_pageAnimStart = (ox, oy)
+        self._pytoui_pageAnimTarget = (tx, ty)
+        self._pytoui_pageAnimT0 = time.monotonic()
+        if self._pytoui_updateInterval <= 0:
+            self.pytoui_setUpdateInterval_(self._UPDATE_INTERVAL)
 
     def _snap_to_page(self):
-        fw, fh = self.frame.size
-        ox, oy = self._content_offset
+        fw, fh = self.frame().size
+        ox, oy = self._contentOffset
 
         def nearest_page(offset: float, page_size: float, vel: float) -> float:
             if page_size <= 0:
@@ -504,60 +491,67 @@ class _ScrollViewInternals(_ViewInternals):
                 page = round(page)
             return page * page_size
 
-        new_x = nearest_page(ox, fw, self._vel_x) if self._can_scroll_h() else ox
-        new_y = nearest_page(oy, fh, self._vel_y) if self._can_scroll_v() else oy
-        self._vel_x = 0.0
-        self._vel_y = 0.0
+        new_x = (
+            nearest_page(ox, fw, self._horizontalVelocity)
+            if self._can_scroll_h()
+            else ox
+        )
+        new_y = (
+            nearest_page(oy, fh, self._verticalVelocity) if self._can_scroll_v() else oy
+        )
+        self._horizontalVelocity = 0.0
+        self._verticalVelocity = 0.0
         self._start_page_anim(new_x, new_y)
 
     def _stop(self) -> None:
         """Cancel any ongoing animation, deceleration or drag."""
-        self._page_anim_target = None
-        self._vel_x = 0.0
-        self._vel_y = 0.0
-        self._decelerating = False
-        self.update_interval = 0.0
+        self._pytoui_pageAnimTarget = None
+        self._horizontalVelocity = 0.0
+        self._verticalVelocity = 0.0
+        self._isDecelerating = False
+        self.pytoui_setUpdateInterval_(0.0)
 
     # ── Kinetic deceleration via update() ─────────────────────────────────────
 
+    @override
     def pytoui_update(self):
         super().pytoui_update()
         now = time.monotonic()
 
         # Page animation has priority over deceleration
-        if self._page_anim_target is not None:
-            elapsed = now - self._page_anim_t0
+        if self._pytoui_pageAnimTarget is not None:
+            elapsed = now - self._pytoui_pageAnimT0
             t = min(1.0, elapsed / self._PAGE_ANIM_DUR)
             e = 1.0 - (1.0 - t) ** 3  # cubic easeOut
-            sx, sy = self._page_anim_start
-            tx, ty = self._page_anim_target
+            sx, sy = self._pytoui_pageAnimStart
+            tx, ty = self._pytoui_pageAnimTarget
             new_x = sx + (tx - sx) * e
             new_y = sy + (ty - sy) * e
             self._set_offset(new_x, new_y, notify=True)
             if t >= 1.0:
-                self._page_anim_target = None
-                self._flash_scroll_indicators()
+                self._pytoui_pageAnimTarget = None
+                self.flashScrollIndicators()
             return  # don't run deceleration while page-animating
 
-        if not self._decelerating:
+        if not self._isDecelerating:
             # Keep running while flash timer is active
-            if self._flash_until > now:
-                self.set_needs_display()
+            if self._pytoui_flashUntil > now:
+                self.setNeedsDisplay()
             else:
-                self.update_interval = 0.0
+                self.pytoui_setUpdateInterval_(0.0)
             return
 
         # Per-frame delta from velocity (px/sec → px/frame)
-        dx = self._vel_x * self._UPDATE_INTERVAL
-        dy = self._vel_y * self._UPDATE_INTERVAL
+        dx = self._horizontalVelocity * self._UPDATE_INTERVAL
+        dy = self._verticalVelocity * self._UPDATE_INTERVAL
 
-        ox, oy = self._content_offset
+        ox, oy = self._contentOffset
         new_x = (ox + dx) if self._can_scroll_h() else ox
         new_y = (oy + dy) if self._can_scroll_v() else oy
 
         # Apply friction
-        self._vel_x *= self._DECEL_RATE
-        self._vel_y *= self._DECEL_RATE
+        self._horizontalVelocity *= self._decelerationRate
+        self._verticalVelocity *= self._decelerationRate
 
         self._set_offset(new_x, new_y)
 
@@ -567,29 +561,29 @@ class _ScrollViewInternals(_ViewInternals):
         in_bounds = abs(new_x - clamped_x) < 0.5 and abs(new_y - clamped_y) < 0.5
 
         if (
-            abs(self._vel_x) < self._MIN_VEL
-            and abs(self._vel_y) < self._MIN_VEL
+            abs(self._horizontalVelocity) < self._MIN_VEL
+            and abs(self._verticalVelocity) < self._MIN_VEL
             and in_bounds
         ):
-            self._vel_x = 0.0
-            self._vel_y = 0.0
-            self._decelerating = False
+            self._horizontalVelocity = 0.0
+            self._verticalVelocity = 0.0
+            self._isDecelerating = False
             # Keep update loop alive if flash is still active
-            if self._flash_until <= now:
-                self.update_interval = 0.0
+            if self._pytoui_flashUntil <= now:
+                self.pytoui_setUpdateInterval_(0.0)
 
     # ── Scroll indicators overlay ──────────────────────────────────────────────
 
     def _draw_scroll_indicators(self):
         """Draw scroll indicator bars on top of content."""
-        fw, fh = self.frame.size
+        fw, fh = self.frame().size
         now = time.monotonic()
-        animating = self._page_anim_target is not None
-        flashing = self._flash_until > now
-        if not (self._dragging or self._decelerating or animating or flashing):
+        animating = self._pytoui_pageAnimTarget is not None
+        flashing = self._pytoui_flashUntil > now
+        if not (self._isDragging or self._isDecelerating or animating or flashing):
             return
 
-        style = self._indicator_style
+        style = self._indicatorStyle
         if style == "white":
             color: tuple = (1.0, 1.0, 1.0, 0.7)
         elif style == "black":
@@ -597,16 +591,16 @@ class _ScrollViewInternals(_ViewInternals):
         else:
             color = (0.0, 0.0, 0.0, 0.4)
 
-        inset_t, inset_l, inset_b, inset_r = self._scroll_indicator_insets
-        ox, oy = self._content_offset
-        cw, ch = self._content_size
+        inset_t, inset_l, inset_b, inset_r = self._scrollIndicatorInsets
+        ox, oy = self._contentOffset
+        cw, ch = self._contentSize
 
         BAR = 3.0
         MIN_LEN = 30.0
         MARGIN = 2.0
 
-        show_v = self._shows_vertical_scroll_indicator and ch > fh
-        show_h = self._shows_horizontal_scroll_indicator and cw > fw
+        show_v = self._showsVerticalScrollIndicator and ch > fh
+        show_h = self._showsHorizontalScrollIndicator and cw > fw
 
         if show_v:
             avail_h = fh - inset_t - inset_b - MARGIN * 2
@@ -653,11 +647,11 @@ class _ScrollView(_View):
         vertical dragging is allowed even if the content is smaller
         than the bounds of the scroll view.
         The default value is False."""
-        return self._internals_.always_bounce_horizontal
+        return self._internals_.alwaysbounceHorizontal()
 
     @always_bounce_horizontal.setter
     def always_bounce_horizontal(self, value: bool):
-        self._internals_.always_bounce_horizontal = value
+        self._internals_.setAlwaysbounceHorizontal_(value)
 
     @property
     def always_bounce_vertical(self) -> bool:
@@ -667,37 +661,37 @@ class _ScrollView(_View):
         horizontal dragging is allowed even if the content is smaller
         than the bounds of the scroll view.
         The default value is False."""
-        return self._internals_.always_bounce_vertical
+        return self._internals_.alwaysbounceVertical()
 
     @always_bounce_vertical.setter
     def always_bounce_vertical(self, value: bool):
-        self._internals_.always_bounce_vertical = value
+        self._internals_.setAlwaysbounceVertical_(value)
 
     @property
     def bounces(self) -> bool:
         """A boolean value that controls whether the scroll view bounces
         past the edge of content and back again."""
-        return self._internals_.bounces
+        return self._internals_.bounces()
 
     @bounces.setter
     def bounces(self, value: bool):
-        self._internals_.bounces = value
+        self._internals_.setBounces_(value)
 
     @property
     def content_inset(self) -> tuple[float, float, float, float]:
         """The distance that the content view is inset from the enclosing scroll view,
         as a 4-tuple of (top, left, bottom right) insets."""
-        return self._internals_.content_inset
+        return self._internals_.contentInset()
 
     @content_inset.setter
     def content_inset(self, value: tuple[float, float, float, float]):
-        self._internals_.content_inset = value
+        self._internals_.setContentInset_(value)
 
     @property
     def content_offset(self) -> Point:
         """The view’s scrolling position, as an offset from the top-left corner.
         This is represented as an (x, y) tuple."""
-        return self._internals_._content_offset
+        return self._internals_.contentOffset()
 
     @content_offset.setter
     def content_offset(self, value: _PointLike):
@@ -707,17 +701,17 @@ class _ScrollView(_View):
     def content_size(self) -> Size:
         """The size of the content (as a (width, height) tuple).
         This determines how far the view can scroll in each direction."""
-        return self._internals_.content_size
+        return self._internals_.contentSize()
 
     @content_size.setter
     def content_size(self, value: _SizeLike):
-        self._internals_.content_size = value
+        self._internals_.setContentSize(value)
 
     @property
     def decelerating(self) -> bool:
         """(readonly) True if user isn’t dragging the content
         but scrolling is still occurring."""
-        return self._internals_.decelerating
+        return self._internals_.isDecelerating()
 
     @property
     def delegate(self) -> _ScrollViewDelegate | None:
@@ -734,11 +728,11 @@ class _ScrollView(_View):
                 # to determine the current scroll position
                 pass
         """
-        return self._internals_.delegate
+        return self._internals_.delegate()
 
     @delegate.setter
     def delegate(self, value: _ScrollViewDelegate | None):
-        self._internals_.delegate = value
+        self._internals_.setDelegate_(value)
 
     @property
     def directional_lock_enabled(self) -> bool:
@@ -749,26 +743,26 @@ class _ScrollView(_View):
         If the drag direction is diagonal, then scrolling will not be locked
         and the user can drag in any direction until the drag completes.
         The default value is False."""
-        return self._internals_.directional_lock_enabled
+        return self._internals_.isDirectionalLockEnabled()
 
     @directional_lock_enabled.setter
     def directional_lock_enabled(self, value: bool):
-        self._internals_.directional_lock_enabled = value
+        self._internals_.setDirectionalLockEnabled_(value)
 
     @property
     def dragging(self) -> bool:
         """(readonly) A boolean value that indicates
         whether the user has started scrolling the content."""
-        return self._internals_.dragging
+        return self._internals_.isDragging()
 
     @property
     def indicator_style(self) -> _ScrollIndicatorStyle:
         """The style of the scroll indicators ('default', 'white', or 'black')."""
-        return self._internals_.indicator_style
+        return self._internals_.indicatorStyle()
 
     @indicator_style.setter
     def indicator_style(self, value: _ScrollIndicatorStyle):
-        self._internals_.indicator_style = value
+        self._internals_.setIndicatorStyle_(value)
 
     @property
     def paging_enabled(self) -> bool:
@@ -776,30 +770,30 @@ class _ScrollView(_View):
         the scroll view stops on multiples of the scroll view’s bounds
         when the user scrolls.
         The default value is False."""
-        return self._internals_.paging_enabled
+        return self._internals_.isPagingEnabled()
 
     @paging_enabled.setter
     def paging_enabled(self, value: bool):
-        self._internals_.paging_enabled = value
+        self._internals_.setPagingEnabled_(value)
 
     @property
     def scroll_enabled(self) -> bool:
         """If the value of this attribute is True, scrolling is enabled,
         and if it is False, scrolling is disabled. The default is True."""
-        return self._internals_.scroll_enabled
+        return self._internals_.isScrollEnabled()
 
     @scroll_enabled.setter
     def scroll_enabled(self, value: bool):
-        self._internals_.scroll_enabled = value
+        self._internals_.setScrollEnabled_(value)
 
     @property
     def mouse_wheel_enabled(self) -> bool:
         """mouse_wheel_enabled is tied to scroll_enabled on ScrollView."""
-        return self._internals_.mouse_wheel_enabled
+        return self._internals_.pytoui_isMouseWheelEnabled()
 
     @mouse_wheel_enabled.setter
     def mouse_wheel_enabled(self, value: bool):
-        self._internals_.mouse_wheel_enabled = value
+        self._internals_.pytoui_setMouseWheelEnabled_(value)
 
     @property
     def scroll_indicator_insets(self) -> tuple[float, float, float, float]:
@@ -807,36 +801,36 @@ class _ScrollView(_View):
         The distance the scroll indicators are inset from the edges of the scroll view.
         The value is a 4-tuple (top, left, bottom, right), the default is (0, 0, 0, 0).
         """
-        return self._internals_.scroll_indicator_insets
+        return self._internals_.scrollIndicatorInsets()
 
     @scroll_indicator_insets.setter
     def scroll_indicator_insets(self, value: tuple[float, float, float, float]):
-        self._internals_.scroll_indicator_insets = value
+        self._internals_.setScrollIndicatorInsets_(value)
 
     @property
     def shows_horizontal_scroll_indicator(self) -> bool:
         """A Boolean value that controls whether the vertical
         scroll indicator is visible."""
-        return self._internals_.shows_horizontal_scroll_indicator
+        return self._internals_.showsHorizontalScrollIndicator()
 
     @shows_horizontal_scroll_indicator.setter
     def shows_horizontal_scroll_indicator(self, value: bool):
         """A Boolean value that controls whether the horizontal
         scroll indicator is visible."""
-        self._internals_.shows_horizontal_scroll_indicator = value
+        self._internals_.setShowsHorizontalScrollIndicator_(value)
 
     @property
     def shows_vertical_scroll_indicator(self) -> bool:
-        return self._internals_.shows_vertical_scroll_indicator
+        return self._internals_.showsVerticalScrollIndicator()
 
     @shows_vertical_scroll_indicator.setter
     def shows_vertical_scroll_indicator(self, value: bool):
-        self._internals_.shows_vertical_scroll_indicator = value
+        self._internals_.setShowsVerticalScrollIndicator_(value)
 
     @property
     def tracking(self) -> bool:
         """(readonly) Whether the user has touched the content to initiate scrolling."""
-        return self._internals_.tracking
+        return self._internals_.isTracking()
 
     def touch_began(self, touch: Touch):
         self._internals_.touch_began(touch)

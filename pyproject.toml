@@ -59,6 +59,8 @@ artifacts = [
 path = "scripts/pre_build.py"
 
 [tool.cibuildwheel]
+build-frontend = "build[uv]"
+build = "cp310-* cp314t-* pp311-*"
 # i686/armv7l musl: no rustup bootstrap binary available for these platforms
 skip = ["*-musllinux_i686", "*-musllinux_armv7l"]
 # Default (Linux): install rustup; rust-toolchain.toml in each crate handles

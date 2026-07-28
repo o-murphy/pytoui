@@ -514,8 +514,36 @@ class _ViewInternals:
     def pytoui_keyCommand(self) -> Callable[[dict], None] | None:
         return getattr(self._ref, "key_command", None)
 
-    def pytoui_didBecomeFirstResponder(self): ...
-    def pytoui_didResignFirstResponder(self): ...
+    def pytoui_textInput(self, key_input: str, modifiers: frozenset[str]) -> bool:
+        cb = getattr(self._ref, "_pytoui_key_input", None)
+        if cb is None:
+            return False
+        return bool(cb(key_input, modifiers))
+
+    def pytoui_wantsTextInput(self) -> bool:
+        return hasattr(self._ref, "_pytoui_text_commit")
+
+    def pytoui_textCommit(self, text: str) -> bool:
+        cb = getattr(self._ref, "_pytoui_text_commit", None)
+        if cb is None:
+            return False
+        return bool(cb(text))
+
+    def pytoui_textPreedit(self, text: str, cursor: tuple[int, int] | None) -> bool:
+        cb = getattr(self._ref, "_pytoui_text_preedit", None)
+        if cb is None:
+            return False
+        return bool(cb(text, cursor))
+
+    def pytoui_didBecomeFirstResponder(self):
+        cb = getattr(self._ref, "did_become_first_responder", None)
+        if cb is not None:
+            cb()
+
+    def pytoui_didResignFirstResponder(self):
+        cb = getattr(self._ref, "did_resign_first_responder", None)
+        if cb is not None:
+            cb()
 
     def pytoui_update(self):
         if hasattr(self._ref, "update"):
@@ -1025,6 +1053,13 @@ class _ViewInternals:
             return
         rt._set_first_responder(self)
         # return True
+
+    def resignFirstResponder(self) -> None:
+        from pytoui.base_runtime import get_runtime_for_view
+
+        rt = get_runtime_for_view(self)
+        if rt is not None and rt._first_responder is self:
+            rt._set_first_responder(None)
 
 
 class _View:

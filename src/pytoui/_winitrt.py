@@ -47,6 +47,20 @@ def _lib_filename(name: str) -> str:
 
 _LIB_PATH = str(Path(__file__).parent / _lib_filename("winitrt"))
 
+# event_callback(etype, x, y, touch_id) — coords in logical pixels
+_EventCbType = ctypes.CFUNCTYPE(
+    None, ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int64
+)
+# kind: 0=Enabled, 1=Preedit, 2=Commit, 3=Disabled — see deps/winitrt/src/lib.rs ImeCb
+_ImeCbType = ctypes.CFUNCTYPE(
+    None,
+    ctypes.c_int,  # kind
+    ctypes.c_void_p,  # text_ptr (raw UTF-8 bytes, not NUL-terminated)
+    ctypes.c_int64,  # text_len
+    ctypes.c_int64,  # cursor_start (byte offset, -1 if none)
+    ctypes.c_int64,  # cursor_end (byte offset, -1 if none)
+)
+
 
 class WinitRuntime(BaseRuntime):
     """Runtime using Rust-based winit for windowing and event handling."""
@@ -87,26 +101,18 @@ class WinitRuntime(BaseRuntime):
             ctypes.POINTER(ctypes.c_uint32),  # height_ptr (physical pixels)
             ctypes.POINTER(ctypes.c_double),  # scale_factor_ptr (written by Rust)
             ctypes.CFUNCTYPE(ctypes.c_int),  # render_callback -> 0=continue, 1=close
-            ctypes.CFUNCTYPE(
-                None,
-                ctypes.c_int,
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_int64,
-            ),  # event_callback(etype, x, y, touch_id) — coords in logical pixels
+            _EventCbType,  # event_callback(etype, x, y, touch_id), logical-pixel coords
+            _ImeCbType,  # ime_callback(kind, text_ptr, text_len, cursor_start, end)
             ctypes.c_uint8,  # decorations: 1=CSD (winit draws), 0=SSD (compositor)
             ctypes.c_char_p,  # title
         ]
+        self._lib.winit_set_ime_allowed.argtypes = [_EventCbType, ctypes.c_int]
+        self._lib.winit_set_ime_allowed.restype = None
 
         # Wrap methods in callbacks to prevent Garbage Collection
         self._render_cb = ctypes.CFUNCTYPE(ctypes.c_int)(self._internal_render)
-        self._event_cb = ctypes.CFUNCTYPE(
-            None,
-            ctypes.c_int,
-            ctypes.c_double,
-            ctypes.c_double,
-            ctypes.c_int64,
-        )(self._internal_event)
+        self._event_cb = _EventCbType(self._internal_event)
+        self._ime_cb = _ImeCbType(self._internal_ime_event)
 
     @property
     def _cur_width(self):
@@ -245,8 +251,35 @@ class WinitRuntime(BaseRuntime):
                 handled = False
                 if key_str:
                     handled = self._key_down(key_str, mods)
+                    if not handled:
+                        handled = self._dispatch_text_input(key_str, mods)
                 if not handled and key_str == KEY_INPUT_ESC:
                     self.root.close()
+
+    def _internal_ime_event(self, kind, text_ptr, text_len, cursor_start, cursor_end):
+        """Internal callback for IME/text-input events from the native window.
+
+        kind: 0=Enabled, 1=Preedit, 2=Commit, 3=Disabled.
+        cursor_start/cursor_end are BYTE offsets within text (winit semantics);
+        converted to char offsets here so widget code never sees the byte/char
+        distinction between runtimes.
+        """
+        text = ctypes.string_at(text_ptr, text_len).decode("utf-8") if text_ptr else ""
+        if kind == 1:
+            if cursor_start < 0:
+                cursor = None
+            else:
+                enc = text.encode("utf-8")
+                cursor = (
+                    len(enc[:cursor_start].decode("utf-8")),
+                    len(enc[:cursor_end].decode("utf-8")),
+                )
+            self._dispatch_text_preedit(text, cursor)
+        elif kind == 2:
+            self._dispatch_text_commit(text)
+
+    def _set_text_input_active(self, active: bool) -> None:
+        self._lib.winit_set_ime_allowed(self._event_cb, 1 if active else 0)
 
     def run(self):
         """Start the runtime loop and initialize the native window."""
@@ -275,6 +308,7 @@ class WinitRuntime(BaseRuntime):
                 ctypes.byref(self._scale_factor_c),
                 self._render_cb,
                 self._event_cb,
+                self._ime_cb,
                 ctypes.c_uint8(0 if _UI_DISABLE_WINIT_CSD else 1),
                 self.root._name.encode("utf-8"),
             )

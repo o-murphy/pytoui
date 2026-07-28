@@ -60,7 +60,11 @@ path = "scripts/pre_build.py"
 
 [tool.cibuildwheel]
 build-frontend = "build[uv]"
-build = "cp310-* cp314t-* pp311-*"
+# The compiled cdylib has no CPython/PyPy ABI dependency at all (see
+# scripts/pre_build.py) — the wheel is tagged "py3-none-<platform>",
+# so exactly ONE representative interpreter per platform/arch is enough;
+# building more just rebuilds byte-identical content under a wasted job.
+build = "cp310-*"
 # i686/armv7l musl: no rustup bootstrap binary available for these platforms
 skip = ["*-musllinux_i686", "*-musllinux_armv7l"]
 # Default (Linux): install rustup; rust-toolchain.toml in each crate handles

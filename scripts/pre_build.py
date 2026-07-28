@@ -233,11 +233,17 @@ class CustomBuildHook(BuildHookInterface):
                 _build_all()
 
                 plat = sysconfig.get_platform().replace("-", "_").replace(".", "_")
-                py = f"cp{sys.version_info.major}{sys.version_info.minor}"
-                is_free_threaded = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
-                abi = py + ("t" if is_free_threaded else "")
+                # The compiled cdylib is a plain C-ABI ctypes.CDLL load, not a
+                # CPython/PyPy C-extension — it has no interpreter dependency
+                # at all (any CPython/PyPy 3.x, GIL or free-threaded, all load
+                # the identical shared library the same way). "py3-none" is
+                # the fully version-and-implementation-agnostic wheel tag, so
+                # one build serves every supported interpreter on this
+                # platform/arch — cibuildwheel's `build` selector should pick
+                # only a single representative interpreter to avoid rebuilding
+                # identical output under multiple redundant tags.
                 build_data["pure-python"] = False
-                build_data["tag"] = f"{py}-{abi}-{plat}"
+                build_data["tag"] = f"py3-none-{plat}"
             else:
                 print(
                     f"==> Pre-build hook: skip native build "

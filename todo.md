@@ -13,7 +13,8 @@ HOT:
 
 NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)
-* add keyboard input support (for future text input functionality)
+* ~~add keyboard input support (for future text input functionality)~~ (done: TextField/TextView with real native text input — SDL_TEXTINPUT/SDL_TEXTEDITING + winit Ime::Commit/Preedit with KeyEvent.text fallback for compositors where text-input-v3 misbehaves, e.g. KWin/Wayland)
+* TextField/TextView: no interactive drag-selection (selected_range always collapsed (cursor,cursor); replace_range still works programmatically) — deliberately deferred since pytoui has no clipboard at all, so selection with no copy/paste would be dead UI. Add clipboard support first if this is wanted.
 * dialogs.alert() and other
 * View
   * View.present.style
@@ -55,8 +56,8 @@ View classes:
 * ~~Switch~~
 * TableView
 * TableViewCell
-* TextField
-* TextView
+* ~~TextField~~ (no interactive selection, see Runtime notes above)
+* ~~TextView~~ (no interactive selection, see Runtime notes above)
 * WebView
 * DatePicker (in progress, almost, the countdown mode is not done)
 * ~~ActivityIndicator~~

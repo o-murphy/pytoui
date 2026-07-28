@@ -79,6 +79,15 @@ struct WinState {
     done_tx:          mpsc::SyncSender<()>,
     cursor_pos:       (f64, f64),  // logical coords (physical / scale_factor)
     modifiers:        Modifiers,   // current modifier state
+    // True while a real IME composition is in progress (non-empty Preedit).
+    // Some Wayland compositors (e.g. KWin) fire Enabled -> Preedit("") ->
+    // Disabled immediately for plain physical-keyboard typing without ever
+    // producing a Commit — so KeyEvent.text (winit's own xkbcommon-based
+    // key->text translation, independent of the compositor's IME protocol)
+    // is used as the authoritative commit source whenever we are NOT in the
+    // middle of genuine composition, to avoid relying on a text-input-v3
+    // implementation that may never actually commit anything.
+    ime_composing:    bool,
 }
 
 // ── Keyboard helpers ──────────────────────────────────────────────────────────
@@ -307,6 +316,7 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                     done_tx:          req.done_tx,
                     cursor_pos:       (0.0, 0.0),
                     modifiers:        Modifiers::default(),
+                    ime_composing:    false,
                 });
             }
 
@@ -327,6 +337,7 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                         event: KeyEvent {
                             logical_key,
                             physical_key,
+                            text,
                             state: ElementState::Pressed,
                             ..
                         },
@@ -337,23 +348,44 @@ fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
                                 let flags = mod_flags(&st.modifiers);
                                 (st.event_cb)(5, code as f64, flags as f64, 0);
                             }
+                            // Fallback commit path: winit derives `text` from the
+                            // platform's own key->text translation (xkbcommon on
+                            // Wayland/X11), independent of the compositor's
+                            // text-input-v3 IME protocol. Only used while NOT in
+                            // the middle of a genuine IME composition, so a
+                            // working IME (CJK) still goes through Ime::Commit
+                            // without duplicate insertion.
+                            if !st.ime_composing {
+                                if let Some(t) = &text {
+                                    if !t.is_empty() {
+                                        (st.ime_cb)(2, t.as_ptr(), t.len() as i64, -1, -1);
+                                    }
+                                }
+                            }
                         }
                     }
 
                     WindowEvent::Ime(ime) => {
-                        if let Some(st) = windows.get(&window_id) {
+                        if let Some(st) = windows.get_mut(&window_id) {
                             match ime {
-                                Ime::Enabled => (st.ime_cb)(0, std::ptr::null(), 0, -1, -1),
+                                Ime::Enabled => {
+                                    (st.ime_cb)(0, std::ptr::null(), 0, -1, -1);
+                                }
                                 Ime::Preedit(text, cursor) => {
+                                    st.ime_composing = !text.is_empty();
                                     let (s, e) = cursor
                                         .map(|(a, b)| (a as i64, b as i64))
                                         .unwrap_or((-1, -1));
                                     (st.ime_cb)(1, text.as_ptr(), text.len() as i64, s, e);
                                 }
                                 Ime::Commit(text) => {
+                                    st.ime_composing = false;
                                     (st.ime_cb)(2, text.as_ptr(), text.len() as i64, -1, -1);
                                 }
-                                Ime::Disabled => (st.ime_cb)(3, std::ptr::null(), 0, -1, -1),
+                                Ime::Disabled => {
+                                    st.ime_composing = false;
+                                    (st.ime_cb)(3, std::ptr::null(), 0, -1, -1);
+                                }
                             }
                         }
                     }

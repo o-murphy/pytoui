@@ -400,7 +400,7 @@ class SDLRuntime(BaseRuntime):
         except (ValueError, OSError):
             pass
         try:
-            while self.running and self.root.pytoui_isPresented:
+            while self.running and self.root.pytoui_isPresented():
                 now = time.time()
 
                 if _UI_RT_FPS:
@@ -423,8 +423,8 @@ class SDLRuntime(BaseRuntime):
                     fb = FrameBuffer(self.pixel_data, w, h)
                     fb.antialias = _UI_ANTIALIAS
                     self.width, self.height = w, h
-                    rf = self.root.frame
-                    self.root.frame = Rect(rf.x, rf.y, float(w), float(h))
+                    rf = self.root.frame()
+                    self.root.setFrame_(Rect(rf.x, rf.y, float(w), float(h)))
 
                 if self._texture_w != w or self._texture_h != h:
                     sdl2.SDL_DestroyTexture(self.texture)
@@ -441,7 +441,7 @@ class SDLRuntime(BaseRuntime):
                 needs_redraw = any_dirty(self.root)
 
                 if needs_redraw:
-                    bg = self.root._background_color
+                    bg = self.root._backgroundColor
                     if bg is None or bg[3] < 1.0:
                         fb.draw_checkerboard(_CHECKER_SIZE)
                     self.render_fn(fb)

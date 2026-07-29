@@ -344,9 +344,19 @@ impl ApplicationHandler<AppEvent> for App {
                     // the middle of a genuine IME composition, so a
                     // working IME (CJK) still goes through Ime::Commit
                     // without duplicate insertion.
+                    //
+                    // xkbcommon's keysym->UTF-8 table maps legacy control keys
+                    // (BackSpace, Tab, Return, Escape, Delete) to their ASCII
+                    // control-code equivalents instead of None — those are
+                    // already handled above via key_to_code(), so any control
+                    // character here must be filtered out or it gets inserted
+                    // into the text buffer as an invisible junk character
+                    // (breaking repeated Backspace: each press both deletes a
+                    // real char via the key-code path AND re-inserts one via
+                    // this fallback, so only the first press has visible effect).
                     if !st.ime_composing {
                         if let Some(t) = &text {
-                            if !t.is_empty() {
+                            if !t.is_empty() && !t.chars().any(|c| c.is_control()) {
                                 (st.ime_cb)(2, t.as_ptr(), t.len() as i64, -1, -1);
                             }
                         }

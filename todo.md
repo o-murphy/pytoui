@@ -15,7 +15,7 @@ NEXT:
 * possibly: add Numpad / punctuation keys support (maybe optional through _runtime/_platform env variable)
 * ~~add keyboard input support (for future text input functionality)~~ (done: TextField/TextView with real native text input — SDL_TEXTINPUT/SDL_TEXTEDITING + winit Ime::Commit/Preedit with KeyEvent.text fallback for compositors where text-input-v3 misbehaves, e.g. KWin/Wayland)
 * TextField/TextView: no interactive drag-selection (selected_range always collapsed (cursor,cursor); replace_range still works programmatically) — deliberately deferred since pytoui has no clipboard at all, so selection with no copy/paste would be dead UI. Add clipboard support first if this is wanted.
-* TextField/TextView should be refactored to the `_*ViewInternals` pattern (like `_ScrollViewInternals`/`_NavigationViewInternals`) instead of keeping `_pytoui_key_input`/`_pytoui_text_commit`/`_pytoui_text_preedit` as private methods directly on `_TextField`/`_TextView`
+* ~~TextField/TextView should be refactored to the `_*ViewInternals` pattern~~ (done: `_TextFieldInternals(_ViewInternals)` / `_TextViewInternals(_ScrollViewInternals)` now hold all state + `draw`/`touch_*`/`_pytoui_key_input`/`_pytoui_text_commit`/`_pytoui_text_preedit`/etc; `_TextField`/`_TextView` are thin property + hook-forwarding shells, matching `_ScrollView`/`_NavigationView`)
 * dialogs.alert() and other
 * View
   * View.present.style
@@ -34,6 +34,8 @@ Runtime
 * does Viev.wait_modal implemented right?
 * Add raw FrameBuffer runtime but with loop and possibility to use external pointer to fb
 * WinitRuntime macOS support: EventLoop must run on main thread — needs separate #[cfg(target_os="macos")] code path in lib.rs (no background thread, first winit_run runs loop inline)
+* ~~WinitRuntime: repeated Backspace only deleted one char then stopped reacting~~ (fixed: xkbcommon maps BackSpace/Esc/Return/Tab/Delete keysyms to their legacy ASCII control chars in `KeyEvent.text`, not None — the IME fallback-commit path in `deps/winitrt/src/lib.rs` was forwarding that raw control char as insertable text alongside the real key-code delete, re-inserting an invisible junk char on every press; now filtered with `!t.chars().any(|c| c.is_control())`)
+* winit bumped 0.29→0.30.13 and event loop migrated from closure-based `EventLoop::run` to `ApplicationHandler`/`run_app` (`deps/winitrt/src/lib.rs`) to match; behavior verified unchanged via smoke test
 * Add possibility to add custom runtimes, not build it to the library (for overriding etc)
 * maybe add View _global_dirty_counter to skip some rerenders?
 * CALayer-style per-view backing store: each view renders into its own pixel buffer and is composited into the parent only when dirty — enables true per-view dirty skip. Heavy architectural change: requires a separate FrameBuffer or rgba array per view + compositor pass.

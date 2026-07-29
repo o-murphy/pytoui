@@ -3,16 +3,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define TextAnchor_CENTER 0
-
-#define TextAnchor_TOP 1
-
-#define TextAnchor_BOTTOM 2
-
-#define TextAnchor_LEFT 4
-
-#define TextAnchor_RIGHT 8
-
 int32_t RegisterFont(const unsigned char *data, int len);
 
 int32_t LoadFont(const char *path);
@@ -36,10 +26,6 @@ void FillOver(int32_t handle, uint32_t color);
 void SetPixel(int32_t handle, int32_t x, int32_t y, uint32_t color);
 
 uint32_t GetPixel(int32_t handle, int32_t x, int32_t y);
-
-void CSetPixel(int32_t handle, int32_t x, int32_t y, uint32_t color);
-
-uint32_t CGetPixel(int32_t handle, int32_t x, int32_t y);
 
 void Line(int32_t handle,
           int32_t x0,
@@ -152,17 +138,6 @@ void EllipseArc(int32_t handle,
                 uint32_t color,
                 uint8_t blend);
 
-void FillPath(int32_t handle, const uint8_t *data, int32_t len, uint32_t color, uint8_t blend);
-
-void StrokePath(int32_t handle,
-                const uint8_t *data,
-                int32_t len,
-                float width,
-                uint8_t cap,
-                uint8_t join,
-                uint32_t color,
-                uint8_t blend);
-
 void BlitRGBA(int32_t handle,
               const uint8_t *src_data,
               int32_t src_w,
@@ -171,18 +146,22 @@ void BlitRGBA(int32_t handle,
               int32_t dst_y,
               int32_t blend);
 
+void BlitRGBAScaled(int32_t handle,
+                    const uint8_t *src_data,
+                    int32_t src_w,
+                    int32_t src_h,
+                    int32_t dst_x,
+                    int32_t dst_y,
+                    int32_t dst_w,
+                    int32_t dst_h,
+                    int32_t blend);
+
 void Scroll(int32_t handle, int32_t dx, int32_t dy);
 
 void SetAntiAlias(int32_t handle, int32_t enabled);
 
 int32_t GetAntiAlias(int32_t handle);
 
-/**
- * Set the current transformation matrix for the framebuffer.
- * Parameters map to the standard 2D affine matrix (a, b, c, d, tx, ty)
- * matching the CoreGraphics / Pythonista Transform convention.
- * tiny-skia from_row takes (sx=a, ky=b, kx=c, sy=d, tx, ty).
- */
 void SetCTM(int32_t handle, float a, float b, float c, float d, float tx, float ty);
 
 void ApplyYUV422Compensation(int32_t handle, int32_t x, int32_t y, int32_t w, int32_t h);
@@ -211,9 +190,22 @@ void GStatePush(int32_t handle);
 
 void GStatePop(int32_t handle);
 
+int32_t CreateOwnedFB(int32_t width, int32_t height);
+
+void ClearFB(int32_t handle);
+
+void CompositeFB(int32_t dst_handle, int32_t src_handle, int32_t x, int32_t y, float alpha);
+
+void CompositeFBRounded(int32_t dst_handle,
+                        int32_t src_handle,
+                        int32_t x,
+                        int32_t y,
+                        float alpha,
+                        float radius);
+
 int32_t CreateTransform(float a, float b, float c, float d, float tx, float ty);
 
-void DestroyTransform(int32_t handle);
+int32_t DestroyTransform(int32_t handle);
 
 int32_t TransformRotation(float radians);
 
@@ -225,14 +217,11 @@ int32_t TransformConcat(int32_t handle_a, int32_t handle_b);
 
 int32_t TransformInvert(int32_t handle);
 
-/**
- * Get transform components into out-params. Returns 0 on success, -1 if handle invalid.
- */
 int32_t TransformGet(int32_t handle, float *a, float *b, float *c, float *d, float *tx, float *ty);
 
 int32_t CreatePath(void);
 
-void DestroyPath(int32_t handle);
+int32_t DestroyPath(int32_t handle);
 
 void PathMoveTo(int32_t handle, float x, float y);
 
@@ -276,12 +265,28 @@ void PathStroke(int32_t fb_handle, int32_t path_handle, uint32_t color, uint8_t 
 
 int32_t PathHitTest(int32_t path_handle, float x, float y);
 
-/**
- * Fill *x_out, *y_out, *w_out, *h_out with the path's tight bounding rect.
- * Returns 1 on success, 0 if path is empty or handle is invalid.
- */
 int32_t PathGetBounds(int32_t path_handle, float *x_out, float *y_out, float *w_out, float *h_out);
 
 void PathAddClip(int32_t fb_handle, int32_t path_handle);
 
 void DrawCheckerBoard(int32_t fb_handle, int32_t size);
+
+int32_t DrawStringCoreGraphics(int32_t fb_handle,
+                               int32_t font_handle,
+                               const char *text,
+                               float x,
+                               float y,
+                               float w,
+                               float h,
+                               float size,
+                               uint32_t color,
+                               uint32_t alignment,
+                               uint32_t line_break_mode);
+
+int32_t MeasureStringCoreGraphics(int32_t font_handle,
+                                  const char *text,
+                                  float max_width,
+                                  float size,
+                                  uint32_t line_break_mode,
+                                  float *out_width,
+                                  float *out_height);

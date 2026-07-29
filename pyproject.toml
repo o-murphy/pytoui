@@ -10,7 +10,7 @@ description = "Pythonista UI simulator"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["typing-extensions>=4.16.0"]
 
 classifiers = [
     "Intended Audience :: Developers",
@@ -36,7 +36,7 @@ classifiers = [
 
 [project.optional-dependencies]
 image = ["pillow>=12.1.1"]
-sdl = ["pysdl2>=0.9.17", "pysdl2-dll>=2.32.0; platform_system == 'Windows'"]
+sdl = ["pysdl2>=0.9.17", "pysdl2-dll>=2.32.10; platform_system == 'Windows'"]
 
 [tool.hatch.version]
 source = "vcs"
@@ -126,5 +126,4 @@ dev = [
     "pysdl2-dll>=2.32.10; platform_system == 'Windows'",
     "pytest>=9.1.1",
     "ruff>=0.16.0",
-    "typing-extensions>=4.16.0",
 ]

@@ -606,6 +606,9 @@ wheels = [
 [[package]]
 name = "pytoui"
 source = { editable = "." }
+dependencies = [
+    { name = "typing-extensions" },
+]
 
 [package.optional-dependencies]
 image = [
@@ -627,14 +630,14 @@ dev = [
     { name = "pysdl2-dll", marker = "sys_platform == 'win32'" },
     { name = "pytest" },
     { name = "ruff" },
-    { name = "typing-extensions" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pillow", marker = "extra == 'image'", specifier = ">=12.1.1" },
     { name = "pysdl2", marker = "extra == 'sdl'", specifier = ">=0.9.17" },
-    { name = "pysdl2-dll", marker = "sys_platform == 'win32' and extra == 'sdl'", specifier = ">=2.32.0" },
+    { name = "pysdl2-dll", marker = "sys_platform == 'win32' and extra == 'sdl'", specifier = ">=2.32.10" },
+    { name = "typing-extensions", specifier = ">=4.16.0" },
 ]
 provides-extras = ["image", "sdl"]
 
@@ -648,7 +651,6 @@ dev = [
     { name = "pysdl2-dll", marker = "sys_platform == 'win32'", specifier = ">=2.32.10" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.16.0" },
-    { name = "typing-extensions", specifier = ">=4.16.0" },
 ]
 
 [[package]]

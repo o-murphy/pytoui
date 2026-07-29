@@ -17,8 +17,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Callable
 
+from pytoui._platform import _UI_RT_FPS
 from pytoui.hid import MOUSE_LEFT_ID
-from pytoui.ui._draw import convert_point
+from pytoui.ui._draw import _tick, _tick_delays, convert_point
 from pytoui.ui._types import Touch
 
 if TYPE_CHECKING:
@@ -73,6 +74,10 @@ class BaseRuntime:
         # Per-window first responder
         self._first_responder: _ViewInternals | None = None
 
+        # FPS counter state (see _tick_fps)
+        self._fps_frame_count = 0
+        self._fps_last_t = time.time()
+
         _root_to_runtime[id(root_view)] = self
 
     @property
@@ -80,6 +85,44 @@ class BaseRuntime:
         """Current window dimensions in pixels.
         Subclasses may override for live resize."""
         return (self.width, self.height)
+
+    # ------------------------------------------------------------------
+    # Per-frame bookkeeping shared by every runtime's render loop
+    # ------------------------------------------------------------------
+
+    def _tick_fps(self, now: float) -> None:
+        """Print an FPS counter once a second when _UI_RT_FPS is enabled.
+
+        No-op otherwise.
+        """
+        if not _UI_RT_FPS:
+            return
+        self._fps_frame_count += 1
+        elapsed = now - self._fps_last_t
+        if elapsed >= 1.0:
+            print(f"FPS: {self._fps_frame_count / elapsed:.1f}", flush=True)
+            self._fps_frame_count = 0
+            self._fps_last_t = now
+
+    def _advance(self, now: float) -> None:
+        """Advance the view hierarchy's update loop and the animate()/delay() timers."""
+        self._update_hierarchy(self.root, now)
+        _tick(now)
+        _tick_delays(now)
+
+    def _render_if_dirty(self, fb) -> bool:
+        """Render one frame into fb if anything needs redrawing.
+
+        Returns True if a frame was actually drawn (draw_checkerboard + render_fn),
+        False if nothing was dirty and the caller should skip presenting.
+        """
+        if not any_dirty(self.root):
+            return False
+        bg = self.root._backgroundColor
+        if bg is None or bg[3] < 1.0:
+            fb.draw_checkerboard(_CHECKER_SIZE)
+        self.render_fn(fb)
+        return True
 
     def _unregister(self) -> None:
         _root_to_runtime.pop(id(self.root), None)

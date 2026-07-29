@@ -14,9 +14,8 @@ from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
     _UI_DISABLE_WINIT_CSD,
-    _UI_RT_FPS,
 )
-from pytoui.base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, any_dirty
+from pytoui.base_runtime import _SCROLL_LINE_PX, BaseRuntime
 from pytoui.hid import (
     KEY_INPUT_ESC,
     MOUSE_LEFT_ID,
@@ -25,7 +24,6 @@ from pytoui.hid import (
     _winit_key_to_str,
     _winit_mods_to_set,
 )
-from pytoui.ui._draw import _tick, _tick_delays
 
 if TYPE_CHECKING:
     from pytoui.ui._view import _ViewInternals
@@ -76,10 +74,6 @@ class WinitRuntime(BaseRuntime):
         # Last logical dims — avoid redundant root.frame updates
         self._last_lw: int = width
         self._last_lh: int = height
-
-        # Performance Monitoring
-        self._fps_frame_count = 0
-        self._fps_last_t = time.time()
 
         # Pre-allocate pixel buffer (0xAARRGGBB, 4 bytes/pixel).
         # Allocate for 4K immediately to avoid reallocation on resize.
@@ -144,18 +138,8 @@ class WinitRuntime(BaseRuntime):
     def _internal_render(self) -> int:
         """Internal callback executed by Rust for every frame draw."""
         now = time.time()
-
-        if _UI_RT_FPS:
-            self._fps_frame_count += 1
-            elapsed = now - self._fps_last_t
-            if elapsed >= 1.0:
-                print(f"FPS: {self._fps_frame_count / elapsed:.1f}", flush=True)
-                self._fps_frame_count = 0
-                self._fps_last_t = now
-
-        self._update_hierarchy(self.root, now)
-        _tick(now)
-        _tick_delays(now)
+        self._tick_fps(now)
+        self._advance(now)
 
         w, h = self._cur_width, self._cur_height  # physical pixels
         if w == 0 or h == 0:
@@ -192,11 +176,7 @@ class WinitRuntime(BaseRuntime):
         if not self.root.pytoui_isPresented():
             return 1
 
-        if not any_dirty(self.root):
-            return 0
-
-        fb.draw_checkerboard(_CHECKER_SIZE)
-        self.render_fn(fb)
+        self._render_if_dirty(fb)
         return 0
 
     def _internal_event(self, etype, x, y, touch_id: int):

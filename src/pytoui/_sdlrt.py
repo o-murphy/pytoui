@@ -20,12 +20,10 @@ from typing import TYPE_CHECKING
 from pytoui._osdbuf import FrameBuffer
 from pytoui._platform import (
     _UI_ANTIALIAS,
-    _UI_RT_FPS,
     _UI_RT_SDL_MAX_DELAY,
 )
-from pytoui.base_runtime import _CHECKER_SIZE, _SCROLL_LINE_PX, BaseRuntime, any_dirty
+from pytoui.base_runtime import _SCROLL_LINE_PX, BaseRuntime
 from pytoui.hid import MOUSE_LEFT_ID, MOUSE_MIDDLE_ID, MOUSE_RIGHT_ID
-from pytoui.ui._draw import _tick, _tick_delays
 from pytoui.ui._types import Rect
 
 if TYPE_CHECKING:
@@ -408,8 +406,6 @@ class SDLRuntime(BaseRuntime):
     def run(self):
         self.running = True
         sdl2 = self._sdl2
-        _fps_frame_count = 0
-        _fps_last_t = time.time()
 
         fb = FrameBuffer(self.pixel_data, self.width, self.height)
         fb.antialias = _UI_ANTIALIAS
@@ -424,19 +420,10 @@ class SDLRuntime(BaseRuntime):
         try:
             while self.running and self.root.pytoui_isPresented():
                 now = time.time()
-
-                if _UI_RT_FPS:
-                    _fps_frame_count += 1
-                    elapsed = now - _fps_last_t
-                    if elapsed >= 1.0:
-                        print(f"FPS: {_fps_frame_count / elapsed:.1f}", flush=True)
-                        _fps_frame_count = 0
-                        _fps_last_t = now
+                self._tick_fps(now)
 
                 self._dispatch_queued_events()
-                self._update_hierarchy(self.root, now)
-                _tick(now)
-                _tick_delays(now)
+                self._advance(now)
 
                 w, h = self._current_w, self._current_h
                 if fb._width != w or fb._height != h:
@@ -460,14 +447,7 @@ class SDLRuntime(BaseRuntime):
                     sdl2.SDL_SetTextureBlendMode(self.texture, sdl2.SDL_BLENDMODE_BLEND)
                     self._texture_w, self._texture_h = w, h
 
-                needs_redraw = any_dirty(self.root)
-
-                if needs_redraw:
-                    bg = self.root._backgroundColor
-                    if bg is None or bg[3] < 1.0:
-                        fb.draw_checkerboard(_CHECKER_SIZE)
-                    self.render_fn(fb)
-
+                if self._render_if_dirty(fb):
                     src_rect = sdl2.rect.SDL_Rect(0, 0, w, h)
                     sdl2.SDL_UpdateTexture(
                         self.texture,

@@ -6,567 +6,17 @@
 //!   does not require the main thread). Python threads register windows via UserEvent
 //!   and block on an mpsc channel until their window is closed.
 
-use std::collections::HashMap;
+mod app;
+mod event_loop;
+mod keyboard;
+mod state;
+
 use std::ffi::CStr;
-use std::num::NonZeroU32;
 use std::os::raw::c_char;
-use std::sync::{Arc, Mutex, OnceLock};
 use std::sync::mpsc;
 
-use softbuffer::{Context, Surface};
-use winit::{
-    application::ApplicationHandler,
-    dpi::LogicalSize,
-    event::*,
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
-    keyboard::{Key, KeyCode, NamedKey, PhysicalKey},
-    window::{Window, WindowId},
-};
-
-// ── Callback types ─────────────────────────────────────────────────────────────
-// render_callback returns 0 = continue, != 0 = close window (view.close())
-type RenderCb = extern "C" fn() -> i32;
-type EventCb  = extern "C" fn(i32, f64, f64, i64);
-// IME/text-input callback — kept separate from EventCb so its richer (string)
-// payload never touches the existing numeric touch/mouse/scroll/key call sites.
-// kind: 0=Enabled, 1=Preedit, 2=Commit, 3=Disabled.
-// text_ptr/text_len: valid only for Preedit/Commit — raw UTF-8 bytes, NOT
-// NUL-terminated (the call is fully synchronous, so the Python callback must
-// copy the bytes before returning).
-// cursor_start/cursor_end: BYTE offsets within the preedit text; -1,-1 if none.
-type ImeCb = extern "C" fn(i32, *const u8, i64, i64, i64);
-
-// ── UserEvent: request to add a new window ────────────────────────────────────
-struct AddWindowReq {
-    width:            u32,
-    height:           u32,
-    title:            String,
-    pixel_ptr:        *mut u32,
-    width_ptr:        *mut u32,
-    height_ptr:       *mut u32,
-    scale_factor_ptr: *mut f64,
-    render_cb:        RenderCb,
-    event_cb:         EventCb,
-    ime_cb:           ImeCb,
-    decorations:      bool,
-    /// Python thread blocks on done_rx; we send () when the window closes
-    done_tx:          mpsc::SyncSender<()>,
-}
-
-// Raw pointers are managed by the Python/ctypes side — this is safe
-unsafe impl Send for AddWindowReq {}
-
-enum AppEvent {
-    AddWindow(AddWindowReq),
-    GetScreenSize { tx: mpsc::SyncSender<(u32, u32)> },
-    /// Toggle IME/text-input mode for whichever window was registered with a
-    /// matching event_cb (each window has a distinct Python callback object,
-    /// so pointer identity is enough to find it — no window-id plumbing needed).
-    SetImeAllowed(EventCb, bool),
-}
-
-// ── Single window state (lives on the EventLoop thread) ───────────────────────
-struct WinState {
-    window:           Arc<Window>,
-    surface:          Surface<Arc<Window>, Arc<Window>>,
-    pixel_ptr:        *mut u32,
-    width_ptr:        *mut u32,
-    height_ptr:       *mut u32,
-    scale_factor_ptr: *mut f64,
-    scale_factor:     f64,
-    render_cb:        RenderCb,
-    event_cb:         EventCb,
-    ime_cb:           ImeCb,
-    done_tx:          mpsc::SyncSender<()>,
-    cursor_pos:       (f64, f64),  // logical coords (physical / scale_factor)
-    modifiers:        Modifiers,   // current modifier state
-    // True while a real IME composition is in progress (non-empty Preedit).
-    // Some Wayland compositors (e.g. KWin) fire Enabled -> Preedit("") ->
-    // Disabled immediately for plain physical-keyboard typing without ever
-    // producing a Commit — so KeyEvent.text (winit's own xkbcommon-based
-    // key->text translation, independent of the compositor's IME protocol)
-    // is used as the authoritative commit source whenever we are NOT in the
-    // middle of genuine composition, to avoid relying on a text-input-v3
-    // implementation that may never actually commit anything.
-    ime_composing:    bool,
-}
-
-// ── Keyboard helpers ──────────────────────────────────────────────────────────
-
-/// Map winit key event fields to an integer code for etype=5 events.
-/// Letter/digit keys → lowercase ASCII codepoint (physical_key wins, checked first).
-/// Named special keys → codes 1-15 / 1001-1012 (logical_key, checked second).
-///
-/// Checking physical_key first ensures that modifier combos like Ctrl+J don't get
-/// dispatched as Enter (NamedKey::Enter) — they always yield 'j' (KeyCode::KeyJ).
-fn key_to_code(logical_key: &Key, physical_key: &PhysicalKey) -> Option<i64> {
-    // Physical key for letter/digit positions always wins — modifier- and
-    // layout-independent (Ctrl+J stays 'j', Ctrl+H stays 'h', etc.).
-    if let PhysicalKey::Code(code) = physical_key {
-        match code {
-            KeyCode::KeyA => return Some(b'a' as i64),
-            KeyCode::KeyB => return Some(b'b' as i64),
-            KeyCode::KeyC => return Some(b'c' as i64),
-            KeyCode::KeyD => return Some(b'd' as i64),
-            KeyCode::KeyE => return Some(b'e' as i64),
-            KeyCode::KeyF => return Some(b'f' as i64),
-            KeyCode::KeyG => return Some(b'g' as i64),
-            KeyCode::KeyH => return Some(b'h' as i64),
-            KeyCode::KeyI => return Some(b'i' as i64),
-            KeyCode::KeyJ => return Some(b'j' as i64),
-            KeyCode::KeyK => return Some(b'k' as i64),
-            KeyCode::KeyL => return Some(b'l' as i64),
-            KeyCode::KeyM => return Some(b'm' as i64),
-            KeyCode::KeyN => return Some(b'n' as i64),
-            KeyCode::KeyO => return Some(b'o' as i64),
-            KeyCode::KeyP => return Some(b'p' as i64),
-            KeyCode::KeyQ => return Some(b'q' as i64),
-            KeyCode::KeyR => return Some(b'r' as i64),
-            KeyCode::KeyS => return Some(b's' as i64),
-            KeyCode::KeyT => return Some(b't' as i64),
-            KeyCode::KeyU => return Some(b'u' as i64),
-            KeyCode::KeyV => return Some(b'v' as i64),
-            KeyCode::KeyW => return Some(b'w' as i64),
-            KeyCode::KeyX => return Some(b'x' as i64),
-            KeyCode::KeyY => return Some(b'y' as i64),
-            KeyCode::KeyZ => return Some(b'z' as i64),
-            KeyCode::Digit0 => return Some(b'0' as i64),
-            KeyCode::Digit1 => return Some(b'1' as i64),
-            KeyCode::Digit2 => return Some(b'2' as i64),
-            KeyCode::Digit3 => return Some(b'3' as i64),
-            KeyCode::Digit4 => return Some(b'4' as i64),
-            KeyCode::Digit5 => return Some(b'5' as i64),
-            KeyCode::Digit6 => return Some(b'6' as i64),
-            KeyCode::Digit7 => return Some(b'7' as i64),
-            KeyCode::Digit8 => return Some(b'8' as i64),
-            KeyCode::Digit9 => return Some(b'9' as i64),
-            KeyCode::Numpad0 => return Some(b'0' as i64),
-            KeyCode::Numpad1 => return Some(b'1' as i64),
-            KeyCode::Numpad2 => return Some(b'2' as i64),
-            KeyCode::Numpad3 => return Some(b'3' as i64),
-            KeyCode::Numpad4 => return Some(b'4' as i64),
-            KeyCode::Numpad5 => return Some(b'5' as i64),
-            KeyCode::Numpad6 => return Some(b'6' as i64),
-            KeyCode::Numpad7 => return Some(b'7' as i64),
-            KeyCode::Numpad8 => return Some(b'8' as i64),
-            KeyCode::Numpad9 => return Some(b'9' as i64),
-            _ => {}
-        }
-    }
-
-    // Printable ASCII punctuation/symbol keys — use logical_key Character.
-    // Punctuation is not remapped by Ctrl (unlike letters which become control chars),
-    // and Shift changes the character (Shift+, → '<' on QWERTY), matching SDL behaviour.
-    if let Key::Character(ch) = logical_key {
-        if let Some(c) = ch.chars().next() {
-            if c.is_ascii_graphic() && !c.is_ascii_alphanumeric() {
-                return Some(c as i64);
-            }
-        }
-    }
-
-    // Named keys for special positions (arrows, Esc, Enter, Backspace, F-keys, etc.)
-    if let Key::Named(named) = logical_key {
-        return match named {
-            NamedKey::ArrowUp    => Some(1),
-            NamedKey::ArrowDown  => Some(2),
-            NamedKey::ArrowLeft  => Some(3),
-            NamedKey::ArrowRight => Some(4),
-            NamedKey::Escape     => Some(5),
-            NamedKey::Enter      => Some(6),
-            NamedKey::Backspace  => Some(7),
-            NamedKey::Tab        => Some(8),
-            NamedKey::Space      => Some(9),
-            NamedKey::Delete     => Some(10),
-            NamedKey::Home       => Some(11),
-            NamedKey::End        => Some(12),
-            NamedKey::PageUp     => Some(13),
-            NamedKey::PageDown   => Some(14),
-            NamedKey::Insert     => Some(15),
-            NamedKey::F1         => Some(1001),
-            NamedKey::F2         => Some(1002),
-            NamedKey::F3         => Some(1003),
-            NamedKey::F4         => Some(1004),
-            NamedKey::F5         => Some(1005),
-            NamedKey::F6         => Some(1006),
-            NamedKey::F7         => Some(1007),
-            NamedKey::F8         => Some(1008),
-            NamedKey::F9         => Some(1009),
-            NamedKey::F10        => Some(1010),
-            NamedKey::F11        => Some(1011),
-            NamedKey::F12        => Some(1012),
-            _                    => None,
-        };
-    }
-
-    None
-}
-
-/// Encode modifier state as a bitmask: bit0=shift, bit1=ctrl, bit2=alt, bit3=super.
-fn mod_flags(modifiers: &Modifiers) -> i64 {
-    let s = modifiers.state();
-    let mut flags: i64 = 0;
-    if s.shift_key()   { flags |= 1; }
-    if s.control_key() { flags |= 2; }
-    if s.alt_key()     { flags |= 4; }
-    if s.super_key()   { flags |= 8; }
-    flags
-}
-
-unsafe impl Send for WinState {}
-
-// ── Global proxy (initialized once, lives for the duration of the process) ────
-type Proxy = Arc<Mutex<EventLoopProxy<AppEvent>>>;
-static GLOBAL_PROXY: OnceLock<Proxy> = OnceLock::new();
-
-fn close_window(windows: &mut HashMap<WindowId, WinState>, window_id: WindowId) {
-    if let Some(st) = windows.remove(&window_id) {
-        st.done_tx.send(()).ok();
-    }
-}
-
-// ── Application handler (winit 0.30 ApplicationHandler-based event loop) ──────
-struct App {
-    windows: HashMap<WindowId, WinState>,
-}
-
-impl App {
-    fn sync_control_flow(&self, event_loop: &ActiveEventLoop) {
-        event_loop.set_control_flow(if self.windows.is_empty() {
-            ControlFlow::Wait   // no windows → sleep until next UserEvent
-        } else {
-            ControlFlow::Poll
-        });
-    }
-}
-
-impl ApplicationHandler<AppEvent> for App {
-    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
-
-    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: AppEvent) {
-        match event {
-            // ── Screen size request from Python ───────────────────────────────
-            AppEvent::GetScreenSize { tx } => {
-                let size = event_loop.primary_monitor()
-                    .or_else(|| event_loop.available_monitors().next())
-                    .map(|m| { let s = m.size(); (s.width, s.height) })
-                    .unwrap_or((1920, 1080));
-                tx.send(size).ok();
-            }
-
-            // ── Toggle IME/text-input mode (focus-driven, from Python) ────────
-            AppEvent::SetImeAllowed(cb, allowed) => {
-                for (_, st) in self.windows.iter() {
-                    if st.event_cb as usize == cb as usize {
-                        st.window.set_ime_allowed(allowed);
-                    }
-                }
-            }
-
-            // ── New window request from Python ────────────────────────────────
-            AppEvent::AddWindow(req) => {
-                let attrs = Window::default_attributes()
-                    .with_inner_size(LogicalSize::new(req.width, req.height))
-                    .with_min_inner_size(LogicalSize::new(120u32, 36u32))
-                    .with_decorations(req.decorations)
-                    .with_title(&req.title);
-                let window = Arc::new(
-                    event_loop.create_window(attrs).expect("Failed to create window"),
-                );
-                let scale = window.scale_factor();
-                // Physical size for framebuffer
-                let phys = window.inner_size();
-                let pw = phys.width.max(1);
-                let ph = phys.height.max(1);
-                unsafe {
-                    *req.width_ptr        = pw;
-                    *req.height_ptr       = ph;
-                    *req.scale_factor_ptr = scale;
-                }
-                let ctx = Context::new(Arc::clone(&window)).unwrap();
-                let mut surface = Surface::new(&ctx, Arc::clone(&window)).unwrap();
-                surface.resize(NonZeroU32::new(pw).unwrap(), NonZeroU32::new(ph).unwrap()).unwrap();
-
-                self.windows.insert(window.id(), WinState {
-                    window,
-                    surface,
-                    pixel_ptr:        req.pixel_ptr,
-                    width_ptr:        req.width_ptr,
-                    height_ptr:       req.height_ptr,
-                    scale_factor_ptr: req.scale_factor_ptr,
-                    scale_factor:     scale,
-                    render_cb:        req.render_cb,
-                    event_cb:         req.event_cb,
-                    ime_cb:           req.ime_cb,
-                    done_tx:          req.done_tx,
-                    cursor_pos:       (0.0, 0.0),
-                    modifiers:        Modifiers::default(),
-                    ime_composing:    false,
-                });
-                self.sync_control_flow(event_loop);
-            }
-        }
-    }
-
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
-        let windows = &mut self.windows;
-        match event {
-            WindowEvent::CloseRequested => {
-                close_window(windows, window_id);
-                self.sync_control_flow(event_loop);
-            }
-
-            WindowEvent::ModifiersChanged(new_mods) => {
-                if let Some(st) = windows.get_mut(&window_id) {
-                    st.modifiers = new_mods;
-                }
-            }
-
-            WindowEvent::KeyboardInput {
-                event: KeyEvent {
-                    logical_key,
-                    physical_key,
-                    text,
-                    state: ElementState::Pressed,
-                    ..
-                },
-                ..
-            } => {
-                if let Some(st) = windows.get(&window_id) {
-                    if let Some(code) = key_to_code(&logical_key, &physical_key) {
-                        let flags = mod_flags(&st.modifiers);
-                        (st.event_cb)(5, code as f64, flags as f64, 0);
-                    }
-                    // Fallback commit path: winit derives `text` from the
-                    // platform's own key->text translation (xkbcommon on
-                    // Wayland/X11), independent of the compositor's
-                    // text-input-v3 IME protocol. Only used while NOT in
-                    // the middle of a genuine IME composition, so a
-                    // working IME (CJK) still goes through Ime::Commit
-                    // without duplicate insertion.
-                    //
-                    // xkbcommon's keysym->UTF-8 table maps legacy control keys
-                    // (BackSpace, Tab, Return, Escape, Delete) to their ASCII
-                    // control-code equivalents instead of None — those are
-                    // already handled above via key_to_code(), so any control
-                    // character here must be filtered out or it gets inserted
-                    // into the text buffer as an invisible junk character
-                    // (breaking repeated Backspace: each press both deletes a
-                    // real char via the key-code path AND re-inserts one via
-                    // this fallback, so only the first press has visible effect).
-                    if !st.ime_composing {
-                        if let Some(t) = &text {
-                            if !t.is_empty() && !t.chars().any(|c| c.is_control()) {
-                                (st.ime_cb)(2, t.as_ptr(), t.len() as i64, -1, -1);
-                            }
-                        }
-                    }
-                }
-            }
-
-            WindowEvent::Ime(ime) => {
-                if let Some(st) = windows.get_mut(&window_id) {
-                    match ime {
-                        Ime::Enabled => {
-                            (st.ime_cb)(0, std::ptr::null(), 0, -1, -1);
-                        }
-                        Ime::Preedit(text, cursor) => {
-                            st.ime_composing = !text.is_empty();
-                            let (s, e) = cursor
-                                .map(|(a, b)| (a as i64, b as i64))
-                                .unwrap_or((-1, -1));
-                            (st.ime_cb)(1, text.as_ptr(), text.len() as i64, s, e);
-                        }
-                        Ime::Commit(text) => {
-                            st.ime_composing = false;
-                            (st.ime_cb)(2, text.as_ptr(), text.len() as i64, -1, -1);
-                        }
-                        Ime::Disabled => {
-                            st.ime_composing = false;
-                            (st.ime_cb)(3, std::ptr::null(), 0, -1, -1);
-                        }
-                    }
-                }
-            }
-
-            WindowEvent::RedrawRequested => {
-                let should_close = if let Some(st) = windows.get_mut(&window_id) {
-                    let w = unsafe { *st.width_ptr };
-                    let h = unsafe { *st.height_ptr };
-                    if w > 0 && h > 0 {
-                        let signal = (st.render_cb)();
-                        if signal == 0 {
-                            if let Ok(mut buf) = st.surface.buffer_mut() {
-                                let n = (w * h) as usize;
-                                // osdbuf: [R,G,B,A] LE (0xAABBGGRR)
-                                // softbuffer: 0x00RRGGBB → swap R↔B
-                                for i in 0..n {
-                                    let px = unsafe { *st.pixel_ptr.add(i) };
-                                    let r = (px >>  0) & 0xFF;
-                                    let g = (px >>  8) & 0xFF;
-                                    let b = (px >> 16) & 0xFF;
-                                    buf[i] = (r << 16) | (g << 8) | b;
-                                }
-                                buf.present().ok();
-                            }
-                        }
-                        signal != 0
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-                if should_close {
-                    close_window(windows, window_id);
-                    self.sync_control_flow(event_loop);
-                }
-            }
-
-            WindowEvent::Resized(size) => {
-                if let Some(st) = windows.get_mut(&window_id) {
-                    let nw = size.width.max(1);
-                    let nh = size.height.max(1);
-                    unsafe {
-                        *st.width_ptr  = nw;
-                        *st.height_ptr = nh;
-                    }
-                    st.surface.resize(
-                        NonZeroU32::new(nw).unwrap(),
-                        NonZeroU32::new(nh).unwrap(),
-                    ).ok();
-                    st.window.request_redraw();
-                }
-            }
-
-            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                if let Some(st) = windows.get_mut(&window_id) {
-                    st.scale_factor = scale_factor;
-                    unsafe { *st.scale_factor_ptr = scale_factor; }
-                    // Resized event follows with new physical size
-                }
-            }
-
-            // Mouse — divide physical positions by scale_factor → logical coords
-            WindowEvent::CursorMoved { position, .. } => {
-                if let Some(st) = windows.get_mut(&window_id) {
-                    let lx = position.x / st.scale_factor;
-                    let ly = position.y / st.scale_factor;
-                    st.cursor_pos = (lx, ly);
-                    (st.event_cb)(2, lx, ly, -1);
-                }
-            }
-
-            WindowEvent::MouseInput { state: btn, button, .. } => {
-                let tid: i64 = match button {
-                    MouseButton::Left   => -1,
-                    MouseButton::Right  => -2,
-                    MouseButton::Middle => -3,
-                    _ => return,
-                };
-                if let Some(st) = windows.get(&window_id) {
-                    let t = if btn == ElementState::Pressed { 0 } else { 1 };
-                    (st.event_cb)(t, st.cursor_pos.0, st.cursor_pos.1, tid);
-                }
-            }
-
-            WindowEvent::CursorLeft { .. } => {
-                if let Some(st) = windows.get(&window_id) {
-                    (st.event_cb)(3, 0.0, 0.0, -1);
-                }
-            }
-
-            // Mouse wheel / trackpad scroll
-            // etype=4: x=dx lines, y=dy lines (LineDelta) or pixels (PixelDelta)
-            // Python side multiplies by _SCROLL_LINE_PX for LineDelta.
-            WindowEvent::MouseWheel { delta, .. } => {
-                if let Some(st) = windows.get(&window_id) {
-                    let (dx, dy, is_pixel) = match delta {
-                        MouseScrollDelta::LineDelta(x, y) => {
-                            (x as f64, y as f64, 0i64)
-                        }
-                        // PixelDelta is physical — convert to logical
-                        MouseScrollDelta::PixelDelta(pos) => (
-                            pos.x / st.scale_factor,
-                            pos.y / st.scale_factor,
-                            1i64,
-                        ),
-                    };
-                    (st.event_cb)(4, dx, dy, is_pixel);
-                }
-            }
-
-            // Touch (multitouch touchscreen / touchpad)
-            WindowEvent::Touch(touch) => {
-                if let Some(st) = windows.get(&window_id) {
-                    let etype: i32 = match touch.phase {
-                        TouchPhase::Started   => 0,
-                        TouchPhase::Ended     => 1,
-                        TouchPhase::Moved     => 2,
-                        TouchPhase::Cancelled => 3,
-                    };
-                    let lx = touch.location.x / st.scale_factor;
-                    let ly = touch.location.y / st.scale_factor;
-                    (st.event_cb)(etype, lx, ly, touch.id as i64);
-                }
-            }
-
-            _ => {}
-        }
-    }
-
-    // ── Request redraw every frame (for animations) ───────────────────────────
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        for (_, st) in &self.windows {
-            st.window.request_redraw();
-        }
-    }
-}
-
-// ── Event loop thread body ─────────────────────────────────────────────────────
-fn event_loop_thread(proxy_tx: mpsc::SyncSender<Proxy>) {
-    // Allow EventLoop on any thread (non-main-thread).
-    // Platform extensions are imported locally via cfg and called via UFCS
-    // to avoid trait name conflicts.
-    let mut el_builder = EventLoop::<AppEvent>::with_user_event();
-
-    #[cfg(target_os = "linux")]
-    {
-        use winit::platform::wayland::EventLoopBuilderExtWayland;
-        use winit::platform::x11::EventLoopBuilderExtX11;
-        EventLoopBuilderExtWayland::with_any_thread(&mut el_builder, true);
-        EventLoopBuilderExtX11::with_any_thread(&mut el_builder, true);
-    }
-    #[cfg(target_os = "windows")]
-    {
-        use winit::platform::windows::EventLoopBuilderExtWindows;
-        EventLoopBuilderExtWindows::with_any_thread(&mut el_builder, true);
-    }
-    // macOS: EventLoop requires the main thread — not supported in a background
-    // thread; on macOS winit_run must be called from main.
-
-    let event_loop = el_builder.build().expect("Failed to create EventLoop");
-    proxy_tx.send(Arc::new(Mutex::new(event_loop.create_proxy()))).unwrap();
-
-    event_loop.set_control_flow(ControlFlow::Wait);
-    let mut app = App { windows: HashMap::new() };
-    let _ = event_loop.run_app(&mut app);
-}
-
-// ── Spawn the event loop thread and return its proxy ──────────────────────────
-fn start_event_loop() -> Proxy {
-    let (proxy_tx, proxy_rx) = mpsc::sync_channel::<Proxy>(1);
-    std::thread::Builder::new()
-        .name("winit-event-loop".into())
-        .spawn(move || event_loop_thread(proxy_tx))
-        .expect("Failed to spawn winit event loop thread");
-    proxy_rx.recv().expect("Event loop thread failed to start")
-}
-
-/// Return the global event-loop proxy, starting the loop on first call.
-fn proxy() -> Proxy {
-    GLOBAL_PROXY.get_or_init(start_event_loop).clone()
-}
+use event_loop::proxy;
+use state::{AddWindowReq, AppEvent, EventCb, ImeCb, RenderCb};
 
 // ── Public C API ───────────────────────────────────────────────────────────────
 
@@ -581,17 +31,17 @@ fn proxy() -> Proxy {
 /// (used for the pixel framebuffer).
 #[no_mangle]
 pub extern "C" fn winit_run(
-    initial_width:    u32,
-    initial_height:   u32,
-    pixel_ptr:        *mut u32,
-    width_ptr:        *mut u32,
-    height_ptr:       *mut u32,
+    initial_width: u32,
+    initial_height: u32,
+    pixel_ptr: *mut u32,
+    width_ptr: *mut u32,
+    height_ptr: *mut u32,
     scale_factor_ptr: *mut f64,
-    render_callback:  RenderCb,
-    event_callback:   EventCb,
-    ime_callback:     ImeCb,
-    decorations:      u8,
-    title:            *const c_char,
+    render_callback: RenderCb,
+    event_callback: EventCb,
+    ime_callback: ImeCb,
+    decorations: u8,
+    title: *const c_char,
 ) {
     let title_str = if title.is_null() {
         String::new()
@@ -600,20 +50,24 @@ pub extern "C" fn winit_run(
     };
 
     let (done_tx, done_rx) = mpsc::sync_channel::<()>(1);
-    proxy().lock().unwrap().send_event(AppEvent::AddWindow(AddWindowReq {
-        width:            initial_width,
-        height:           initial_height,
-        title:            title_str,
-        pixel_ptr,
-        width_ptr,
-        height_ptr,
-        scale_factor_ptr,
-        render_cb:        render_callback,
-        event_cb:         event_callback,
-        ime_cb:           ime_callback,
-        decorations:      decorations != 0,
-        done_tx,
-    })).ok();
+    proxy()
+        .lock()
+        .unwrap()
+        .send_event(AppEvent::AddWindow(AddWindowReq {
+            width: initial_width,
+            height: initial_height,
+            title: title_str,
+            pixel_ptr,
+            width_ptr,
+            height_ptr,
+            scale_factor_ptr,
+            render_cb: render_callback,
+            event_cb: event_callback,
+            ime_cb: ime_callback,
+            decorations: decorations != 0,
+            done_tx,
+        }))
+        .ok();
 
     // Block until the window is closed
     done_rx.recv().ok();
@@ -623,7 +77,11 @@ pub extern "C" fn winit_run(
 /// event_cb (see AppEvent::SetImeAllowed). Safe to call from any thread.
 #[no_mangle]
 pub extern "C" fn winit_set_ime_allowed(event_cb: EventCb, allowed: i32) {
-    proxy().lock().unwrap().send_event(AppEvent::SetImeAllowed(event_cb, allowed != 0)).ok();
+    proxy()
+        .lock()
+        .unwrap()
+        .send_event(AppEvent::SetImeAllowed(event_cb, allowed != 0))
+        .ok();
 }
 
 /// Return the size of the primary monitor (w, h).

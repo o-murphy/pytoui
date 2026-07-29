@@ -36,7 +36,7 @@ Runtime
 * WinitRuntime macOS support: EventLoop must run on main thread — needs separate #[cfg(target_os="macos")] code path in lib.rs (no background thread, first winit_run runs loop inline)
 * ~~WinitRuntime: repeated Backspace only deleted one char then stopped reacting~~ (fixed: xkbcommon maps BackSpace/Esc/Return/Tab/Delete keysyms to their legacy ASCII control chars in `KeyEvent.text`, not None — the IME fallback-commit path in `deps/winitrt/src/lib.rs` was forwarding that raw control char as insertable text alongside the real key-code delete, re-inserting an invisible junk char on every press; now filtered with `!t.chars().any(|c| c.is_control())`)
 * winit bumped 0.29→0.30.13 and event loop migrated from closure-based `EventLoop::run` to `ApplicationHandler`/`run_app` (`deps/winitrt/src/lib.rs`) to match; behavior verified unchanged via smoke test
-* Add possibility to add custom runtimes, not build it to the library (for overriding etc)
+* ~~Add possibility to add custom runtimes, not build it to the library (for overriding etc)~~ (done: `_get_runtime()` in `_runtime.py` resolves `UI_RT` by name against the `"pytoui.runtimes"` entry point group instead of hardcoded conditional imports; third-party packages register their own backend the same way sdl/winit/fb do, via `[project.entry-points."pytoui.runtimes"]`)
 * maybe add View _global_dirty_counter to skip some rerenders?
 * CALayer-style per-view backing store: each view renders into its own pixel buffer and is composited into the parent only when dirty — enables true per-view dirty skip. Heavy architectural change: requires a separate FrameBuffer or rgba array per view + compositor pass.
 

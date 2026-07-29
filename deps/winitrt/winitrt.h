@@ -19,6 +19,11 @@ typedef void (*ImeCb)(int32_t, const uint8_t*, int64_t, int64_t, int64_t);
  * All event coordinates reported via event_callback are in logical pixels
  * (physical / scale_factor).  width_ptr / height_ptr report physical pixels
  * (used for the pixel framebuffer).
+ *
+ * # Safety
+ * `pixel_ptr`, `width_ptr`, `height_ptr`, `scale_factor_ptr` must be valid,
+ * writable for the lifetime of the window (managed by the Python/ctypes
+ * caller). `title` must be either null or a valid NUL-terminated C string.
  */
 void winit_run(uint32_t initial_width,
                uint32_t initial_height,
@@ -41,5 +46,8 @@ void winit_set_ime_allowed(EventCb event_cb, int32_t allowed);
 /**
  * Return the size of the primary monitor (w, h).
  * Starts EventLoop if not already running.
+ *
+ * # Safety
+ * `w_out` and `h_out` must be valid, writable `u32` pointers.
  */
 void winit_screen_size(uint32_t *w_out, uint32_t *h_out);

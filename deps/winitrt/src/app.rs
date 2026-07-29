@@ -50,7 +50,7 @@ impl ApplicationHandler<AppEvent> for App {
 
             // ── Toggle IME/text-input mode (focus-driven, from Python) ────────
             AppEvent::SetImeAllowed(cb, allowed) => {
-                for (_, st) in self.windows.iter() {
+                for st in self.windows.values() {
                     if st.event_cb as usize == cb as usize {
                         st.window.set_ime_allowed(allowed);
                     }
@@ -207,7 +207,7 @@ impl ApplicationHandler<AppEvent> for App {
                                 // softbuffer: 0x00RRGGBB → swap R↔B
                                 for i in 0..n {
                                     let px = unsafe { *st.pixel_ptr.add(i) };
-                                    let r = (px >> 0) & 0xFF;
+                                    let r = px & 0xFF;
                                     let g = (px >> 8) & 0xFF;
                                     let b = (px >> 16) & 0xFF;
                                     buf[i] = (r << 16) | (g << 8) | b;
@@ -319,7 +319,7 @@ impl ApplicationHandler<AppEvent> for App {
 
     // ── Request redraw every frame (for animations) ───────────────────────────
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        for (_, st) in &self.windows {
+        for st in self.windows.values() {
             st.window.request_redraw();
         }
     }

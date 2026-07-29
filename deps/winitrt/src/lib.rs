@@ -29,8 +29,13 @@ use state::{AddWindowReq, AppEvent, EventCb, ImeCb, RenderCb};
 /// All event coordinates reported via event_callback are in logical pixels
 /// (physical / scale_factor).  width_ptr / height_ptr report physical pixels
 /// (used for the pixel framebuffer).
+///
+/// # Safety
+/// `pixel_ptr`, `width_ptr`, `height_ptr`, `scale_factor_ptr` must be valid,
+/// writable for the lifetime of the window (managed by the Python/ctypes
+/// caller). `title` must be either null or a valid NUL-terminated C string.
 #[no_mangle]
-pub extern "C" fn winit_run(
+pub unsafe extern "C" fn winit_run(
     initial_width: u32,
     initial_height: u32,
     pixel_ptr: *mut u32,
@@ -46,7 +51,7 @@ pub extern "C" fn winit_run(
     let title_str = if title.is_null() {
         String::new()
     } else {
-        unsafe { CStr::from_ptr(title).to_string_lossy().into_owned() }
+        CStr::from_ptr(title).to_string_lossy().into_owned()
     };
 
     let (done_tx, done_rx) = mpsc::sync_channel::<()>(1);
@@ -86,13 +91,14 @@ pub extern "C" fn winit_set_ime_allowed(event_cb: EventCb, allowed: i32) {
 
 /// Return the size of the primary monitor (w, h).
 /// Starts EventLoop if not already running.
+///
+/// # Safety
+/// `w_out` and `h_out` must be valid, writable `u32` pointers.
 #[no_mangle]
-pub extern "C" fn winit_screen_size(w_out: *mut u32, h_out: *mut u32) {
+pub unsafe extern "C" fn winit_screen_size(w_out: *mut u32, h_out: *mut u32) {
     let (tx, rx) = mpsc::sync_channel::<(u32, u32)>(1);
     proxy().lock().unwrap().send_event(AppEvent::GetScreenSize { tx }).ok();
     let (w, h) = rx.recv().unwrap_or((1920, 1080));
-    unsafe {
-        *w_out = w;
-        *h_out = h;
-    }
+    *w_out = w;
+    *h_out = h;
 }

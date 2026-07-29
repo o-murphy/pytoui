@@ -8,7 +8,7 @@ NOTE:
 * osdbuf.py is in src/osdbuf/__init__.py
 
 HOT:
-* Invalid wheels abi tags https://github.com/o-murphy/pytoui/actions/runs/30387405043 and no abi3 universal wheels there are
+* ~~Invalid wheels abi tags~~ (fixed: 32e8157/5fdcd15 limit cibuildwheel to a single cp310 build per container + hatchling tag override to py3-none-<plat>; verified fixed via CI run 30389492552)
 * Image: implement methods with the rust backend
 
 NEXT:

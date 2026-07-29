@@ -76,8 +76,10 @@ def _get_env_bool(name: str, default: str) -> bool:
 _UI_DISABLE_ANIMATIONS = _get_env_bool("UI_DISABLE_ANIMATIONS", "0")
 _UI_ANTIALIAS = _get_env_bool("UI_ANTIALIAS", "1")
 # Runtime environment options
-_env_ui_runtime = _get_env_var("UI_RT", "winit")
-_UI_RT = _env_ui_runtime if _env_ui_runtime in {"sdl", "fb", "winit"} else "winit"
+# Validity of the requested name (and the "winit" fallback if it isn't
+# registered) is resolved against the "pytoui.runtimes" entry point group
+# in pytoui.ui._runtime._get_runtime — not here.
+_UI_RT = _get_env_var("UI_RT", "winit")
 _UI_RT_FPS = _get_env_bool("UI_RT_FPS", "0")
 _env_ui_runtime_delay = _get_env_var("UI_RT_SDL_DELAY", "4")
 if _env_ui_runtime_delay in {"1", "2", "4", "8", "16"}:

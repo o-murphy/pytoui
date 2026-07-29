@@ -38,6 +38,14 @@ classifiers = [
 image = ["pillow>=12.1.1"]
 sdl = ["pysdl2>=0.9.17", "pysdl2-dll>=2.32.10; platform_system == 'Windows'"]
 
+# Runtime backends for View.present(), selected at runtime via UI_RT=<name>
+# (see pytoui.ui._runtime._get_runtime). Third-party packages can add their
+# own backend by registering an entry point in this same group.
+[project.entry-points."pytoui.runtimes"]
+sdl = "pytoui._sdlrt:SDLRuntime"
+winit = "pytoui._winitrt:WinitRuntime"
+fb = "pytoui.ui._runtime:RawFrameBufferRuntime"
+
 [tool.hatch.version]
 source = "vcs"
 

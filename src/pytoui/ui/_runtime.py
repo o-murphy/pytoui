@@ -1,23 +1,23 @@
 """UI runtimes for View.present().
 
-_UI_RUNTIME (from env var UI_RUNTIME) selects which runtime to use:
-  "sdl"  — SDLRuntime:            renders to an SDL2 window (default)
-  "fb"   — RawFrameBufferRuntime: renders to raw pixel buffer (headless/test)
+UI_RT (env var, see pytoui._platform._UI_RT) selects which runtime backend to
+use, resolved by name against the "pytoui.runtimes" entry point group:
+  "winit" — WinitRuntime:         native window via Rust/winit (default)
+  "sdl"   — SDLRuntime:           renders to an SDL2 window
+  "fb"    — RawFrameBufferRuntime: renders to raw pixel buffer (headless/test)
+
+Third-party packages can add their own backend by registering an entry point
+in the same group (see pyproject.toml's [project.entry-points."pytoui.runtimes"]).
 
 View.present() calls launch_runtime(self) which picks and runs the right one.
-
-Multi-window note
------------------
-SDL's event queue is global. Calling SDL_PollEvent from multiple threads
-causes events to be randomly consumed by the wrong window. The fix: a single
-background pump thread owns all SDL_PollEvent calls and routes events to
-per-window queues via _window_map. Each SDLRuntime drains its own queue.
 """
 
 from __future__ import annotations
 
 import ctypes
 import threading
+from functools import lru_cache
+from importlib.metadata import entry_points
 from typing import TYPE_CHECKING
 
 from pytoui._platform import (
@@ -118,18 +118,29 @@ def close_all() -> None:
         rt.root.close()
 
 
+_RUNTIME_ENTRY_POINT_GROUP = "pytoui.runtimes"
+_RUNTIME_DEFAULT = "winit"
+
+
+@lru_cache(maxsize=1)
+def _discover_runtimes():
+    return entry_points(group=_RUNTIME_ENTRY_POINT_GROUP)
+
+
 def _get_runtime():
-    match _UI_RT:
-        case "fb":
-            return RawFrameBufferRuntime
-        case "winit":
-            from pytoui._winitrt import WinitRuntime
-
-            return WinitRuntime
-        case _:
-            from pytoui._sdlrt import SDLRuntime
-
-            return SDLRuntime
+    """Resolve the runtime class for UI_RT by name against the
+    "pytoui.runtimes" entry point group. Falls back to "winit" if the
+    requested name isn't registered.
+    """
+    runtimes = _discover_runtimes()
+    for name in (_UI_RT, _RUNTIME_DEFAULT):
+        for ep in runtimes:
+            if ep.name == name:
+                return ep.load()
+    available = sorted(ep.name for ep in runtimes)
+    raise RuntimeError(
+        f"No pytoui runtime registered for UI_RT={_UI_RT!r} (available: {available})"
+    )
 
 
 def launch_runtime(root_view: _ViewInternals, render_fn) -> None:

@@ -49,9 +49,6 @@ fb = "pytoui.ui._runtime:RawFrameBufferRuntime"
 [tool.hatch.version]
 source = "vcs"
 
-[tool.hatch.build.hooks.vcs]
-version-file = "src/pytoui/_version.py"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytoui"]
 artifacts = [
